@@ -116,7 +116,13 @@ fun RaadioEkraan() {
     // Kategooriad
     val desiredOrder = listOf("Eesti", "Välis")
     var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "Eesti") ?: "Eesti") }
-    val categories = stations.map { it.category }.distinct().sortedBy { desiredOrder.indexOf(it).takeIf { idx -> idx != -1 } ?: Int.MAX_VALUE }
+    val categories = stations.map { it.category }
+        .distinct()
+        .sortedWith(compareBy<String> { category ->
+            // 1. Prioriteet: Kas on meie soovitud nimekirjas?
+            val index = desiredOrder.indexOf(category)
+            if (index != -1) index else Int.MAX_VALUE
+        }.thenBy { it })// 2. Prioriteet: Tähestiku järjekord (A-Z)
     val filteredStations = stations.filter { it.category == selectedCategory }
 
     // Elutsükkel
