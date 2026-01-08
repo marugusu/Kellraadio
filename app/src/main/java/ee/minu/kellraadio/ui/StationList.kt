@@ -31,12 +31,12 @@ fun StationList(
     onCategorySelect: (String) -> Unit,
     onRefresh: () -> Unit,
     onStationSelect: (RadioStation) -> Unit,
+    onStationLongClick: (RadioStation) -> Unit, // SEE RIDA OLI PUUDU
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
 
     Column(modifier = modifier) {
-        // 1. KATEGOORIAD
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -48,11 +48,8 @@ fun StationList(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(end = 8.dp)
                     ) {
-                        // PARANDUS: Kasutame 'items(count)' ja võtame elemendi indeksi järgi.
-                        // See väldib konflikti LazyRow ja LazyVerticalGrid importide vahel.
                         items(categories.size) { index ->
                             val category = categories[index]
-
                             FilterChip(
                                 selected = (selectedCategory == category),
                                 onClick = { onCategorySelect(category) },
@@ -79,7 +76,6 @@ fun StationList(
                 }
             }
 
-            // Värskendamise nupp
             IconButton(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onRefresh()
@@ -91,7 +87,6 @@ fun StationList(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 2. RUUDUSTIK
         if (stations.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Laadin jaamu...", color = Color.Gray)
@@ -104,7 +99,6 @@ fun StationList(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Siin kasutame 'lazy.grid.items', mis on imporditud ja töötab korrektselt
                 items(filteredStations, key = { it.id }) { station ->
                     val isSelected = station.id == selectedStationId
                     val isPlayingStation = playerStatus.contains("Mängib")
@@ -113,7 +107,8 @@ fun StationList(
                         station = station,
                         isSelected = isSelected,
                         isPlaying = isPlayingStation,
-                        onClick = { onStationSelect(station) }
+                        onClick = { onStationSelect(station) },
+                        onLongClick = { onStationLongClick(station) } // SAADAME INFO EDASI
                     )
                 }
             }

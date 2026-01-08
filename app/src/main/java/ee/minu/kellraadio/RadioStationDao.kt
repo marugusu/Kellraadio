@@ -9,12 +9,19 @@ interface RadioStationDao {
     @Query("SELECT * FROM stations WHERE isActive = 1 ORDER BY priority ASC, name ASC")
     fun getAllActiveStations(): Flow<List<RadioStation>>
 
-    // UUS: Vajalik Next/Prev loogika jaoks teenuses
     @Query("SELECT * FROM stations WHERE isActive = 1 ORDER BY priority ASC, name ASC")
     suspend fun getAllActiveStationsSync(): List<RadioStation>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(stations: List<RadioStation>)
+
+    // UUS: Muuda lemmiku olekut ID järgi
+    @Query("UPDATE stations SET isFavorite = :isFav WHERE id = :stationId")
+    suspend fun updateFavoriteStatus(stationId: Int, isFav: Boolean)
+
+    // UUS: Võta kõik lemmikute ID-d (vajalik sünkroniseerimiseks)
+    @Query("SELECT id FROM stations WHERE isFavorite = 1")
+    suspend fun getFavoriteIds(): List<Int>
 
     @Query("DELETE FROM stations WHERE id NOT IN (:ids)")
     suspend fun deleteMissing(ids: List<Int>)

@@ -3,7 +3,9 @@ package ee.minu.kellraadio
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.InternalSerializationApi
 
+@OptIn(InternalSerializationApi::class)
 @Serializable
 @Entity(tableName = "stations")
 data class RadioStation(
@@ -13,5 +15,6 @@ data class RadioStation(
     val url: String,
     val isActive: Boolean = true,
     val priority: Int = 999,
-    val category: String = "Eesti" // UUS VÄLI
+    val category: String = "Eesti",
+    val isFavorite: Boolean = false
 )

@@ -9,28 +9,34 @@ class RadioStationRepository(
 ) {
     val allStations: Flow<List<RadioStation>> = stationDao.getAllActiveStations()
 
+    // UUS: Lemmiku lülitamine
+    suspend fun toggleFavorite(station: RadioStation) {
+        stationDao.updateFavoriteStatus(station.id, !station.isFavorite)
+    }
+
     suspend fun refreshStations() {
         try {
             Log.d("RADIO_DEBUG", "Alustan jaamade värskendamist...")
 
-            // Saadame kaasa praeguse aja, et server ei annaks vana vahemälu versiooni
-            val newStations = apiService.getStations(System.currentTimeMillis())
+            // 1. Jäta meelde praegused lemmikud
+            val favoriteIds = stationDao.getFavoriteIds()
 
-            Log.d("RADIO_DEBUG", "Internetist saadi ${newStations.size} jaama.")
+            // 2. Tõmba internetist uued
+            val remoteStations = apiService.getStations(System.currentTimeMillis())
 
-            if (newStations.isNotEmpty()) {
-                // Salvestame andmebaasi
-                stationDao.insertAll(newStations)
+            if (remoteStations.isNotEmpty()) {
+                // 3. Kopeeri lemmiku staatus uude nimekirja neile, mis on alles
+                val updatedStations = remoteStations.map { remote ->
+                    remote.copy(isFavorite = favoriteIds.contains(remote.id))
+                }
 
-                // Kustutame need, mida enam nimekirjas pole
-                val newIds = newStations.map { it.id }
-                stationDao.deleteMissing(newIds)
-
-                Log.d("RADIO_DEBUG", "Andmebaas uuendatud edukalt.")
+                // 4. Salvesta
+                stationDao.insertAll(updatedStations)
+                stationDao.deleteMissing(updatedStations.map { it.id })
+                Log.d("RADIO_DEBUG", "Uuendatud. Lemmikud säilitatud.")
             }
         } catch (e: Exception) {
             Log.e("RADIO_DEBUG", "Viga värskendamisel: ${e.message}")
-            e.printStackTrace()
         }
     }
 }

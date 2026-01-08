@@ -177,12 +177,28 @@ class RadioService : Service() {
     private fun changeStation(offset: Int) {
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)
-            val stations = db.radioStationDao().getAllActiveStationsSync()
-            if (stations.isEmpty()) return@launch
-            val currentIndex = stations.indexOfFirst { it.name == currentStationName }
+            val dao = db.radioStationDao()
+
+            // 1. Võtame kõik aktiivsed jaamad
+            val allStations = dao.getAllActiveStationsSync()
+            if (allStations.isEmpty()) return@launch
+
+            // 2. Leiame praeguse jaama objekti
+            val currentStation = allStations.find { it.name == currentStationName }
+
+            // 3. Otsustame, millises nimekirjas me liigume
+            // Kui praegune jaam on lemmik, siis liigume ainult lemmikute nimekirjas
+            val navigationList = if (currentStation?.isFavorite == true) {
+                allStations.filter { it.isFavorite }
+            } else {
+                allStations
+            }
+
+            // 4. Leiame uue jaama indeksi
+            val currentIndex = navigationList.indexOfFirst { it.name == currentStationName }
             val baseIndex = if (currentIndex == -1) 0 else currentIndex
-            val nextIndex = (baseIndex + offset + stations.size) % stations.size
-            val nextStation = stations[nextIndex]
+            val nextIndex = (baseIndex + offset + navigationList.size) % navigationList.size
+            val nextStation = navigationList[nextIndex]
 
             withContext(Dispatchers.Main) {
                 isAlarmMode = false

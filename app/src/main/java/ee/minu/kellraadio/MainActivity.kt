@@ -89,6 +89,7 @@ fun RaadioEkraan() {
     val selectedStation = stations.find { it.id == selectedStationId }
 
     var playingStationName by rememberSaveable { mutableStateOf("") }
+    var syncedStationName by rememberSaveable { mutableStateOf("") }
 
     // Äratuse info
     var alarmTime by rememberSaveable { mutableLongStateOf(0L) }
@@ -110,20 +111,33 @@ fun RaadioEkraan() {
     var showAlarmDialog by rememberSaveable { mutableStateOf(false) }
 
     // UUS MUUTUJA: Kas oleme jaamu juba laadinud?
-    // rememberSaveable tagab, et see on TRUE ka pärast ekraani pööramist.
     var hasFetchedStations by rememberSaveable { mutableStateOf(false) }
 
-    // Kategooriad
+    // --- LEMMIKUTE JA KATEGOORIATE LOOGIKA (Uuendatud) ---
     val desiredOrder = listOf("Eesti", "Välis")
     var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "Eesti") ?: "Eesti") }
-    val categories = stations.map { it.category }
-        .distinct()
-        .sortedWith(compareBy<String> { category ->
-            // 1. Prioriteet: Kas on meie soovitud nimekirjas?
+
+    val favoriteStations = stations.filter { it.isFavorite }
+    val baseCategories = stations.map { it.category }.distinct().toMutableList()
+
+    if (favoriteStations.isNotEmpty()) {
+        baseCategories.add(0, "Lemmikud")
+    }
+
+    val finalCategories = baseCategories.sortedWith(compareBy<String> { category ->
+        if (category == "Lemmikud") -1
+        else {
             val index = desiredOrder.indexOf(category)
             if (index != -1) index else Int.MAX_VALUE
-        }.thenBy { it })// 2. Prioriteet: Tähestiku järjekord (A-Z)
-    val filteredStations = stations.filter { it.category == selectedCategory }
+        }
+    }.thenBy { it })
+
+    val filteredStations = if (selectedCategory == "Lemmikud") {
+        favoriteStations
+    } else {
+        stations.filter { it.category == selectedCategory }
+    }
+    // -------------------------------------------------------
 
     // Elutsükkel
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -144,16 +158,14 @@ fun RaadioEkraan() {
         LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
 
         scope.launch {
-            // Kui me pole veel internetist laadinud (hasFetchedStations on false), siis teeme seda nüüd.
-            // Pärast pööramist on see true, seega vahele jäetakse.
             if (!hasFetchedStations) {
                 repository.refreshStations()
-                hasFetchedStations = true // Märgime tehtuks
+                hasFetchedStations = true
             }
         }
     }
 
-    // Uuendame ID-d
+    // Uuendame ID-d ja kategooriat, kui jaam vahetub
     LaunchedEffect(stations, playingStationName) {
         if (stations.isNotEmpty()) {
             if (playingStationName.isNotEmpty()) {
@@ -161,15 +173,20 @@ fun RaadioEkraan() {
                 if (found != null) {
                     selectedStationId = found.id
                     selectedStationName = found.name
-                    selectedCategory = found.category
+
+                    if (playingStationName != syncedStationName) {
+                        if (selectedCategory != "Lemmikud") {
+                            selectedCategory = found.category
+                        }
+                        syncedStationName = playingStationName
+                    }
                 }
-            } else if (selectedStationId == -1 && !playerStatus.contains("Mängib")) {
-                stations.firstOrNull { it.category == selectedCategory }?.let {
+            } else if (selectedStationId == -1 && !isPlaying) {
+                val defaultCat = if (favoriteStations.isNotEmpty()) "Lemmikud" else "Eesti"
+                stations.firstOrNull { it.category == defaultCat }?.let {
                     selectedStationId = it.id
                     selectedStationName = it.name
-                } ?: stations.firstOrNull()?.let {
-                    selectedStationId = it.id
-                    selectedStationName = it.name
+                    selectedCategory = it.category
                 }
             }
         }
@@ -254,12 +271,39 @@ fun RaadioEkraan() {
                 modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())
             )
             StationList(
-                stations, filteredStations, categories, selectedCategory, selectedStationId, playerStatus, isRefreshing,
-                onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
-                onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } finally { isRefreshing = false } } },
+                stations = stations,
+                filteredStations = filteredStations,
+                categories = finalCategories,
+                selectedCategory = selectedCategory,
+                selectedStationId = selectedStationId,
+                playerStatus = playerStatus,
+                isRefreshing = isRefreshing,
+                onCategorySelect = { cat ->
+                    selectedCategory = cat
+                    prefs.edit().putString("last_category", cat).apply()
+                },
+                onRefresh = {
+                    scope.launch {
+                        isRefreshing = true
+                        try {
+                            repository.refreshStations()
+                            // TAASTATUD TEADE:
+                            Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isRefreshing = false
+                        }
+                    }
+                },
                 onStationSelect = { station ->
-                    selectedStationId = station.id; selectedStationName = station.name
+                    selectedStationId = station.id
+                    selectedStationName = station.name
+                    syncedStationName = station.name
                     playRadio(station)
+                },
+                onStationLongClick = { station ->
+                    scope.launch { repository.toggleFavorite(station) }
                 },
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
@@ -280,14 +324,41 @@ fun RaadioEkraan() {
             )
             Spacer(Modifier.height(16.dp))
             StationList(
-                stations, filteredStations, categories, selectedCategory, selectedStationId, playerStatus, isRefreshing,
-                onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
-                onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } finally { isRefreshing = false } } },
+                stations = stations,
+                filteredStations = filteredStations,
+                categories = finalCategories,
+                selectedCategory = selectedCategory,
+                selectedStationId = selectedStationId,
+                playerStatus = playerStatus,
+                isRefreshing = isRefreshing,
+                onCategorySelect = { cat ->
+                    selectedCategory = cat
+                    prefs.edit().putString("last_category", cat).apply()
+                },
+                onRefresh = {
+                    scope.launch {
+                        isRefreshing = true
+                        try {
+                            repository.refreshStations()
+                            // TAASTATUD TEADE:
+                            Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            isRefreshing = false
+                        }
+                    }
+                },
                 onStationSelect = { station ->
-                    selectedStationId = station.id; selectedStationName = station.name
+                    selectedStationId = station.id
+                    selectedStationName = station.name
+                    syncedStationName = station.name
                     playRadio(station)
                 },
-                modifier = Modifier.fillMaxWidth().weight(1f)
+                onStationLongClick = { station ->
+                    scope.launch { repository.toggleFavorite(station) }
+                },
+                modifier = Modifier.weight(1f).fillMaxHeight()
             )
         }
     }
