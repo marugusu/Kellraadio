@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Kellraadio" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Kasutame sinu enda defineeritud värvi -->
+        <item name="android:windowBackground">@color/black</item>
+    </style>
+</resources>
