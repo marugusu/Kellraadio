@@ -1,52 +1,57 @@
-# Kellraadio 📻⏰
+# Kellraadio
 
-Lihtne, kiire ja töökindel Eesti internetiraadio ja äratuskell Androidile.
+Kellraadio on Android-platvormile loodud raadiopleier ja äratuskell, mis keskendub stabiilsele heli esitusele, täpsele ajastusele ja optimaalsele kasutajakogemusele erinevates seadmetüüpides. Rakendus on arendatud järgides kaasaegseid Androidi arendusstandardeid ja materjalidisaini põhimõtteid.
 
-See rakendus võimaldab kuulata Eesti ja välismaiseid raadiojaamu, seada äratusi (mis käivitavad raadio) ja kasutada unetaimerit. Rakendus on optimeeritud töötama stabiilselt taustal ja ühilduma auto Bluetooth-süsteemidega.
+## Funktsionaalsus
 
-## 📱 Funktsioonid
+* **Täpne äratussüsteem**: Rakendus kasutab AlarmManager.setAlarmClock API-t ja USE_EXACT_ALARM õigusi, mis tagab raadiostriimi käivitumise ka Androidi energiasäästurežiimide (Doze mode) ajal.
+* **Katkematu taustaheli**: Heli esitust haldab MediaPlayback-tüüpi Foreground Service koos WakeLock süsteemiga, vältides süsteemi poolt protsessi peatamist.
+* **Adaptiivne kasutajaliides**: Jetpack Compose'is realiseeritud vaated, mis kohanduvad dünaamiliselt seadme orientatsiooni ja ekraani laiusega (Navigation Bar ja Navigation Rail).
+* **Esitusajalugu**: Room-andmebaasil põhinev kuulamisajalugu koos nutika duplikaatide filtreerimise ja YouTube'i otsingu integratsiooniga.
+* **Dünaamiline jaamade haldus**: Raadiojaamade nimekiri laetakse JSON-formaadis välisest allikast, tagades andmete uuenemise ilma rakenduse versiooniuuenduseta.
 
-*   **Internetiraadio:** Mängib 70+ raadiojaama (Shoutcast/Icecast striimid).
-*   **Täpne äratus:** Kasutab `AlarmManager`i ja `USE_EXACT_ALARM` luba, et äratada kindlal ajal ka siis, kui telefon on sügavas unes (Doze mode).
-*   **Taustarežiim:** Kasutab *Foreground Service*-it, et raadio mängiks stabiilselt ka siis, kui ekraan on väljas.
-*   **Bluetooth Metadata Fix:** Spetsiaalne loogika (metadata duration & track numbers), et laulude nimed ilmuksid korrektselt ka pirtsakatele autoekraanidele (nt Skoda/VW süsteemid).
-*   **Unetaimer:** Automaatne väljalülitus (nt 30 min pärast).
-*   **Püsiv olek:** Toetab ekraani pööramist (Portrait/Landscape) ilma katkestusteta ja andmekadudeta (`rememberSaveable`).
-*   **Dünaamiline nimekiri:** Raadiojaamade nimekiri laetakse internetist (GitHub Gist) ja salvestatakse telefoni andmebaasi.
+## Tehniline teostus
 
-## 🛠 Tehnoloogiad
+* **UI Framework**: Jetpack Compose (Material 3)
+* **Audio Engine**: AndroidX Media3 (ExoPlayer ja MediaSession)
+* **Persistence Layer**: Room Persistence Library (SQL-põhine andmehaldus)
+* **Networking**: Retrofit 2 ja Kotlinx Serialization
+* **Asynchrony**: Kotlin Coroutines ja StateFlow reaalajas andmevahetuseks
+* **Architecture**: Repository muster andmeallikate abstraheerimiseks
 
-Projekt on kirjutatud 100% **Kotlinis** ja kasutab kaasaegseid Androidi komponente:
+## Kasutajaliides
 
-*   **UI:** Jetpack Compose (Material3 disain).
-*   **Audio:** AndroidX Media3 (ExoPlayer).
-*   **Andmebaas:** Room Database (jaamade vahemälu).
-*   **Võrk:** Retrofit & Kotlinx Serialization (JSON laadimine).
-*   **Arhitektuur:** Repository muster, UI seisundi hoidmine mälus.
+### Mobiilne vaade
 
-## 📸 Ekraanipildid
+<p align="center">
+  <img src="screenshots/portrait_01.png" width="280" alt="Peavaade">
+  <img src="screenshots/portrait_02.png" width="280" alt="Ajalugu">
+  <img src="screenshots/portrait_03.png" width="280" alt="Seaded">
+</p>
 
-*(Siia võid hiljem lisada pildid oma äpist, nt screenshots kaustast)*
+### Tahvelarvuti ja rõhtvaade (Landscape)
 
-## 🔧 Tehnilised väljakutsed ja lahendused
+<p align="center">
+  <img src="screenshots/landscape_01.png" width="425" alt="Landscape pleier">
+  <img src="screenshots/landscape_02.png" width="425" alt="Landscape nimekiri">
+</p>
+## Tehnilised väljakutsed ja erilahendused
 
-### 1. Bluetooth Metadata sünkroniseerimine
-Paljud autode helisüsteemid ei kuva internetiraadio laulude nimesid, kui striim ei saada infot "loo kestuse" või "järjekorranumbri" kohta.
-**Lahendus:** `RadioService` simuleerib autole, et iga lugu kestab 5 minutit ja omab kindlat ID-d. See sunnib auto ekraani infot uuendama.
+### Bluetooth metaandmete sünkroonimine
+Internetiraadio striimide puhul esineb sageli viivitusi või ühilduvusprobleeme välis-seadmetega (nt autode multimeediasüsteemid Skoda, VW grupi mudelid). Rakenduses on rakendatud spetsiaalne MediaMetadata sünkroonimise loogika, mis simuleerib meedia staatust ja fikseeritud kestust, et sundida Bluetooth-vastuvõtjat andmeid reaalajas uuendama.
 
-### 2. Äratuse töökindlus (Android 14+)
-Android piirab taustal töötavate äppide tegevust.
-**Lahendus:** Rakendus kasutab `BootReceiver`-it, et taastada äratused pärast telefoni restarti, ja `WakeLock`-e, et tagada striimi käivitumine ka unerežiimis.
+### Skaleeritav kasutajakogemus
+Rõhtasendis (Landscape) arvutab rakendus ekraani laiuse (dp ühikutes) ja jaotab mängija ning sisu vahelise ruumi dünaamiliselt. See tagab, et kasutajaliides on ühtviisi loetav ja mugavalt kasutatav nii kompaktsetes telefonides, tahvelarvutites kui ka Android TV seadmetes.
 
-### 3. Ekraani pööramine (Configuration Changes)
-**Lahendus:** Kasutatud on `rememberSaveable` ja Activity elutsükli haldust, et vältida jaamade nimekirja uuesti laadimist ja muusika hakkimist telefoni keeramisel.
+### Andmebaasi migratsioon ja terviklikkus
+Rakendus haldab mitut andmetabelit (jaamad ja ajalugu). Ajaloo salvestamise loogika püüab kinni striimist saabuvad tühjad metaandmete paketid ning rakendab "Otseeeter" asendusloogikat, säilitades sealjuures puhta ajaloo ilma korduvate sissekanneteta.
 
-## 📥 Paigaldamine
+## Paigaldamine ja nõuded
 
-1. Lae alla viimane [Release APK](https://github.com/SinuKasutajaNimi/Kellraadio/releases).
-2. Installi fail oma Android seadmesse.
-3. Anna vajalikud load (Teavitused ja Täpne äratus).
+* Operatsioonisüsteem: Android 8.0 (API 26) või uuem.
+* Nõutavad õigused: POST_NOTIFICATIONS, USE_EXACT_ALARM, INTERNET, FOREGROUND_SERVICE_MEDIA_PLAYBACK.
+* Paigalduspakett (APK) on kättesaadav Releases sektsioonis.
 
 ## Litsents
 
-See on era-projekt õppe eesmärgil.
+Projekt on arendatud õppe- ja isiklikuks otstarbeks. Kõik edastatavad raadiostriimid ja nendega seotud kaubamärgid kuuluvad vastavatele ringhäälinguorganisatsioonidele.
