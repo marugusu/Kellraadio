@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Settings
@@ -34,12 +35,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ee.minu.kellraadio.ui.AlarmDialog
+import ee.minu.kellraadio.ui.HistoryScreen
 import ee.minu.kellraadio.ui.PlayerControls
 import ee.minu.kellraadio.ui.SettingsScreen
 import ee.minu.kellraadio.ui.SleepTimerDialog
 import ee.minu.kellraadio.ui.StationList
 import kotlinx.coroutines.launch
-import java.util.Calendar // Vajalik kellaaja arvutamiseks
+import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,7 +92,7 @@ fun RaadioEkraan() {
     // 2. Andmebaas ja Repo
     val prefs = remember { context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE) }
     val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { RadioStationRepository(StationApiService.create(), database.radioStationDao()) }
+    val repository = remember { RadioStationRepository(StationApiService.create(), database.radioStationDao(), database.historyDao()) }
     val stations by repository.allStations.collectAsState(initial = emptyList())
 
     // 3. UI Staatus (State)
@@ -122,6 +124,7 @@ fun RaadioEkraan() {
     var hasFetchedStations by rememberSaveable { mutableStateOf(false) }
 
     // --- NAVIGATION STATE ---
+    // 0=Raadio, 1=Ajalugu, 2=Seaded, 3=Info
     var currentTab by rememberSaveable { mutableIntStateOf(0) }
 
     // --- KATEGOORIATE LOOGIKA ---
@@ -269,12 +272,18 @@ fun RaadioEkraan() {
                 NavigationRailItem(
                     selected = currentTab == 1,
                     onClick = { currentTab = 1 },
-                    icon = { Icon(Icons.Default.Settings, null) },
-                    label = { Text("Seaded") }
+                    icon = { Icon(Icons.Default.History, null) }, // UUS
+                    label = { Text("Ajalugu") }
                 )
                 NavigationRailItem(
                     selected = currentTab == 2,
                     onClick = { currentTab = 2 },
+                    icon = { Icon(Icons.Default.Settings, null) },
+                    label = { Text("Seaded") }
+                )
+                NavigationRailItem(
+                    selected = currentTab == 3,
+                    onClick = { currentTab = 3 },
                     icon = { Icon(Icons.Default.Info, null) },
                     label = { Text("Info") }
                 )
@@ -289,10 +298,8 @@ fun RaadioEkraan() {
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
-                    onAlarmClick = { showAlarmDialog = true }, // Lühike vajutus -> Ava dialoog
-                    onAlarmLongClick = { // Pikk vajutus -> Kustuta kohe
-                        AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = ""
-                    },
+                    onAlarmClick = { showAlarmDialog = true },
+                    onAlarmLongClick = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 )
             }
@@ -317,25 +324,19 @@ fun RaadioEkraan() {
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                    1 -> { // SEADED
-                        SettingsScreen(
-                            isRefreshing = isRefreshing,
-                            onRefresh = {
-                                scope.launch {
-                                    isRefreshing = true
-                                    try {
-                                        repository.refreshStations()
-                                        Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
-                                    } finally {
-                                        isRefreshing = false
-                                    }
-                                }
-                            }
+                    1 -> { // AJALUGU (UUS)
+                        HistoryScreen(
+                            repository = repository,
+                            onClearHistory = { scope.launch { repository.clearHistory() } }
                         )
                     }
-                    2 -> { // INFO
+                    2 -> { // SEADED
+                        SettingsScreen(
+                            isRefreshing = isRefreshing,
+                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } }
+                        )
+                    }
+                    3 -> { // INFO
                         ee.minu.kellraadio.ui.InfoScreen()
                     }
                 }
@@ -356,12 +357,18 @@ fun RaadioEkraan() {
                     NavigationBarItem(
                         selected = currentTab == 1,
                         onClick = { currentTab = 1 },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text("Seaded") }
+                        icon = { Icon(Icons.Default.History, contentDescription = null) }, // UUS
+                        label = { Text("Ajalugu") }
                     )
                     NavigationBarItem(
                         selected = currentTab == 2,
                         onClick = { currentTab = 2 },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        label = { Text("Seaded") }
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 3,
+                        onClick = { currentTab = 3 },
                         icon = { Icon(Icons.Default.Info, contentDescription = null) },
                         label = { Text("Info") }
                     )
@@ -374,10 +381,8 @@ fun RaadioEkraan() {
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
-                    onAlarmClick = { showAlarmDialog = true }, // Lühike vajutus -> Ava dialoog
-                    onAlarmLongClick = { // Pikk vajutus -> Kustuta kohe
-                        AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = ""
-                    },
+                    onAlarmClick = { showAlarmDialog = true },
+                    onAlarmLongClick = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -400,25 +405,19 @@ fun RaadioEkraan() {
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                    1 -> { // SEADED
-                        SettingsScreen(
-                            isRefreshing = isRefreshing,
-                            onRefresh = {
-                                scope.launch {
-                                    isRefreshing = true
-                                    try {
-                                        repository.refreshStations()
-                                        Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
-                                    } finally {
-                                        isRefreshing = false
-                                    }
-                                }
-                            }
+                    1 -> { // AJALUGU (UUS)
+                        HistoryScreen(
+                            repository = repository,
+                            onClearHistory = { scope.launch { repository.clearHistory() } }
                         )
                     }
-                    2 -> { // INFO
+                    2 -> { // SEADED
+                        SettingsScreen(
+                            isRefreshing = isRefreshing,
+                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } }
+                        )
+                    }
+                    3 -> { // INFO
                         ee.minu.kellraadio.ui.InfoScreen()
                     }
                 }
@@ -428,9 +427,7 @@ fun RaadioEkraan() {
 
     if (showSleepDialog) { SleepTimerDialog(initialMillis = sleepTimerMillis, onDismiss = { showSleepDialog = false }) }
 
-    // --- ÄRATUSE DIALOOGI KONFIGUREERIMINE ---
     if (showAlarmDialog) {
-        // Arvutame algse kellaaja, kui äratus on juba seatud
         val (initHour, initMinute) = if (alarmInfo != null) {
             val cal = Calendar.getInstance().apply { timeInMillis = alarmInfo.first }
             Pair(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
@@ -440,11 +437,11 @@ fun RaadioEkraan() {
 
         AlarmDialog(
             selectedStation = selectedStation,
-            initialHour = initHour,       // UUS
-            initialMinute = initMinute,   // UUS
-            initialDays = alarmDays,      // UUS
+            initialHour = initHour,
+            initialMinute = initMinute,
+            initialDays = alarmDays,
             onDismiss = { showAlarmDialog = false },
-            onDelete = if (alarmInfo != null) { // Kui äratus on olemas, anname kustutamise funktsiooni
+            onDelete = if (alarmInfo != null) {
                 { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" }
             } else null,
             onAlarmSaved = { time, days ->

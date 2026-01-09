@@ -226,6 +226,9 @@ class RadioService : Service() {
         sendMetadataUpdate(finalTitle, finalArtist, finalExtra)
         updateNotification()
 
+        // SALVESTA AJALUKKU
+        saveToHistory(finalArtist, finalTitle)
+
         // 2. Kordussaatmine
         val stationAtTheMoment = currentStationName
         metadataPushJob?.cancel()
@@ -801,6 +804,41 @@ class RadioService : Service() {
         }
 
         return Triple(artist, title, extra)
+    }
+
+    // UUS: Ajaloo salvestamine (Otseeeter lubatud)
+    private fun saveToHistory(artist: String, title: String) {
+        // Filtreerime välja tühja info, aga LUBAME "Otseeeter"
+        if (title.equals(currentStationName, ignoreCase = true) || artist.isBlank()) {
+            return
+        }
+
+        serviceScope.launch {
+            try {
+                val db = AppDatabase.getDatabase(applicationContext)
+                val historyDao = db.historyDao()
+
+                // Kontrollime duplikaati (viimane lugu)
+                val lastItem = historyDao.getLatestItem()
+                if (lastItem != null && lastItem.artist == artist && lastItem.title == title) {
+                    return@launch // Sama lugu, ei salvesta
+                }
+
+                // Salvestame
+                historyDao.insert(
+                    HistoryItem(
+                        stationName = currentStationName,
+                        artist = artist,
+                        title = title,
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+                historyDao.cleanOldHistory() // Hoiame tabeli puhtana
+                Log.d(TAG, "Salvestatud ajalukku: $artist - $title")
+            } catch (e: Exception) {
+                Log.e(TAG, "Viga ajaloo salvestamisel: ${e.message}")
+            }
+        }
     }
 
     override fun onDestroy() {

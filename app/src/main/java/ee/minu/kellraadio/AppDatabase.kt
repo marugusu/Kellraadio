@@ -5,11 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-// MUUDATUS: Versioon 2 -> 3
-@Database(entities = [RadioStation::class], version = 3, exportSchema = false)
+// MUUDATUS: Versioon 3 -> 4, lisatud HistoryItem
+@Database(entities = [RadioStation::class, HistoryItem::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun radioStationDao(): RadioStationDao
+    abstract fun historyDao(): HistoryDao // UUS
 
     companion object {
         @Volatile
@@ -22,7 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "raadio_database"
                 )
-                    .fallbackToDestructiveMigration() // See rida lubab versiooni muutusel andmebaasi uuendada
+                    .fallbackToDestructiveMigration() // Lubame uuesti luua, kui versioon muutub
                     .build()
                 INSTANCE = instance
                 instance
