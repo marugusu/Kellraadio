@@ -19,6 +19,22 @@ Kellraadio on Android-platvormile loodud raadiopleier ja äratuskell, mis kesken
 * **Asynchrony**: Kotlin Coroutines ja StateFlow reaalajas andmevahetuseks
 * **Architecture**: Repository muster andmeallikate abstraheerimiseks
 
+## Kasutajaliides
+
+### Mobiilne vaade
+
+<p align="center">
+  <img src="screenshots/portrait_01.png" width="280" alt="Peavaade">
+  <img src="screenshots/portrait_02.png" width="280" alt="Ajalugu">
+  <img src="screenshots/portrait_03.png" width="280" alt="Seaded">
+</p>
+
+### Tahvelarvuti ja rõhtvaade (Landscape)
+
+<p align="center">
+  <img src="screenshots/landscape_01.png" width="425" alt="Landscape pleier">
+  <img src="screenshots/landscape_02.png" width="425" alt="Landscape nimekiri">
+</p>
 ## Tehnilised väljakutsed ja erilahendused
 
 ### Bluetooth metaandmete sünkroonimine
