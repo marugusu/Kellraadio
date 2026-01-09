@@ -10,7 +10,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -129,9 +129,9 @@ fun StationGridItem(
 
             if (station.isFavorite) {
                 Icon(
-                    imageVector = Icons.Default.Favorite,
+                    imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = Color.Red.copy(alpha = 0.8f),
+                    tint = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier
                         .size(16.dp)
                         .align(Alignment.TopEnd)
