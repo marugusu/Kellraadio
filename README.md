@@ -25,16 +25,17 @@ Kellraadio on Android-platvormile loodud raadiopleier ja äratuskell, mis kesken
 
 <p align="center">
   <img src="screenshots/portrait_01.png" width="280" alt="Peavaade">
-  <img src="screenshots/portrait_02.png" width="280" alt="Ajalugu">
-  <img src="screenshots/portrait_03.png" width="280" alt="Seaded">
+  <img src="screenshots/portrait_02.png" width="280" alt="Lemmikud">
+  <img src="screenshots/portrait_03.png" width="280" alt="Ajalugu">
 </p>
 
 ### Tahvelarvuti ja rõhtvaade (Landscape)
 
 <p align="center">
-  <img src="screenshots/landscape_01.png" width="425" alt="Landscape pleier">
-  <img src="screenshots/landscape_02.png" width="425" alt="Landscape nimekiri">
+  <img src="screenshots/landscape_01.png" width="425" alt="Landscape lemmikud">
+  <img src="screenshots/landscape_02.png" width="425" alt="Landscape info">
 </p>
+
 ## Tehnilised väljakutsed ja erilahendused
 
 ### Bluetooth metaandmete sünkroonimine
