@@ -56,6 +56,7 @@ class RadioService : Service() {
     private lateinit var player: Player
     private var mediaSession: MediaSession? = null
     private var currentStationName: String = "Raadio"
+    private var currentCategory: String = "" // UUS
     private var lastBitrateInfo: String = ""
     private var currentTrackTitle: String = ""
 
@@ -183,22 +184,26 @@ class RadioService : Service() {
             val allStations = dao.getAllActiveStationsSync()
             if (allStations.isEmpty()) return@launch
 
-            // 2. Leiame praeguse jaama objekti
-            val currentStation = allStations.find { it.name == currentStationName }
-
-            // 3. Otsustame, millises nimekirjas me liigume
-            // Kui praegune jaam on lemmik, siis liigume ainult lemmikute nimekirjas
-            val navigationList = if (currentStation?.isFavorite == true) {
-                allStations.filter { it.isFavorite }
-            } else {
-                allStations
+            // 2. Filtreerime nimekirja vastavalt salvestatud kategooriale
+            val navigationList = when (currentCategory) {
+                "Lemmikud" -> allStations.filter { it.isFavorite }
+                "" -> allStations // Kui kategooriat pole määratud (nt äratus), võta kõik
+                else -> allStations.filter { it.category == currentCategory }
             }
 
-            // 4. Leiame uue jaama indeksi
-            val currentIndex = navigationList.indexOfFirst { it.name == currentStationName }
+            // Turvavõrk: Kui filtreerimine andis tühja tulemuse (nt kategooria muutus),
+            // või jaama pole selles kategoorias, kasutame kõiki jaamu.
+            val finalNavList = if (navigationList.isEmpty() || navigationList.none { it.name == currentStationName }) {
+                allStations
+            } else {
+                navigationList
+            }
+
+            // 3. Leiame uue jaama indeksi
+            val currentIndex = finalNavList.indexOfFirst { it.name == currentStationName }
             val baseIndex = if (currentIndex == -1) 0 else currentIndex
-            val nextIndex = (baseIndex + offset + navigationList.size) % navigationList.size
-            val nextStation = navigationList[nextIndex]
+            val nextIndex = (baseIndex + offset + finalNavList.size) % finalNavList.size
+            val nextStation = finalNavList[nextIndex]
 
             withContext(Dispatchers.Main) {
                 isAlarmMode = false
@@ -210,9 +215,13 @@ class RadioService : Service() {
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
         Log.i(TAG, "[METADATA_RAW] Striimist tuli: '$trackTitleFromStream'")
         val (finalArtist, finalTitle, finalExtra) = splitMetadata(trackTitleFromStream ?: "")
-
+        saveToHistory(finalArtist, finalTitle)
         if (finalArtist + finalTitle + finalExtra == currentArtist + currentTitle + currentExtra) return // Väldime asjatut tööd
 // Salvestame hetke seisud (et teised funktsioonid saaksid neid kasutada)
+
+
+
+
         streamStartTime = SystemClock.elapsedRealtime()
         currentArtist = finalArtist
         currentTitle = finalTitle
@@ -225,9 +234,6 @@ class RadioService : Service() {
         //sendMetadataUpdate(finalTitle, finalArtist)
         sendMetadataUpdate(finalTitle, finalArtist, finalExtra)
         updateNotification()
-
-        // SALVESTA AJALUKKU
-        saveToHistory(finalArtist, finalTitle)
 
         // 2. Kordussaatmine
         val stationAtTheMoment = currentStationName
@@ -593,6 +599,10 @@ class RadioService : Service() {
         val streamUrl = intent?.getStringExtra("STREAM_URL")
         val stationName = intent?.getStringExtra("STATION_NAME")
         val triggeredBy = intent?.getStringExtra("TRIGGERED_BY")
+        val categoryParam = intent?.getStringExtra("CATEGORY_NAME")
+        if (categoryParam != null) {
+            currentCategory = categoryParam
+        }
 
         if (streamUrl != null) {
             // Hangi WakeLock uuesti striimi laadimise ajaks.
@@ -676,6 +686,7 @@ class RadioService : Service() {
             // Käivitame heli
             player.prepare()
             player.play()
+
         }
 
         return START_STICKY
@@ -806,25 +817,20 @@ class RadioService : Service() {
         return Triple(artist, title, extra)
     }
 
-    // UUS: Ajaloo salvestamine (Otseeeter lubatud)
     private fun saveToHistory(artist: String, title: String) {
-        // Filtreerime välja tühja info, aga LUBAME "Otseeeter"
-        if (title.equals(currentStationName, ignoreCase = true) || artist.isBlank()) {
-            return
-        }
+        if (artist.isBlank() && title.isBlank()) return
 
         serviceScope.launch {
             try {
                 val db = AppDatabase.getDatabase(applicationContext)
                 val historyDao = db.historyDao()
-
-                // Kontrollime duplikaati (viimane lugu)
                 val lastItem = historyDao.getLatestItem()
+
+                // Duplikaadi kontroll (Väldib seda, et sama lugu salvestuks iga 10 sekundi tagant uuesti)
                 if (lastItem != null && lastItem.artist == artist && lastItem.title == title) {
-                    return@launch // Sama lugu, ei salvesta
+                    return@launch
                 }
 
-                // Salvestame
                 historyDao.insert(
                     HistoryItem(
                         stationName = currentStationName,
@@ -833,10 +839,10 @@ class RadioService : Service() {
                         timestamp = System.currentTimeMillis()
                     )
                 )
-                historyDao.cleanOldHistory() // Hoiame tabeli puhtana
-                Log.d(TAG, "Salvestatud ajalukku: $artist - $title")
+                historyDao.cleanOldHistory()
+                Log.d(TAG, "HistoryDEBUG: Salvestatud ajalukku: $artist - $title")
             } catch (e: Exception) {
-                Log.e(TAG, "Viga ajaloo salvestamisel: ${e.message}")
+                Log.e(TAG, "HistoryDEBUG: Viga ajaloo salvestamisel: ${e.message}")
             }
         }
     }

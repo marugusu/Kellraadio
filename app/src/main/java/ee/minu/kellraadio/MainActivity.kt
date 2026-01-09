@@ -250,7 +250,13 @@ fun RaadioEkraan() {
     }
 
     fun playRadio(station: RadioStation) {
-        val i = Intent(context, RadioService::class.java).apply { putExtra("STREAM_URL", station.url); putExtra("STATION_NAME", station.name); putExtra("TRIGGERED_BY", "USER") }
+        val i = Intent(context, RadioService::class.java).apply {
+            putExtra("STREAM_URL", station.url)
+            putExtra("STATION_NAME", station.name)
+            putExtra("TRIGGERED_BY", "USER")
+            // UUS: Saadame kaasa valitud kategooria
+            putExtra("CATEGORY_NAME", selectedCategory)
+        }
         context.startForegroundService(i)
     }
 
