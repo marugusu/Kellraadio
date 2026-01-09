@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,22 +28,30 @@ import java.util.Calendar
 @Composable
 fun AlarmDialog(
     selectedStation: RadioStation?,
+    initialHour: Int? = null,    // UUS: Algne tund (muutmisel)
+    initialMinute: Int? = null,  // UUS: Algne minut
+    initialDays: Set<Int> = emptySet(), // UUS: Algsed päevad
     onDismiss: () -> Unit,
-    onAlarmSaved: (Long, Set<Int>) -> Unit // Tagastab aja ja päevad
+    onDelete: (() -> Unit)? = null, // UUS: Kustutamise funktsioon (kui on null, siis nuppu ei näita)
+    onAlarmSaved: (Long, Set<Int>) -> Unit
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
+    // Kui algset aega pole, võta praegune aeg
     val currentTime = Calendar.getInstance()
+    val startHour = initialHour ?: currentTime.get(Calendar.HOUR_OF_DAY)
+    val startMinute = initialMinute ?: currentTime.get(Calendar.MINUTE)
+
     val timePickerState = rememberTimePickerState(
-        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
-        initialMinute = currentTime.get(Calendar.MINUTE),
+        initialHour = startHour,
+        initialMinute = startMinute,
         is24Hour = true
     )
 
-    // Mäletame valitud päevi
-    val days = remember { mutableStateListOf<Int>() }
+    // Mäletame valitud päevi (alustame initialDays väärtusega)
+    val days = remember { mutableStateListOf<Int>().apply { addAll(initialDays) } }
 
     val weekDays = listOf(
         Calendar.MONDAY to "E", Calendar.TUESDAY to "T", Calendar.WEDNESDAY to "K",
@@ -52,7 +61,7 @@ fun AlarmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Alarm, null) },
-        title = { Text("Sea äratus") },
+        title = { Text(if (onDelete != null) "Muuda äratust" else "Sea äratus") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -116,10 +125,33 @@ fun AlarmDialog(
             }) { Text("Salvesta") }
         },
         dismissButton = {
-            TextButton(onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onDismiss()
-            }) { Text("Loobu") }
+            // Siin on nüüd Row, et mahutada "Kustuta" ja "Loobu" nupud
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                if (onDelete != null) {
+                    TextButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onDelete()
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Kustuta")
+                    }
+                } else {
+                    Spacer(Modifier.width(8.dp)) // Tühi ruum, kui nuppu pole
+                }
+
+                TextButton(onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onDismiss()
+                }) { Text("Loobu") }
+            }
         }
     )
 }

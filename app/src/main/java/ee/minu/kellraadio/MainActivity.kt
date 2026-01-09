@@ -39,6 +39,7 @@ import ee.minu.kellraadio.ui.SettingsScreen
 import ee.minu.kellraadio.ui.SleepTimerDialog
 import ee.minu.kellraadio.ui.StationList
 import kotlinx.coroutines.launch
+import java.util.Calendar // Vajalik kellaaja arvutamiseks
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,9 +78,6 @@ fun RaadioEkraan() {
     val isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val screenWidth = config.screenWidthDp
 
-    // DÜNAAMILINE LAIUS
-    // Tõstame piiri 1000 peale. Kõik, mis on alla selle (telefonid), saavad 50% laiust.
-    // Suured tahvlid ja telerid (üle 1000dp) saavad 40% laiust (sest seal on ruumi rohkem).
     val playerWeight = if (screenWidth < 1000) 0.5f else 0.4f
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -124,7 +122,6 @@ fun RaadioEkraan() {
     var hasFetchedStations by rememberSaveable { mutableStateOf(false) }
 
     // --- NAVIGATION STATE ---
-    // 0 = Raadio, 1 = Seaded, 2 = Info
     var currentTab by rememberSaveable { mutableIntStateOf(0) }
 
     // --- KATEGOORIATE LOOGIKA ---
@@ -257,11 +254,10 @@ fun RaadioEkraan() {
     // --- UI SISU ---
 
     if (isLandscape) {
-        // LANDSCAPE (RÕHTPAIGUTUS) - NAVIGATION RAIL
+        // LANDSCAPE (RÕHTPAIGUTUS)
         Row(
             modifier = Modifier.fillMaxSize().statusBarsPadding()
         ) {
-            // 1. Navigation Rail (Vasakul)
             NavigationRail {
                 Spacer(modifier = Modifier.weight(1f))
                 NavigationRailItem(
@@ -287,20 +283,20 @@ fun RaadioEkraan() {
 
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
-            // 2. Mängija (Player) - KASUTAB DÜNAAMILIST KAALU (playerWeight)
             Box(modifier = Modifier.weight(playerWeight).padding(16.dp)) {
                 PlayerControls(
                     selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
-                    onAlarmCancel = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
-                    onAlarmSet = { showAlarmDialog = true },
+                    onAlarmClick = { showAlarmDialog = true }, // Lühike vajutus -> Ava dialoog
+                    onAlarmLongClick = { // Pikk vajutus -> Kustuta kohe
+                        AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = ""
+                    },
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 )
             }
 
-            // 3. Sisu (Jaamad / Seaded / Info) - Võtab ülejäänud ruumi (1f - playerWeight)
             Box(
                 modifier = Modifier.weight(1f - playerWeight).fillMaxHeight().padding(vertical = 16.dp, horizontal = 16.dp)
             ) {
@@ -378,8 +374,10 @@ fun RaadioEkraan() {
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
-                    onAlarmCancel = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
-                    onAlarmSet = { showAlarmDialog = true },
+                    onAlarmClick = { showAlarmDialog = true }, // Lühike vajutus -> Ava dialoog
+                    onAlarmLongClick = { // Pikk vajutus -> Kustuta kohe
+                        AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = ""
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -429,11 +427,29 @@ fun RaadioEkraan() {
     }
 
     if (showSleepDialog) { SleepTimerDialog(initialMillis = sleepTimerMillis, onDismiss = { showSleepDialog = false }) }
+
+    // --- ÄRATUSE DIALOOGI KONFIGUREERIMINE ---
     if (showAlarmDialog) {
+        // Arvutame algse kellaaja, kui äratus on juba seatud
+        val (initHour, initMinute) = if (alarmInfo != null) {
+            val cal = Calendar.getInstance().apply { timeInMillis = alarmInfo.first }
+            Pair(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+        } else {
+            Pair(null, null)
+        }
+
         AlarmDialog(
             selectedStation = selectedStation,
+            initialHour = initHour,       // UUS
+            initialMinute = initMinute,   // UUS
+            initialDays = alarmDays,      // UUS
             onDismiss = { showAlarmDialog = false },
-            onAlarmSaved = { time, days -> alarmTime = time; alarmStationName = selectedStation?.name ?: ""; alarmDaysList = days.toList() }
+            onDelete = if (alarmInfo != null) { // Kui äratus on olemas, anname kustutamise funktsiooni
+                { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" }
+            } else null,
+            onAlarmSaved = { time, days ->
+                alarmTime = time; alarmStationName = selectedStation?.name ?: ""; alarmDaysList = days.toList()
+            }
         )
     }
 }

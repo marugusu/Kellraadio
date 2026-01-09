@@ -1,14 +1,19 @@
 package ee.minu.kellraadio.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -18,11 +23,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ee.minu.kellraadio.AlarmUtils
 import ee.minu.kellraadio.RadioStation
+import androidx.compose.foundation.LocalIndication
 
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlayerControls(
     selectedStation: RadioStation?,
-    activeStationName: String, // UUS: Kindel nimi mälust
+    activeStationName: String,
     isPlaying: Boolean,
     parsedTitle: String,
     parsedArtist: String,
@@ -35,8 +43,8 @@ fun PlayerControls(
     onPlayPause: () -> Unit,
     onPlayStation: (RadioStation) -> Unit,
     onSleepClick: () -> Unit,
-    onAlarmCancel: () -> Unit,
-    onAlarmSet: () -> Unit,
+    onAlarmClick: () -> Unit,      // UUS: Ühine klikk (avab dialoogi)
+    onAlarmLongClick: () -> Unit,  // UUS: Pikk vajutus (kustutab)
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
@@ -69,7 +77,7 @@ fun PlayerControls(
 
                 Spacer(Modifier.height(4.dp))
 
-                // Esitaja / Jaama nimi (Kasutame nüüd activeStationName varuvariandina)
+                // Esitaja / Jaama nimi
                 val displayName = if (parsedArtist.isNotBlank()) parsedArtist
                 else if (parsedTitle.isNotBlank()) "Otseeeter"
                 else if (activeStationName.isNotEmpty()) activeStationName
@@ -100,7 +108,7 @@ fun PlayerControls(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Tehniline info (Status Row) - Kasutame ka siin kindlat nime
+                // Tehniline info
                 val stationPrefix = if (activeStationName.isNotEmpty()) "$activeStationName • " else ""
                 val statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
                 Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = Color.Gray)
@@ -179,22 +187,38 @@ fun PlayerControls(
                 Icon(Icons.Default.Bedtime, "Unetaimer", modifier = Modifier.size(28.dp))
             }
 
-            // Äratus
-            if (alarmInfo != null) {
-                OutlinedIconButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onAlarmCancel()
-                }, modifier = buttonModifier, shape = buttonShape,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary),
-                    colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.tertiary)) {
-                    Icon(Icons.Default.AlarmOff, "Tühista äratus", modifier = Modifier.size(28.dp))
-                }
-            } else {
-                FilledTonalIconButton(onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onAlarmSet()
-                }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape) {
-                    Icon(Icons.Default.AlarmAdd, "Sea äratus", modifier = Modifier.size(28.dp))
+            // --- ÄRATUS (UUENDATUD LOOGIKA) ---
+            val isAlarmSet = alarmInfo != null
+            val interactionSource = remember { MutableInteractionSource() }
+
+            // Konstrueerime nupu käsitsi Surface abil, et toetada Long Click'i
+            Surface(
+                modifier = buttonModifier
+                    .clip(buttonShape)
+                    .combinedClickable(
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onAlarmClick() // Lühike vajutus -> Ava dialoog
+                        },
+                        onLongClick = {
+                            if (isAlarmSet) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onAlarmLongClick() // Pikk vajutus -> Kustuta kohe
+                            }
+                        }
+                    ),
+                shape = buttonShape,
+                color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        if (isAlarmSet) Icons.Default.AlarmOn else Icons.Default.AlarmAdd,
+                        contentDescription = "Äratus",
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         }
