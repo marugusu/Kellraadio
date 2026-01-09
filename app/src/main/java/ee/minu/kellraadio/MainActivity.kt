@@ -15,19 +15,27 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ee.minu.kellraadio.ui.AlarmDialog
 import ee.minu.kellraadio.ui.PlayerControls
+import ee.minu.kellraadio.ui.SettingsScreen
 import ee.minu.kellraadio.ui.SleepTimerDialog
 import ee.minu.kellraadio.ui.StationList
 import kotlinx.coroutines.launch
@@ -58,14 +66,22 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun RaadioEkraan() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     // 1. Orientatsioon ja Load
-    val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val config = LocalConfiguration.current
+    val isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val screenWidth = config.screenWidthDp
+
+    // DÜNAAMILINE LAIUS
+    // Tõstame piiri 1000 peale. Kõik, mis on alla selle (telefonid), saavad 50% laiust.
+    // Suured tahvlid ja telerid (üle 1000dp) saavad 40% laiust (sest seal on ruumi rohkem).
+    val playerWeight = if (screenWidth < 1000) 0.5f else 0.4f
+
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -80,12 +96,8 @@ fun RaadioEkraan() {
     val stations by repository.allStations.collectAsState(initial = emptyList())
 
     // 3. UI Staatus (State)
-
-    // Raadiojaama info
     var selectedStationId by rememberSaveable { mutableIntStateOf(-1) }
     var selectedStationName by rememberSaveable { mutableStateOf("") }
-
-    // Leiame objekti (kui nimekiri on laetud)
     val selectedStation = stations.find { it.id == selectedStationId }
 
     var playingStationName by rememberSaveable { mutableStateOf("") }
@@ -95,10 +107,10 @@ fun RaadioEkraan() {
     var alarmTime by rememberSaveable { mutableLongStateOf(0L) }
     var alarmStationName by rememberSaveable { mutableStateOf("") }
     val alarmInfo = if (alarmTime > 0L && alarmStationName.isNotEmpty()) Pair(alarmTime, alarmStationName) else null
-
     var alarmDaysList by rememberSaveable { mutableStateOf<List<Int>>(emptyList()) }
     val alarmDays = alarmDaysList.toSet()
 
+    // Mängija info
     var playerStatus by rememberSaveable { mutableStateOf("Peatatud") }
     var bitrateInfo by rememberSaveable { mutableStateOf("") }
     var parsedTitle by rememberSaveable { mutableStateOf("") }
@@ -109,11 +121,13 @@ fun RaadioEkraan() {
 
     var showSleepDialog by rememberSaveable { mutableStateOf(false) }
     var showAlarmDialog by rememberSaveable { mutableStateOf(false) }
-
-    // UUS MUUTUJA: Kas oleme jaamu juba laadinud?
     var hasFetchedStations by rememberSaveable { mutableStateOf(false) }
 
-    // --- LEMMIKUTE JA KATEGOORIATE LOOGIKA (Uuendatud) ---
+    // --- NAVIGATION STATE ---
+    // 0 = Raadio, 1 = Seaded, 2 = Info
+    var currentTab by rememberSaveable { mutableIntStateOf(0) }
+
+    // --- KATEGOORIATE LOOGIKA ---
     val desiredOrder = listOf("Eesti", "Välis")
     var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "Eesti") ?: "Eesti") }
 
@@ -124,22 +138,24 @@ fun RaadioEkraan() {
         baseCategories.add(0, "Lemmikud")
     }
 
-    val finalCategories = baseCategories.sortedWith(compareBy<String> { category ->
-        if (category == "Lemmikud") -1
+    val finalCategories = baseCategories.sortedWith(compareBy<String> {
+        if (it == "Lemmikud") -1
         else {
-            val index = desiredOrder.indexOf(category)
+            val index = desiredOrder.indexOf(it)
             if (index != -1) index else Int.MAX_VALUE
         }
     }.thenBy { it })
 
-    val filteredStations = if (selectedCategory == "Lemmikud") {
-        favoriteStations
-    } else {
-        stations.filter { it.category == selectedCategory }
+    // --- FILTREERIMINE ---
+    val filteredStations = remember<List<RadioStation>>(selectedCategory, stations, favoriteStations) {
+        if (selectedCategory == "Lemmikud") {
+            favoriteStations
+        } else {
+            stations.filter { it.category == selectedCategory }
+        }
     }
-    // -------------------------------------------------------
 
-    // Elutsükkel
+    // --- UI ELUTSÜKKEL JA BROADCAST ---
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val isPlaying = playerStatus.contains("Mängib")
 
@@ -153,10 +169,8 @@ fun RaadioEkraan() {
         if (lifecycleState == androidx.lifecycle.Lifecycle.State.RESUMED) LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
     }
 
-    // ALG-LAADIMINE
     LaunchedEffect(Unit) {
         LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
-
         scope.launch {
             if (!hasFetchedStations) {
                 repository.refreshStations()
@@ -165,34 +179,23 @@ fun RaadioEkraan() {
         }
     }
 
-    // Uuendame ID-d ja kategooriat, kui jaam vahetub
+    // Uuendame valikut kui jaam vahetub
     LaunchedEffect(stations, playingStationName) {
-        if (stations.isNotEmpty()) {
-            if (playingStationName.isNotEmpty()) {
-                val found = stations.find { it.name == playingStationName }
-                if (found != null) {
-                    selectedStationId = found.id
-                    selectedStationName = found.name
+        if (stations.isNotEmpty() && playingStationName.isNotEmpty()) {
+            val found = stations.find { it.name == playingStationName }
+            if (found != null) {
+                selectedStationId = found.id
+                selectedStationName = found.name
 
-                    if (playingStationName != syncedStationName) {
-                        if (selectedCategory != "Lemmikud") {
-                            selectedCategory = found.category
-                        }
-                        syncedStationName = playingStationName
-                    }
-                }
-            } else if (selectedStationId == -1 && !isPlaying) {
-                val defaultCat = if (favoriteStations.isNotEmpty()) "Lemmikud" else "Eesti"
-                stations.firstOrNull { it.category == defaultCat }?.let {
-                    selectedStationId = it.id
-                    selectedStationName = it.name
-                    selectedCategory = it.category
+                if (playingStationName != syncedStationName && selectedCategory != "Lemmikud") {
+                    selectedCategory = found.category
+                    syncedStationName = playingStationName
                 }
             }
         }
     }
 
-    // Broadcast
+    // Broadcast Receiver
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -235,17 +238,13 @@ fun RaadioEkraan() {
         onDispose { LocalBroadcastManager.getInstance(context).unregisterReceiver(receiver) }
     }
 
-    // Kontrollime salvestatud äratust
     LaunchedEffect(Unit) {
         if (alarmStationName.isEmpty()) {
             val t = AlarmState.getAlarmTime(context)
             val n = AlarmState.getAlarmStationName(context)
             val d = AlarmState.getAlarmDays(context)
-
             if (n.isNotEmpty() && (t > System.currentTimeMillis() || d.isNotEmpty())) {
-                alarmTime = t
-                alarmStationName = n
-                alarmDaysList = d.toList()
+                alarmTime = t; alarmStationName = n; alarmDaysList = d.toList()
             }
         }
     }
@@ -256,110 +255,176 @@ fun RaadioEkraan() {
     }
 
     // --- UI SISU ---
+
     if (isLandscape) {
-        Row(modifier = Modifier.fillMaxSize().padding(16.dp).statusBarsPadding(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            PlayerControls(
-                selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
-                onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
-                onPlayStation = { station ->
-                    selectedStationId = station.id; selectedStationName = station.name
-                    playRadio(station)
-                },
-                onSleepClick = { showSleepDialog = true },
-                onAlarmCancel = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
-                onAlarmSet = { showAlarmDialog = true },
-                modifier = Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())
-            )
-            StationList(
-                stations = stations,
-                filteredStations = filteredStations,
-                categories = finalCategories,
-                selectedCategory = selectedCategory,
-                selectedStationId = selectedStationId,
-                playerStatus = playerStatus,
-                isRefreshing = isRefreshing,
-                onCategorySelect = { cat ->
-                    selectedCategory = cat
-                    prefs.edit().putString("last_category", cat).apply()
-                },
-                onRefresh = {
-                    scope.launch {
-                        isRefreshing = true
-                        try {
-                            repository.refreshStations()
-                            // TAASTATUD TEADE:
-                            Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
-                        } finally {
-                            isRefreshing = false
-                        }
+        // LANDSCAPE (RÕHTPAIGUTUS) - NAVIGATION RAIL
+        Row(
+            modifier = Modifier.fillMaxSize().statusBarsPadding()
+        ) {
+            // 1. Navigation Rail (Vasakul)
+            NavigationRail {
+                Spacer(modifier = Modifier.weight(1f))
+                NavigationRailItem(
+                    selected = currentTab == 0,
+                    onClick = { currentTab = 0 },
+                    icon = { Icon(Icons.Default.Radio, null) },
+                    label = { Text("Raadio") }
+                )
+                NavigationRailItem(
+                    selected = currentTab == 1,
+                    onClick = { currentTab = 1 },
+                    icon = { Icon(Icons.Default.Settings, null) },
+                    label = { Text("Seaded") }
+                )
+                NavigationRailItem(
+                    selected = currentTab == 2,
+                    onClick = { currentTab = 2 },
+                    icon = { Icon(Icons.Default.Info, null) },
+                    label = { Text("Info") }
+                )
+                Spacer(modifier = Modifier.weight(1f))
+            }
+
+            VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+
+            // 2. Mängija (Player) - KASUTAB DÜNAAMILIST KAALU (playerWeight)
+            Box(modifier = Modifier.weight(playerWeight).padding(16.dp)) {
+                PlayerControls(
+                    selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
+                    onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
+                    onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
+                    onSleepClick = { showSleepDialog = true },
+                    onAlarmCancel = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
+                    onAlarmSet = { showAlarmDialog = true },
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                )
+            }
+
+            // 3. Sisu (Jaamad / Seaded / Info) - Võtab ülejäänud ruumi (1f - playerWeight)
+            Box(
+                modifier = Modifier.weight(1f - playerWeight).fillMaxHeight().padding(vertical = 16.dp, horizontal = 16.dp)
+            ) {
+                when (currentTab) {
+                    0 -> { // RAADIO
+                        StationList(
+                            stations = stations,
+                            filteredStations = filteredStations,
+                            categories = finalCategories,
+                            selectedCategory = selectedCategory,
+                            selectedStationId = selectedStationId,
+                            playerStatus = playerStatus,
+                            isRefreshing = isRefreshing,
+                            onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
+                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                            onStationSelect = { station -> selectedStationId = station.id; selectedStationName = station.name; syncedStationName = station.name; playRadio(station) },
+                            onStationLongClick = { station -> scope.launch { repository.toggleFavorite(station) } },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-                },
-                onStationSelect = { station ->
-                    selectedStationId = station.id
-                    selectedStationName = station.name
-                    syncedStationName = station.name
-                    playRadio(station)
-                },
-                onStationLongClick = { station ->
-                    scope.launch { repository.toggleFavorite(station) }
-                },
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            )
+                    1 -> { // SEADED
+                        SettingsScreen(
+                            isRefreshing = isRefreshing,
+                            onRefresh = {
+                                scope.launch {
+                                    isRefreshing = true
+                                    try {
+                                        repository.refreshStations()
+                                        Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isRefreshing = false
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    2 -> { // INFO
+                        ee.minu.kellraadio.ui.InfoScreen()
+                    }
+                }
+            }
         }
     } else {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp).statusBarsPadding()) {
-            PlayerControls(
-                selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
-                onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
-                onPlayStation = { station ->
-                    selectedStationId = station.id; selectedStationName = station.name
-                    playRadio(station)
-                },
-                onSleepClick = { showSleepDialog = true },
-                onAlarmCancel = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
-                onAlarmSet = { showAlarmDialog = true },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(16.dp))
-            StationList(
-                stations = stations,
-                filteredStations = filteredStations,
-                categories = finalCategories,
-                selectedCategory = selectedCategory,
-                selectedStationId = selectedStationId,
-                playerStatus = playerStatus,
-                isRefreshing = isRefreshing,
-                onCategorySelect = { cat ->
-                    selectedCategory = cat
-                    prefs.edit().putString("last_category", cat).apply()
-                },
-                onRefresh = {
-                    scope.launch {
-                        isRefreshing = true
-                        try {
-                            repository.refreshStations()
-                            // TAASTATUD TEADE:
-                            Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
-                        } finally {
-                            isRefreshing = false
-                        }
+        // PORTRAIT (PÜSTPAIGUTUS)
+        Scaffold(
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = currentTab == 0,
+                        onClick = { currentTab = 0 },
+                        icon = { Icon(Icons.Default.Radio, contentDescription = null) },
+                        label = { Text("Raadio") }
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 1,
+                        onClick = { currentTab = 1 },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        label = { Text("Seaded") }
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 2,
+                        onClick = { currentTab = 2 },
+                        icon = { Icon(Icons.Default.Info, contentDescription = null) },
+                        label = { Text("Info") }
+                    )
+                }
+            }
+        ) { innerPadding ->
+            Column(modifier = Modifier.padding(innerPadding).padding(horizontal = 16.dp)) {
+                PlayerControls(
+                    selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
+                    onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
+                    onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
+                    onSleepClick = { showSleepDialog = true },
+                    onAlarmCancel = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
+                    onAlarmSet = { showAlarmDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                when (currentTab) {
+                    0 -> { // RAADIO
+                        StationList(
+                            stations = stations,
+                            filteredStations = filteredStations,
+                            categories = finalCategories,
+                            selectedCategory = selectedCategory,
+                            selectedStationId = selectedStationId,
+                            playerStatus = playerStatus,
+                            isRefreshing = isRefreshing,
+                            onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
+                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                            onStationSelect = { station -> selectedStationId = station.id; selectedStationName = station.name; syncedStationName = station.name; playRadio(station) },
+                            onStationLongClick = { station -> scope.launch { repository.toggleFavorite(station) } },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-                },
-                onStationSelect = { station ->
-                    selectedStationId = station.id
-                    selectedStationName = station.name
-                    syncedStationName = station.name
-                    playRadio(station)
-                },
-                onStationLongClick = { station ->
-                    scope.launch { repository.toggleFavorite(station) }
-                },
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            )
+                    1 -> { // SEADED
+                        SettingsScreen(
+                            isRefreshing = isRefreshing,
+                            onRefresh = {
+                                scope.launch {
+                                    isRefreshing = true
+                                    try {
+                                        repository.refreshStations()
+                                        Toast.makeText(context, "Jaamad uuendatud!", Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Viga uuendamisel!", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isRefreshing = false
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    2 -> { // INFO
+                        ee.minu.kellraadio.ui.InfoScreen()
+                    }
+                }
+            }
         }
     }
 
@@ -368,10 +433,7 @@ fun RaadioEkraan() {
         AlarmDialog(
             selectedStation = selectedStation,
             onDismiss = { showAlarmDialog = false },
-            onAlarmSaved = { time, days ->
-                alarmTime = time; alarmStationName = selectedStation?.name ?: ""
-                alarmDaysList = days.toList()
-            }
+            onAlarmSaved = { time, days -> alarmTime = time; alarmStationName = selectedStation?.name ?: ""; alarmDaysList = days.toList() }
         )
     }
 }
