@@ -16,33 +16,6 @@ class RadioStationRepository(
     suspend fun toggleFavorite(station: RadioStation) {
         stationDao.updateFavoriteStatus(station.id, !station.isFavorite)
     }
-
-    // UUS: Salvesta ajalugu
-    suspend fun addToHistory(stationName: String, artist: String, title: String) {
-        if (historyDao == null) return
-
-        // Lihtne filtreerimine: ära salvesta "Otseeeter" või tühja infot
-        if (artist.equals("Otseeeter", ignoreCase = true) || title.equals(stationName, ignoreCase = true) || artist.isBlank()) {
-            return
-        }
-
-        // Kontrolli duplikaati
-        val lastItem = historyDao.getLatestItem()
-        if (lastItem != null && lastItem.artist == artist && lastItem.title == title) {
-            return // Sama lugu, ära salvesta uuesti
-        }
-
-        val newItem = HistoryItem(
-            stationName = stationName,
-            artist = artist,
-            title = title,
-            timestamp = System.currentTimeMillis()
-        )
-
-        historyDao.insert(newItem)
-        historyDao.cleanOldHistory() // Kustuta vanad
-    }
-
     suspend fun clearHistory() {
         historyDao?.clearAll()
     }

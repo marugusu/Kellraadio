@@ -96,7 +96,9 @@ fun RaadioEkraan() {
     val stations by repository.allStations.collectAsState(initial = emptyList())
 
     // 3. UI Staatus (State)
-    var selectedStationId by rememberSaveable { mutableIntStateOf(-1) }
+    var selectedStationId by rememberSaveable {
+        mutableIntStateOf(prefs.getInt("last_selected_id", -1))
+    }
     var selectedStationName by rememberSaveable { mutableStateOf("") }
     val selectedStation = stations.find { it.id == selectedStationId }
 
@@ -325,7 +327,13 @@ fun RaadioEkraan() {
                             isRefreshing = isRefreshing,
                             onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
                             onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
-                            onStationSelect = { station -> selectedStationId = station.id; selectedStationName = station.name; syncedStationName = station.name; playRadio(station) },
+                            onStationSelect = { station ->
+                                selectedStationId = station.id
+                                selectedStationName = station.name
+                                syncedStationName = station.name
+                                prefs.edit().putInt("last_selected_id", station.id).apply()
+                                playRadio(station)
+                            },
                             onStationLongClick = { station -> scope.launch { repository.toggleFavorite(station) } },
                             modifier = Modifier.fillMaxSize()
                         )
@@ -406,7 +414,13 @@ fun RaadioEkraan() {
                             isRefreshing = isRefreshing,
                             onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
                             onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
-                            onStationSelect = { station -> selectedStationId = station.id; selectedStationName = station.name; syncedStationName = station.name; playRadio(station) },
+                            onStationSelect = { station ->
+                                selectedStationId = station.id
+                                selectedStationName = station.name
+                                syncedStationName = station.name
+                                prefs.edit().putInt("last_selected_id", station.id).apply()
+                                playRadio(station)
+                            },
                             onStationLongClick = { station -> scope.launch { repository.toggleFavorite(station) } },
                             modifier = Modifier.fillMaxSize()
                         )

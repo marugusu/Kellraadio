@@ -383,6 +383,9 @@ class RadioService : Service() {
 
                 Log.i(TAG, "Player olek: MÄNGIB")
 
+                saveToHistory(currentArtist, currentTitle)
+
+
                 // 1. Teavitame äppi, et mängimine algas
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
                     Intent(ACTION_STATION_CHANGED).apply {
@@ -818,17 +821,19 @@ class RadioService : Service() {
     }
 
     private fun saveToHistory(artist: String, title: String) {
+        // Kontrollime ainult, et andmed poleks päris tühjad
         if (artist.isBlank() && title.isBlank()) return
 
         serviceScope.launch {
             try {
                 val db = AppDatabase.getDatabase(applicationContext)
                 val historyDao = db.historyDao()
+
+                // Võtame viimase kirje, et vältida täpselt sama rea salvestamist topelt
                 val lastItem = historyDao.getLatestItem()
 
-                // Duplikaadi kontroll (Väldib seda, et sama lugu salvestuks iga 10 sekundi tagant uuesti)
                 if (lastItem != null && lastItem.artist == artist && lastItem.title == title) {
-                    return@launch
+                    return@launch // See on sama lugu, mis juba kirjas, ei salvesta uuesti
                 }
 
                 historyDao.insert(
@@ -840,9 +845,9 @@ class RadioService : Service() {
                     )
                 )
                 historyDao.cleanOldHistory()
-                Log.d(TAG, "HistoryDEBUG: Salvestatud ajalukku: $artist - $title")
+                Log.d(TAG, "History: Salvestatud ajalukku: $artist - $title")
             } catch (e: Exception) {
-                Log.e(TAG, "HistoryDEBUG: Viga ajaloo salvestamisel: ${e.message}")
+                Log.e(TAG, "History viga: ${e.message}")
             }
         }
     }
