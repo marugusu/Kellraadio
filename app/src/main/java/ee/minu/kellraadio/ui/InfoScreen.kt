@@ -1,83 +1,89 @@
 package ee.minu.kellraadio.ui
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun InfoScreen(
-    versionName: String = "1.0",
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.Info,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
+fun InfoScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val versionName = getAppVersionName(context)
 
-        Spacer(modifier = Modifier.height(16.dp))
+    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp) // SAMA KÕRGUS
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Rakendusest",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
 
-        Text(
-            text = "Kellraadio",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Versioon $versionName",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Text(text = "Versioon $versionName", style = MaterialTheme.typography.labelMedium, color = Color.Gray, modifier = Modifier.padding(bottom = 16.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+            InfoCard(title = "Sinu igapäevane raadiokaaslane", text = "Kellraadio on loodud pakkuma lihtsat ja mugavat viisi Eesti ja välismaiste raadiojaamade kuulamiseks.", icon = Icons.Default.Radio)
+            Spacer(modifier = Modifier.height(12.dp))
+            InfoCard(title = "Töökindel äratussüsteem", text = "Rakendus on optimeeritud nii, et Sinu lemmikjaam hakkaks mängima täpselt määratud ajal.", icon = Icons.Default.Alarm)
+            Spacer(modifier = Modifier.height(12.dp))
+            InfoCard(title = "Stabiilne taustaheli", text = "Oleme pööranud erilist tähelepanu sellele, et muusika mängiks katkematult ka siis, kui kasutad teisi äppe.", icon = Icons.Default.MusicNote)
+            Spacer(modifier = Modifier.height(12.dp))
+            InfoCard(title = "Nutikas kuulmisajalugu", text = "Kas kuulsid raadiost head lugu, aga ei mäleta nime? Ajaloo vaatest leiad kiiresti viimati mängitud palad.", icon = Icons.Default.History)
 
-        InfoCard(
-            title = "Kuidas äratus töötab?",
-            text = "Äratus kasutab 'Exact Alarm' luba ja töötab ka siis, kui äpp on kinni. Kui internet puudub, võib äratus hilineda või mitte käivituda."
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        InfoCard(
-            title = "Bluetooth autos",
-            text = "Äpp saadab autole spetsiaalseid signaale (kestus 5 min), et laulude nimed ilmuksid ka vanematel ekraanidel (nt Skoda/VW)."
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        InfoCard(
-            title = "Lemmikud",
-            text = "Hoia jaama nimel pikalt sõrme peal, et lisada see lemmikute hulka."
-        )
+            Spacer(modifier = Modifier.height(32.dp))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(text = "Arendatud Eestis", style = MaterialTheme.typography.labelSmall, color = Color.Gray.copy(alpha = 0.5f))
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
 
 @Composable
-fun InfoCard(title: String, text: String) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = text, style = MaterialTheme.typography.bodyMedium)
+fun InfoCard(title: String, text: String, icon: ImageVector) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
+}
+
+private fun getAppVersionName(context: Context): String {
+    return try {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }
+        packageInfo.versionName ?: "1.0"
+    } catch (e: Exception) { "1.0" }
 }

@@ -20,7 +20,7 @@ interface HistoryDao {
     suspend fun insert(item: HistoryItem)
 
     // Kustuta kõik peale viimase 100 kirje (hoiame ajaloo puhtana)
-    @Query("DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC LIMIT 100)")
+    @Query("DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC LIMIT 1000)")
     suspend fun cleanOldHistory()
 
     @Query("DELETE FROM history")

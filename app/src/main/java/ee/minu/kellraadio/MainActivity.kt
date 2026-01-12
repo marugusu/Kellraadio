@@ -313,7 +313,10 @@ fun RaadioEkraan() {
             }
 
             Box(
-                modifier = Modifier.weight(1f - playerWeight).fillMaxHeight().padding(vertical = 16.dp, horizontal = 16.dp)
+                modifier = Modifier
+                    .weight(1f - playerWeight)
+                    .fillMaxHeight()
+                // EEMALDATUD: padding(vertical = 16.dp, horizontal = 16.dp)
             ) {
                 when (currentTab) {
                     0 -> { // RAADIO
@@ -338,16 +341,43 @@ fun RaadioEkraan() {
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                    1 -> { // AJALUGU (UUS)
+                    1 -> { // AJALUGU (LANDSCAPE)
                         HistoryScreen(
                             repository = repository,
-                            onClearHistory = { scope.launch { repository.clearHistory() } }
+                            onClearHistory = { scope.launch { repository.clearHistory() } },
+                            onPlayStationByName = { stationName ->
+                                // See kood on täpselt sama, mis püstvaates
+                                val stationToPlay = stations.find { it.name == stationName }
+
+                                if (stationToPlay != null) {
+                                    selectedStationId = stationToPlay.id
+                                    selectedStationName = stationToPlay.name
+                                    syncedStationName = stationToPlay.name
+                                    prefs.edit().putInt("last_selected_id", stationToPlay.id).apply()
+
+                                    if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) {
+                                        selectedCategory = stationToPlay.category
+                                        prefs.edit().putString("last_category", stationToPlay.category).apply()
+                                    }
+
+                                    playRadio(stationToPlay)
+                                    currentTab = 0 // Viime kasutaja tagasi vasakule "Raadio" vaatesse
+                                } else {
+                                    Toast.makeText(context, "Jaama '$stationName' ei leitud!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         )
                     }
                     2 -> { // SEADED
                         SettingsScreen(
                             isRefreshing = isRefreshing,
-                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } }
+                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                            onAddTestData = { // LISA SEE BLOKK
+                                scope.launch {
+                                    repository.insertTestHistory()
+                                    Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         )
                     }
                     3 -> { // INFO
@@ -389,7 +419,11 @@ fun RaadioEkraan() {
                 }
             }
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding).padding(horizontal = 16.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(bottom = innerPadding.calculateBottomPadding()) // Ainult alumine äär
+                // EEMALDATUD: .padding(innerPadding) ja .padding(horizontal = 16.dp)
+            ) {
                 PlayerControls(
                     selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
@@ -397,7 +431,7 @@ fun RaadioEkraan() {
                     onSleepClick = { showSleepDialog = true },
                     onAlarmClick = { showAlarmDialog = true },
                     onAlarmLongClick = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp) // Kontrollitud padding
                 )
 
                 Spacer(Modifier.height(8.dp))
@@ -425,16 +459,50 @@ fun RaadioEkraan() {
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                    1 -> { // AJALUGU (UUS)
+                    1 -> { // AJALUGU (UUENDATUD)
                         HistoryScreen(
                             repository = repository,
-                            onClearHistory = { scope.launch { repository.clearHistory() } }
+                            onClearHistory = { scope.launch { repository.clearHistory() } },
+                            onPlayStationByName = { stationName ->
+                                // 1. Otsime jaama nime järgi mälust
+                                val stationToPlay = stations.find { it.name == stationName }
+
+                                if (stationToPlay != null) {
+                                    // 2. Valime selle jaama aktiivseks
+                                    selectedStationId = stationToPlay.id
+                                    selectedStationName = stationToPlay.name
+                                    syncedStationName = stationToPlay.name
+                                    prefs.edit().putInt("last_selected_id", stationToPlay.id).apply()
+
+                                    // 3. Kui jaam on teises kategoorias (ja pole Lemmikutes), vahetame kategooriat
+                                    // See on vajalik, et jaam oleks nimekirjas nähtav, kui sinna tagasi minna
+                                    if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) {
+                                        selectedCategory = stationToPlay.category
+                                        prefs.edit().putString("last_category", stationToPlay.category).apply()
+                                    }
+
+                                    // 4. Käivitame raadio
+                                    playRadio(stationToPlay)
+
+                                    // 5. Suuname kasutaja automaatselt tagasi "Raadio" vaatesse
+                                    currentTab = 0
+                                } else {
+                                    // Haruldane juhus: jaam on vahepeal serverist kustutatud
+                                    Toast.makeText(context, "Jaama '$stationName' ei leitud!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         )
                     }
                     2 -> { // SEADED
                         SettingsScreen(
                             isRefreshing = isRefreshing,
-                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } }
+                            onRefresh = { scope.launch { isRefreshing = true; try { repository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                            onAddTestData = { // LISA SEE BLOKK
+                                scope.launch {
+                                    repository.insertTestHistory()
+                                    Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         )
                     }
                     3 -> { // INFO

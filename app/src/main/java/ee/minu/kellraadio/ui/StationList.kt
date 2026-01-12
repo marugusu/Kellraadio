@@ -26,15 +26,17 @@ fun StationList(
     playerStatus: String,
     isRefreshing: Boolean,
     onCategorySelect: (String) -> Unit,
-    onRefresh: () -> Unit, // Jätame selle parameetri alles, et mitte MainActivityt lõhkuda, aga ei kasuta
+    onRefresh: () -> Unit,
     onStationSelect: (RadioStation) -> Unit,
     onStationLongClick: (RadioStation) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
 
-    Column(modifier = modifier) {
-        // KATEGOORIATE RIDA (FlowRow - murrab ridu)
+    // Column ilma ülemise pealkirjata, lisatud ainult horisontaalne padding
+    Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(modifier = Modifier.height(8.dp)) // Väike õhuvahe ülaservas
+
         if (categories.isNotEmpty()) {
             FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -43,8 +45,6 @@ fun StationList(
             ) {
                 categories.forEach { category ->
                     val isSelected = (selectedCategory == category)
-
-                    // Eriline stiil "Lemmikud" kiibile
                     val isFavoritesChip = category == "Lemmikud"
 
                     FilterChip(
@@ -57,15 +57,8 @@ fun StationList(
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = if (isFavoritesChip) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primary,
                             selectedLabelColor = if (isFavoritesChip) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimary,
-                            selectedLeadingIconColor = if (isFavoritesChip) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimary,
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = isSelected,
-                            borderColor = if (isFavoritesChip && !isSelected) MaterialTheme.colorScheme.tertiary else Color.Gray,
-                            selectedBorderColor = Color.Transparent
                         )
                     )
                 }
