@@ -64,6 +64,9 @@ class RadioService : Service() {
     private var currentTitle: String = ""
     private var currentExtra: String = ""
     private var currentExtraInfo: String = ""
+    // Muutujad, et vältida sama info korduvat saatmist
+    private var lastSentArtist: String = ""
+    private var lastSentTitle: String = ""
     private var isAlarmMode: Boolean = false
     private var currentStreamUrl: String = ""
 
@@ -86,6 +89,7 @@ class RadioService : Service() {
     private val listeners = CopyOnWriteArraySet<Player.Listener>()
 
     private var wakeLock: android.os.PowerManager.WakeLock? = null
+
 
     companion object {
         const val ACTION_PAUSE = "ee.minu.kellraadio.ACTION_PAUSE"
@@ -157,15 +161,20 @@ class RadioService : Service() {
             currentStationName = name
             currentTrackTitle = ""
             currentExtraInfo = ""
+           // Nullime mälu, sest uus jaam peab kindlasti läbi minema
+            lastSentArtist = ""
+            lastSentTitle = ""
             trackVersion = 1
             // Nullime aja, et autole tunduks, et uus lugu algas 00:00-st
             streamStartTime = SystemClock.elapsedRealtime()
 
-            // UI uuendus
+            // UI uuendus (See on lokaalne, ei mõjuta Bluetoothi)
             sendMetadataUpdate(name, "Otseeeter")
 
-            // VÄLISED SEADMED
-            updateExternalDevices(name, "Otseeeter")
+            // PARANDUS: Eemaldasime siit updateExternalDevices() väljakutse.
+            // Põhjus: onStartCommand (allpool) loob täiesti uue MediaItemi koos õigete algandmetega.
+            // Siin "vana" itemi uuendamine vahetult enne selle kustutamist tekitab Bluetoothi kanalis konflikti ("Race Condition"),
+            // mis võib auto vastuvõtja ühendamise hetkel lukku ajada.
 
             onStartCommand(Intent(this@RadioService, RadioService::class.java).apply {
                 putExtra("STREAM_URL", url)
@@ -215,14 +224,16 @@ class RadioService : Service() {
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
         Log.i(TAG, "[METADATA_RAW] Striimist tuli: '$trackTitleFromStream'")
         val (finalArtist, finalTitle, finalExtra) = splitMetadata(trackTitleFromStream ?: "")
+
+        // Kui info on täpselt sama, mis striim viimati saatis (mitte autole, vaid äpile endale),
+        // siis hoiame kokku ka ajaloo salvestamise pealt.
+        if (finalArtist == currentArtist && finalTitle == currentTitle) return
+
         saveToHistory(finalArtist, finalTitle)
-        if (finalArtist + finalTitle + finalExtra == currentArtist + currentTitle + currentExtra) return // Väldime asjatut tööd
-// Salvestame hetke seisud (et teised funktsioonid saaksid neid kasutada)
 
-
-
-
+        // Resettime aja uue laulu puhul
         streamStartTime = SystemClock.elapsedRealtime()
+
         currentArtist = finalArtist
         currentTitle = finalTitle
         currentExtra = finalExtra
@@ -231,26 +242,12 @@ class RadioService : Service() {
 
         // 1. Kohene uuendus
         updateExternalDevices(finalTitle, finalArtist)
-        //sendMetadataUpdate(finalTitle, finalArtist)
         sendMetadataUpdate(finalTitle, finalArtist, finalExtra)
         updateNotification()
 
-        // 2. Kordussaatmine
-        val stationAtTheMoment = currentStationName
+        // EEMALDATUD: metadataPushJob (taimerid 4s ja 15s).
+        // Kuna updateExternalDevices on nüüd tark, pole mõtet neid siin enam hoida.
         metadataPushJob?.cancel()
-        metadataPushJob = serviceScope.launch {
-            delay(4000)
-            if (currentStationName == stationAtTheMoment) {
-                Log.d(TAG, "[METADATA] Kordussaatmine (4s)")
-                withContext(Dispatchers.Main) { updateExternalDevices(finalTitle, finalArtist) }
-            }
-
-            delay(15000)
-            if (currentStationName == stationAtTheMoment) {
-                Log.d(TAG, "[METADATA] Kordussaatmine (15s)")
-                withContext(Dispatchers.Main) { updateExternalDevices(finalTitle, finalArtist) }
-            }
-        }
     }
 
     private fun sendBitrateUpdate() {
@@ -272,59 +269,52 @@ class RadioService : Service() {
     private fun updateExternalDevices(title: String, artist: String) {
         if (!::player.isInitialized) return
 
-        // 1. Track Number: ALATI 1 (See parandab "No track list" vea)
-        trackVersion = 1
-        // 1. Paneme loenduri käima! (Enne oli see 1)
-        //trackVersion++
-        // if (trackVersion > 9999) trackVersion = 1
+        // --- TARK KONTROLL ---
+        // Kui info on täpselt sama, mis viimati, siis ÄRA tee midagi.
+        // See kaotab selle teise "MÄNGIB" logirea.
+        if (title == lastSentTitle && artist == lastSentArtist) {
+            return
+        }
 
-        // 2. UUID: Kasutame fikseeritud ID-d "Raadio", et vältida Timeout viga
-        // (Seda rida ei saa tagasi UUID.randomUUID()-ks muuta, muidu tuleb viga tagasi)
-        val uniqueId = "Raadio"
+        // Jätame meelde uue info
+        lastSentTitle = title
+        lastSentArtist = artist
+
+        // Kasutame unikaalset ID-d (mitte enam staatilist "Raadio")
+        val uniqueId = "Raadio_${(title + artist).hashCode()}"
 
         val extras = Bundle()
         extras.putString("android.media.metadata.MEDIA_ID", uniqueId)
-        // 3. DURATION: 5 minutit (Vajalik "Bluetooth audio" vea vältimiseks)
         extras.putLong("android.media.metadata.DURATION", 300000L)
 
         val newMetadata = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
             .setAlbumTitle(currentStationName)
-            .setTrackNumber(1) // ALATI 1
-            .setTotalTrackCount(1) // ALATI 1
-            // MUUDATUS: Kasutame muutuvat numbrit
-            //.setTrackNumber(trackVersion)
-            // MUUDATUS: Ütleme, et koguarv on sama mis praegune (N / N)
-            // .setTotalTrackCount(trackVersion)
+            .setTrackNumber(1)
+            .setTotalTrackCount(1)
             .setExtras(extras)
             .build()
 
         player.playlistMetadata = newMetadata
 
-        // --- TEHNILINE PARANDUS (Seda rida oli vaja vea parandamiseks) ---
         val currentItem = player.currentMediaItem
         if (currentItem != null) {
             val newItem = currentItem.buildUpon()
                 .setMediaMetadata(newMetadata)
-                .setMediaId(uniqueId) // Seome ID-d kokku
+                .setMediaId(uniqueId)
                 .build()
+
             player.replaceMediaItem(0, newItem)
         }
-        // ----------------------------------------------------------------
 
         serviceScope.launch(Dispatchers.Main) {
             listeners.forEach { listener ->
-                try {
-                    listener.onMediaMetadataChanged(newMetadata)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Viga kuulaja teavitamisel: ${e.message}")
-                }
+                try { listener.onMediaMetadataChanged(newMetadata) } catch (e: Exception) { }
             }
         }
 
-        // --- SINU ORIGINAALNE LOGIRIDA ---
-        Log.i(TAG, """AUTOLE: Pealkiri: '$title' Esitaja: '$artist' Album:'$currentStationName' Lugu:$trackVersion / $trackVersion (Kokku)  Kestus: 300000ms UUID: ${extras.getString("android.media.metadata.MEDIA_ID")}""".trimIndent())
+        Log.i(TAG, "AUTOLE: '$title' - '$artist' (ID: $uniqueId)")
     }
     private val httpTransferListener = object : TransferListener {
         override fun onTransferStart(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean) {
@@ -378,53 +368,26 @@ class RadioService : Service() {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updateNotification()
 
-
             if (isPlaying) {
-
                 Log.i(TAG, "Player olek: MÄNGIB")
 
                 saveToHistory(currentArtist, currentTitle)
 
-
                 // 1. Teavitame äppi, et mängimine algas
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
                     Intent(ACTION_STATION_CHANGED).apply {
-                        putExtra(
-                            "STATION_NAME",
-                            currentStationName
-                        )
+                        putExtra("STATION_NAME", currentStationName)
                     }
                 )
 
-                // 2. Saadame kohe info äpile ja autole (kasutame globaalseid muutujaid)
+                // 2. Saadame kohe info äpile ja autole
+                // See toimub nüüd AINULT ÜKS KORD, kui mängija olek muutub.
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 updateExternalDevices(currentTitle, currentArtist)
 
-                // 3. Kordussaatmine (Bluetoothi parandus)
-                val stationAtTheMoment = currentStationName
+                // EEMALDATUD: metadataPushJob (taimerid 4s, 15s).
+                // See hoiab ära telefoni Bluetoothi teenuse ülekoormamise.
                 metadataPushJob?.cancel()
-                metadataPushJob = serviceScope.launch {
-                    delay(4000)
-                    if (currentStationName == stationAtTheMoment) {
-                        // Kasutame lihtsalt globaalseid muutujaid, mis on mälus olemas
-                        withContext(Dispatchers.Main) {
-                            updateExternalDevices(
-                                currentTitle,
-                                currentArtist
-                            )
-                        }
-                    }
-
-                    delay(11000)
-                    if (currentStationName == stationAtTheMoment) {
-                        withContext(Dispatchers.Main) {
-                            updateExternalDevices(
-                                currentTitle,
-                                currentArtist
-                            )
-                        }
-                    }
-                }
 
             } else {
                 Log.i(TAG, "Player olek: PEATATUD")
