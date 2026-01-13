@@ -41,7 +41,7 @@ fun InfoScreen(modifier: Modifier = Modifier) {
             Text(
                 text = "Rakendusest",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.primary
             )
         }

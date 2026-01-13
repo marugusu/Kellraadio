@@ -38,7 +38,7 @@ fun SettingsScreen(
             Text(
                 text = "Seaded",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.primary
             )
         }

@@ -55,7 +55,7 @@ fun AlarmsScreen(
                 Text(
                     text = "Äratused",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.primary
                 )
             }

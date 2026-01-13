@@ -114,7 +114,7 @@ fun HistoryScreen(
                 Text(
                     text = "Ajalugu",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -220,7 +220,6 @@ fun HistoryScreen(
         )
     }
 
-    // --- KALENDRI DIALOOG ---
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
             selectableDates = object : SelectableDates {
@@ -235,12 +234,36 @@ fun HistoryScreen(
         ) {
             DatePicker(
                 state = datePickerState,
-                title = if (isLandscape) null else { { Text("Vali kuupäev", modifier = Modifier.padding(16.dp)) } },
-                headline = if (isLandscape) null else { {
+                // Title kuvatakse endiselt ainult portrait-vaates
+                title = if (isLandscape) null else {
+                    {
+                        Text(
+                            "Vali kuupäev",
+                            modifier = Modifier.padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 12.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                },
+                // --- PARANDUS ---
+                // Headline kuvatakse nüüd MÕLEMAS vaates (portrait ja landscape)
+                headline = {
                     val formatter = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
                     val dateText = datePickerState.selectedDateMillis?.let { formatter.format(Date(it)) } ?: "Vali päev"
-                    Text(dateText, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                } }
+
+                    // Rõhtpaigutuses on vaja teistsugust paddingut
+                    val padding = if (isLandscape) {
+                        PaddingValues(start = 24.dp, top = 16.dp, end = 24.dp)
+                    } else {
+                        PaddingValues(start = 24.dp, bottom = 16.dp)
+                    }
+
+                    Text(
+                        dateText,
+                        modifier = Modifier.padding(padding),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
             )
         }
     }

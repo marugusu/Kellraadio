@@ -36,6 +36,7 @@ fun AlarmDialog(
     val haptic = LocalHapticFeedback.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
+
     val currentTime = Calendar.getInstance()
     val startHour = initialHour ?: currentTime.get(Calendar.HOUR_OF_DAY)
     val startMinute = initialMinute ?: currentTime.get(Calendar.MINUTE)
@@ -53,10 +54,16 @@ fun AlarmDialog(
         Calendar.THURSDAY to "N", Calendar.FRIDAY to "R", Calendar.SATURDAY to "L", Calendar.SUNDAY to "P"
     )
 
+    // --- PARANDUS ALGAB SIIT ---
+    val baseTitle = if (onDelete != null) "Muuda äratust" else "Sea äratus"
+    val stationName = selectedStation?.name
+    val finalTitle = if (!stationName.isNullOrEmpty()) "$baseTitle: $stationName" else baseTitle
+    // --- PARANDUS LÕPPEB ---
+
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Alarm, null) },
-        title = { Text(if (onDelete != null) "Muuda äratust" else "Sea äratus") },
+        title = { Text(finalTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }, // Kasutame siin uut, dünaamilist pealkirja
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -68,7 +75,7 @@ fun AlarmDialog(
                     TimePicker(state = timePickerState)
                 }
 
-                Spacer(Modifier.height(24.dp)) // Suurendame natuke vahet
+                Spacer(Modifier.height(24.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -107,9 +114,8 @@ fun AlarmDialog(
             ) { Text("Salvesta") }
         },
         dismissButton = {
-            // "Kustuta" ja "Loobu" nupud on nüüd siin koos, aga näidatakse tingimuslikult.
-            // Material3 paigutab need automaatselt õigesti.
             if (onDelete != null) {
+                // Kui muudame, näitame "Kustuta" nuppu
                 TextButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -120,14 +126,15 @@ fun AlarmDialog(
                 ) {
                     Text("Kustuta")
                 }
-            } else {
-                TextButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onDismiss()
-                    }
-                ) { Text("Loobu") }
             }
+
+            // "Loobu" nupp on alati olemas
+            TextButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onDismiss()
+                }
+            ) { Text("Loobu") }
         }
     )
 }
