@@ -34,7 +34,8 @@ fun StationGridItem(
     isSelected: Boolean,
     isPlaying: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    showFavoriteIcon: Boolean // <--- UUS PARAMEETER
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -127,7 +128,8 @@ fun StationGridItem(
                 modifier = Modifier.align(Alignment.Center)
             )
 
-            if (station.isFavorite) {
+            // --- MUUDETUD LOOGIKA ---
+            if (station.isFavorite && showFavoriteIcon) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,

@@ -95,7 +95,9 @@ fun StationList(
                         isSelected = isSelected,
                         isPlaying = isPlayingStation,
                         onClick = { onStationSelect(station) },
-                        onLongClick = { onStationLongClick(station) }
+                        onLongClick = { onStationLongClick(station) },
+                        // --- SIIA LISASIME PARANDUSE ---
+                        showFavoriteIcon = selectedCategory != "Lemmikud"
                     )
                 }
             }

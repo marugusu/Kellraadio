@@ -307,11 +307,13 @@ fun RaadioEkraan() {
             ) {
                 PlayerControls(
                     selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
+                    isFavorite = selectedStation?.isFavorite ?: false, // <--- UUS
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
                     onAlarmClick = { showAlarmDialog = true },
                     onAlarmLongClick = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
+                    onToggleFavorite = { selectedStation?.let { scope.launch { repository.toggleFavorite(it) } } }, // <--- UUS
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 )
             }
@@ -320,7 +322,7 @@ fun RaadioEkraan() {
                 modifier = Modifier
                     .weight(1f - playerWeight)
                     .fillMaxHeight()
-                    //.padding(top = 4.dp)
+                //.padding(top = 4.dp)
             ) {
                 when (currentTab) {
                     0 -> { // RAADIO
@@ -430,11 +432,13 @@ fun RaadioEkraan() {
             ) {
                 PlayerControls(
                     selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
+                    isFavorite = selectedStation?.isFavorite ?: false, // <--- UUS
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
                     onAlarmClick = { showAlarmDialog = true },
                     onAlarmLongClick = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
+                    onToggleFavorite = { selectedStation?.let { scope.launch { repository.toggleFavorite(it) } } }, // <--- UUS
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 0.dp)
                 )
 

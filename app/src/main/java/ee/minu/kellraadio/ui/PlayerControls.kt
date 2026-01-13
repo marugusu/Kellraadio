@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -40,11 +41,13 @@ fun PlayerControls(
     alarmInfo: Pair<Long, String>?,
     alarmDays: Set<Int>,
     sleepTimerMillis: Long,
+    isFavorite: Boolean, // <--- UUS
     onPlayPause: () -> Unit,
     onPlayStation: (RadioStation) -> Unit,
     onSleepClick: () -> Unit,
-    onAlarmClick: () -> Unit,      // UUS: Ühine klikk (avab dialoogi)
-    onAlarmLongClick: () -> Unit,  // UUS: Pikk vajutus (kustutab)
+    onAlarmClick: () -> Unit,
+    onAlarmLongClick: () -> Unit,
+    onToggleFavorite: () -> Unit, // <--- UUS
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
@@ -170,6 +173,31 @@ fun PlayerControls(
                 }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape) {
                     Icon(Icons.Default.PlayArrow, "Mängi", modifier = Modifier.size(32.dp))
                 }
+            }
+
+            // --- UUS: LEMMIKU NUPP ---
+            FilledTonalIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onToggleFavorite()
+                },
+                enabled = selectedStation != null,
+                modifier = buttonModifier,
+                shape = buttonShape,
+                colors = if (isFavorite) {
+                    IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary
+                    )
+                } else {
+                    IconButtonDefaults.filledTonalIconButtonColors()
+                }
+            ) {
+                Icon(
+                    if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder,
+                    "Lemmik",
+                    modifier = Modifier.size(28.dp)
+                )
             }
 
             // Unetaimer
