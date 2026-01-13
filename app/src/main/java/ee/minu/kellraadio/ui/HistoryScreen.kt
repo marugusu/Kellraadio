@@ -102,7 +102,8 @@ fun HistoryScreen(
                 .padding(
                     start = if (isLandscape) 8.dp else 16.dp,
                     end = 16.dp,
-                    top = if (isLandscape) 4.dp else 0.dp
+                    top = if (isLandscape) 2.dp else 0.dp,
+                    bottom = 0.dp // MUUDETUD: 12.dp -> 0.dp
                 ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -171,7 +172,14 @@ fun HistoryScreen(
                     groupedHistory.forEach { (dateHeader, itemsInGroup) ->
                         stickyHeader {
                             Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
-                                Text(text = dateHeader, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
+                                Text(
+                                    text = dateHeader,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    // MUUDATUS SIIN: vertical = 8.dp -> top = 0.dp, bottom = 8.dp
+                                    modifier = Modifier.padding(top = 0.dp, bottom = 8.dp)
+                                )
                             }
                         }
                         items(itemsInGroup, key = { it.id }) { item ->
