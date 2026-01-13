@@ -56,6 +56,7 @@ class RadioService : Service() {
     private lateinit var player: Player
     private var mediaSession: MediaSession? = null
     private var currentStationName: String = "Raadio"
+    private var isChangingStation = false
     private var currentCategory: String = "" // UUS
     private var lastBitrateInfo: String = ""
     private var currentTrackTitle: String = ""
@@ -92,6 +93,7 @@ class RadioService : Service() {
 
 
     companion object {
+        const val ACTION_STATION_SELECTED_BY_SERVICE = "ee.minu.kellraadio.STATION_SELECTED"
         const val ACTION_PAUSE = "ee.minu.kellraadio.ACTION_PAUSE"
         const val ACTION_STOP = "ee.minu.kellraadio.ACTION_STOP"
         const val ACTION_STATION_CHANGED = "ee.minu.kellraadio.STATION_CHANGED"
@@ -185,6 +187,7 @@ class RadioService : Service() {
     }
 
     private fun changeStation(offset: Int) {
+        isChangingStation = true
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)
             val dao = db.radioStationDao()
@@ -213,6 +216,12 @@ class RadioService : Service() {
             val baseIndex = if (currentIndex == -1) 0 else currentIndex
             val nextIndex = (baseIndex + offset + finalNavList.size) % finalNavList.size
             val nextStation = finalNavList[nextIndex]
+
+            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
+                Intent(ACTION_STATION_SELECTED_BY_SERVICE).apply {
+                    putExtra("STATION_ID", nextStation.id)
+                }
+            )
 
             withContext(Dispatchers.Main) {
                 isAlarmMode = false
@@ -357,8 +366,6 @@ class RadioService : Service() {
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
-            // Kui mängija on "IDLE" olekus (tavaliselt pärast viga või pikka pausi)
-            // ja ta peaks tegelikult mängima, siis kutsume prepare()
             if (playbackState == Player.STATE_IDLE && player.playWhenReady) {
                 Log.i(TAG, "Mängija oli IDLE olekus, valmistame uuesti ette...")
                 player.prepare()
@@ -370,44 +377,34 @@ class RadioService : Service() {
 
             if (isPlaying) {
                 Log.i(TAG, "Player olek: MÄNGIB")
+                isChangingStation = false // <<--- PARANDUS: Jaama vahetus on lõppenud
 
                 saveToHistory(currentArtist, currentTitle)
-
-                // 1. Teavitame äppi, et mängimine algas
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
                     Intent(ACTION_STATION_CHANGED).apply {
                         putExtra("STATION_NAME", currentStationName)
                     }
                 )
-
-                // 2. Saadame kohe info äpile ja autole
-                // See toimub nüüd AINULT ÜKS KORD, kui mängija olek muutub.
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 updateExternalDevices(currentTitle, currentArtist)
-
-                // EEMALDATUD: metadataPushJob (taimerid 4s, 15s).
-                // See hoiab ära telefoni Bluetoothi teenuse ülekoormamise.
                 metadataPushJob?.cancel()
 
             } else {
                 Log.i(TAG, "Player olek: PEATATUD")
-                LocalBroadcastManager.getInstance(applicationContext)
-                    .sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
+                // <<--- PARANDUS: Saadame teate ainult siis, kui me EI OLE jaama vahetamas
+                if (!isChangingStation) {
+                    LocalBroadcastManager.getInstance(applicationContext)
+                        .sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
+                }
                 metadataPushJob?.cancel()
             }
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
-                // Kõne lõppes ja ExoPlayer tahab mängima hakata.
-                // Sunnime teenuse kiiresti Foregroundi, et Android lubaks heli käivitada.
                 val notification = buildPlayingNotification()
                 if (Build.VERSION.SDK_INT >= 34) {
-                    startForeground(
-                        1,
-                        notification,
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                    )
+                    startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
                 } else {
                     startForeground(1, notification)
                 }
@@ -416,38 +413,27 @@ class RadioService : Service() {
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Log.e(TAG, "Player Error: ${error.message} (kood: ${error.errorCode})")
-
-            // PARANDUS: Automaatne taastumine kriitilistest vigadest (nt Bluetoothi konflikt / viga -38).
-            // Tavaline player.prepare() siin ei aita, sest helikanal on "surnud".
-            // Lahendus: Loome uue MediaItemi, mis sunnib Androidi avama uue puhta helikanali.
+            isChangingStation = false // Nullime lipu ka vea korral
             serviceScope.launch {
                 Log.i(TAG, "Viga tuvastatud. Ootan 2 sekundit ja laen striimi uuesti...")
-
-                // Anname süsteemile aega (nt Bluetoothi ühendumiseks või võrgu taastumiseks)
                 delay(2000)
-
                 withContext(Dispatchers.Main) {
                     if (currentStreamUrl.isNotEmpty()) {
-                        // Loome uue MediaItemi (Reload)
                         val mediaItem = MediaItem.Builder()
                             .setUri(currentStreamUrl)
                             .setMediaId("Raadio")
-                            .setMediaMetadata(player.playlistMetadata) // Hoiame ekraani info alles
+                            .setMediaMetadata(player.playlistMetadata)
                             .build()
-
-                        // Asendame vana katkise itemi uuega ja käivitame
                         player.setMediaItem(mediaItem)
                         player.prepare()
                         player.play()
                     } else {
-                        // Varutvariant: proovime lihtsalt jätkata, kui URL puudub
                         player.prepare()
                         player.play()
                     }
                 }
             }
         }
-
     }
 
     private val statusReceiver = object : BroadcastReceiver() {
@@ -571,6 +557,9 @@ class RadioService : Service() {
         }
 
         if (streamUrl != null) {
+            isChangingStation = true
+            lastBitrateInfo = ""
+            sendBitrateUpdate()
             // Hangi WakeLock uuesti striimi laadimise ajaks.
             // Isegi kui eelmine lukk on veel peal, pikendab see kindlustunnet, et puhverdamise ajal levi ei kaoks.
             wakeLock?.acquire(10 * 60 * 1000L)
