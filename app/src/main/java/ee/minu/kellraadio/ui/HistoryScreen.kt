@@ -251,29 +251,76 @@ fun HistoryScreen(
 fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () -> Unit, onPlayStationClick: () -> Unit) {
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val timeStr = timeFormat.format(Date(item.timestamp))
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.width(50.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = timeStr, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Box(modifier = Modifier.height(32.dp).width(2.dp).background(MaterialTheme.colorScheme.surface, CircleShape))
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = item.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(text = item.artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 8.dp), // Kompaktsem padding
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 1. VASAK BLOKK: Aeg ja Jaam (Klikitav)
+            Column(
+                modifier = Modifier
+                    .width(70.dp) // Piisav laius jaama nime jaoks
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { onPlayStationClick() }
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = timeStr,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = item.stationName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onPlayStationClick() }.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = item.stationName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+
+            // 2. VERTIKAALNE JOON
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .width(2.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), CircleShape)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // 3. KESKMINE BLOKK: Loo info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium, // Veidi väiksem font (BodyLarge -> BodyMedium)
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = item.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // 4. PAREMPUULNE BLOKK: Otsingu nupud
+            Row {
+                IconButton(onClick = onSearchClick, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Search, "YouTube", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
                 }
-                Row {
-                    IconButton(onClick = onSearchClick, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Search, "YouTube", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(20.dp)) }
-                    IconButton(onClick = onSpotifyClick, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.MusicNote, "Spotify", tint = Color(0xFF1DB954), modifier = Modifier.size(20.dp)) }
+                IconButton(onClick = onSpotifyClick, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.MusicNote, "Spotify", tint = Color(0xFF1DB954).copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
                 }
             }
         }
