@@ -38,16 +38,12 @@ fun AlarmsScreen(
             }
         }
     ) { innerPadding ->
-        // PARANDUS 1: Eemaldame siit horisontaalse paddingu, et vältida topelt-paddingut.
-        // Kasutame ainult alumist paddingut, et sisu ei jääks navigeerimisriba alla.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
-            // Päise rida
             Row(
-                // PARANDUS 2: Lisame fikseeritud kõrguse ja standardse paddingu, et see oleks identne teiste ekraanidega.
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
@@ -64,24 +60,24 @@ fun AlarmsScreen(
                 )
             }
 
+            // PARANDUS: Eemaldasime siit Spacer(modifier = Modifier.height(8.dp))
+
             if (alarms.isEmpty()) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = if (isLandscape) 8.dp else 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("Äratusi pole lisatud", color = Color.Gray)
                 }
             } else {
                 LazyColumn(
-                    // PARANDUS 3: Anname LazyColumnile endale horisontaalse paddingu.
-                    // Lisame ka suurema alumise paddingu, et sisu ei jääks FAB-nupu alla.
                     contentPadding = PaddingValues(
                         start = if (isLandscape) 8.dp else 16.dp,
                         end = if (isLandscape) 8.dp else 16.dp,
-                        top = 8.dp,
-                        bottom = 80.dp // See tagab, et viimane element on keritav FAB-nupu kohale
+                        top = 0.dp, // PARANDUS: 8.dp -> 0.dp
+                        bottom = 80.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(alarms, key = { it.id }) { alarm ->
                         AlarmItem(
@@ -117,14 +113,15 @@ fun AlarmItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                // Kellaaeg
                 Text(
                     text = String.format("%02d:%02d", alarm.hour, alarm.minute),
-                    style = MaterialTheme.typography.headlineLarge, // MUUDETUD: displaySmall -> headlineLarge
-                    color = textColor,
-                    lineHeight = 40.sp
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
                 )
-                // Päevad ja jaama nimi
+
+                Spacer(modifier = Modifier.height(2.dp))
+
                 val alarmTextParts = AlarmUtils.getAlarmText(alarm.hour, alarm.minute, alarm.days).split("•")
                 val daysText = if(alarmTextParts.size > 1) alarmTextParts[1].trim() else alarmTextParts[0].trim()
 
