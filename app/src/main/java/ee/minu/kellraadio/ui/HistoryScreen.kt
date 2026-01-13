@@ -99,12 +99,9 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .padding(
-                    start = if (isLandscape) 8.dp else 16.dp,
-                    end = 16.dp,
-                    top = if (isLandscape) 2.dp else 0.dp,
-                    bottom = 0.dp // MUUDETUD: 12.dp -> 0.dp
-                ),
+                .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp)
+                // --- PARANDUS ---
+                .padding(top = if (isLandscape) 12.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {

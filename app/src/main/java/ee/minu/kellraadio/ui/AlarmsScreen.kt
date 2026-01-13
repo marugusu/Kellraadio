@@ -47,7 +47,9 @@ fun AlarmsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
-                    .padding(horizontal = if (isLandscape) 8.dp else 16.dp),
+                    .padding(horizontal = if (isLandscape) 8.dp else 16.dp)
+                    // --- PARANDUS ---
+                    .padding(top = if (isLandscape) 12.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.Alarm, null, tint = MaterialTheme.colorScheme.primary)

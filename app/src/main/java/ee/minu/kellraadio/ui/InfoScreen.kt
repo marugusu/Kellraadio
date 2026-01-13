@@ -31,9 +31,11 @@ fun InfoScreen(modifier: Modifier = Modifier) {
                 .height(48.dp)
                 .padding(
                     start = if (isLandscape) 8.dp else 16.dp,
-                    end = 16.dp,
-                    top = if (isLandscape) 4.dp else 0.dp
-                ),
+                    end = 16.dp
+                )
+                // --- PARANDUS ---
+                // Lisame ainult landscape vaates väikese nihke ülespoole
+                .padding(top = if (isLandscape) 12.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)

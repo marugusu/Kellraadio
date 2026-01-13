@@ -30,7 +30,9 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp), // START 8dp
+                .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp)
+                // --- PARANDUS ---
+                .padding(top = if (isLandscape) 12.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
