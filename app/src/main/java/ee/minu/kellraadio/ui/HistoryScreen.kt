@@ -95,12 +95,15 @@ fun HistoryScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // PÄIS (48dp, ei hüppa)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .padding(horizontal = 16.dp),
+                .padding(
+                    start = if (isLandscape) 8.dp else 16.dp,
+                    end = 16.dp,
+                    top = if (isLandscape) 4.dp else 0.dp
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -139,7 +142,11 @@ fun HistoryScreen(
         }
 
         // SISU OSA
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp)
+        ) {
             if (selectedDateMillis != null) {
                 InputChip(
                     selected = true,

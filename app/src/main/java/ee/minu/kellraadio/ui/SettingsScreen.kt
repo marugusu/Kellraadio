@@ -23,14 +23,14 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     Column(modifier = modifier.fillMaxSize()) {
-        // PÄIS - 48dp kõrgus ja 16dp horisontaalne padding (naelutatud paika)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .padding(horizontal = 16.dp),
+                .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp), // START 8dp
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
@@ -47,11 +47,15 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(
+                    start = if (isLandscape) 8.dp else 16.dp,
+                    end = 16.dp,
+                    top = if (isLandscape) 4.dp else 0.dp
+                )
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Spacer(modifier = Modifier.height(4.dp)) // Väike õhuvahe päise ja esimese kaardi vahel
+            //Spacer(modifier = Modifier.height(4.dp)) // Väike õhuvahe päise ja esimese kaardi vahel
 
             // 1. KANALITE NIMEKIRI
             Card(

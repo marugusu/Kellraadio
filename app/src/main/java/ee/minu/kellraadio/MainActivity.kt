@@ -300,7 +300,11 @@ fun RaadioEkraan() {
 
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
-            Box(modifier = Modifier.weight(playerWeight).padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .weight(playerWeight)
+                    .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)
+            ) {
                 PlayerControls(
                     selectedStation, selectedStationName, isPlaying, parsedTitle, parsedArtist, parsedExtra, playerStatus, bitrateInfo, alarmInfo, alarmDays, sleepTimerMillis,
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
@@ -316,7 +320,7 @@ fun RaadioEkraan() {
                 modifier = Modifier
                     .weight(1f - playerWeight)
                     .fillMaxHeight()
-                // EEMALDATUD: padding(vertical = 16.dp, horizontal = 16.dp)
+                    //.padding(top = 4.dp)
             ) {
                 when (currentTab) {
                     0 -> { // RAADIO
@@ -431,10 +435,10 @@ fun RaadioEkraan() {
                     onSleepClick = { showSleepDialog = true },
                     onAlarmClick = { showAlarmDialog = true },
                     onAlarmLongClick = { AlarmUtils.cancelAlarm(context); alarmTime = 0L; alarmStationName = "" },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp) // Kontrollitud padding
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 0.dp)
                 )
 
-                Spacer(Modifier.height(8.dp))
+                //Spacer(Modifier.height(8.dp))
 
                 when (currentTab) {
                     0 -> { // RAADIO

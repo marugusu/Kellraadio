@@ -32,10 +32,15 @@ fun StationList(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     // Column ilma ülemise pealkirjata, lisatud ainult horisontaalne padding
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(modifier = Modifier.height(8.dp)) // Väike õhuvahe ülaservas
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp)
+    ) {
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (categories.isNotEmpty()) {
             FlowRow(

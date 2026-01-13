@@ -22,13 +22,18 @@ import androidx.compose.ui.unit.dp
 fun InfoScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val versionName = getAppVersionName(context)
+    val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
-    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Column(modifier = modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp) // SAMA KÕRGUS
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
+                .height(48.dp)
+                .padding(
+                    start = if (isLandscape) 8.dp else 16.dp,
+                    end = 16.dp,
+                    top = if (isLandscape) 4.dp else 0.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
@@ -41,8 +46,13 @@ fun InfoScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Text(text = "Versioon $versionName", style = MaterialTheme.typography.labelMedium, color = Color.Gray, modifier = Modifier.padding(bottom = 16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(text = "Versioon $versionName", style = MaterialTheme.typography.labelMedium, color = Color.Gray, modifier = Modifier.padding(bottom = 8.dp))
 
             InfoCard(title = "Sinu igapäevane raadiokaaslane", text = "Kellraadio on loodud pakkuma lihtsat ja mugavat viisi Eesti ja välismaiste raadiojaamade kuulamiseks.", icon = Icons.Default.Radio)
             Spacer(modifier = Modifier.height(12.dp))
