@@ -289,7 +289,7 @@ fun RaadioEkraan() {
                     onAlarmClick = { if (alarms.isEmpty()) { alarmToEdit = null; showAlarmDialog = true } else { currentTab = 1 } },
                     onAlarmLongClick = { nextAlarmInfo?.second?.let { AlarmUtils.deleteAlarm(context, it) } },
                     onToggleFavorite = { selectedStation?.let { scope.launch { stationRepository.toggleFavorite(it) } } },
-                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 0.dp)
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp)
                 )
                 when (currentTab) {
                     0 -> StationList(stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() }, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
