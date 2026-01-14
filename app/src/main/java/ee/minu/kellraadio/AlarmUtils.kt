@@ -210,7 +210,7 @@ object AlarmUtils {
     // See abifunktsioon jääb samaks, et UI-s ilusaid tekste kuvada.
     fun getAlarmText(hour: Int, minute: Int, days: Set<Int>): String {
         val timeStr = String.format("%02d:%02d", hour, minute)
-        if (days.isEmpty()) return "$timeStr (Ühekordne)"
+        if (days.isEmpty()) return "$timeStr (1x)"
 
         val workDays = setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)
         val weekend = setOf(Calendar.SATURDAY, Calendar.SUNDAY)
