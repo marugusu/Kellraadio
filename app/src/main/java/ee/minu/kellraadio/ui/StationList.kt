@@ -97,12 +97,16 @@ fun StationList(
     // --- Ülemise nupurea (Chips) kerimine ---
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
-    // Arvutame nihke, et valitud nupp ei oleks päris vasakus servas (Offset)
-    val scrollOffsetPx = with(density) { -(configuration.screenWidthDp / 3).dp.toPx() }.toInt()
+    // PARANDUS: Arvutame nihke vastavalt sellele, kui palju nimekiri ekraanil ruumi võtab.
+    // Portrait: Nimekiri on 100% lai, nihe on 1/3.
+    // Landscape: Nimekiri on u 50-60% lai (sest pleier on kõrval), seega nihe peab olema poole väiksem (1/6).
+    val offsetDivisor = if (isLandscape) 6 else 3
+    val scrollOffsetPx = with(density) { -(configuration.screenWidthDp / offsetDivisor).dp.toPx() }.toInt()
 
     LaunchedEffect(selectedCategory) {
         val index = categories.indexOf(selectedCategory)
         if (index >= 0) {
+            // animateScrollToItem viib nupu õigesse kohta sujuva liikumisega
             listState.animateScrollToItem(index, scrollOffset = scrollOffsetPx)
         }
     }
