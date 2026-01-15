@@ -90,7 +90,7 @@ fun SettingsScreen(
 
                 // Eraldusjoon kaartide vahel, kui soovid neid ühte gruppi panna,
                 // või eraldi kaart nagu siin:
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(0.dp))
 
                 SettingsCardItem(
                     headline = "Testi ajalugu",
