@@ -55,6 +55,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
+    implementation("androidx.compose.foundation:foundation")
 
     // RAADIO MOOTOR (Need on kõige tähtsamad)
     implementation("androidx.media3:media3-exoplayer:1.2.0")

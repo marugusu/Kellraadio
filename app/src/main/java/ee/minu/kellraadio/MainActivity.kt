@@ -131,17 +131,35 @@ fun RaadioEkraan() {
 
     val desiredOrder = listOf("ERR","Duo Media","Sky Media","All Media","Muu Eesti", "Eesti", "Välis")
     var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "ERR") ?: "ERR") }
-    val favoriteStations = stations.filter { it.isFavorite }
-    val baseCategories = stations.map { it.category }.distinct().toMutableList()
-    if (favoriteStations.isNotEmpty()) { baseCategories.add(0, "Lemmikud") }
-    baseCategories.add("Kõik kanalid")
-    val finalCategories = baseCategories.sortedWith(compareBy<String> {
-        if (it == "Lemmikud") -1 else { val index = desiredOrder.indexOf(it); if (index != -1) index else Int.MAX_VALUE }
-    }.thenBy { it })
+
+    val categoriesData = remember(stations) {
+        val favs = stations.filter { it.isFavorite }
+        val base = stations.map { it.category }.distinct().toMutableList()
+
+        if (favs.isNotEmpty()) { base.add(0, "Lemmikud") }
+        base.add("Kõik kanalid")
+
+        val sorted = base.sortedWith(compareBy<String> {
+            when (it) {
+                "Lemmikud" -> -1
+                "Kõik kanalid" -> Int.MAX_VALUE
+                else -> {
+                    val index = desiredOrder.indexOf(it)
+                    if (index != -1) index else Int.MAX_VALUE - 1
+                }
+            }
+        }.thenBy { it })
+
+        Pair(favs, sorted)
+    }
+
+    val favoriteStations = categoriesData.first
+    val finalCategories = categoriesData.second
+
     val filteredStations = remember(selectedCategory, stations, favoriteStations) {
         when (selectedCategory) {
             "Lemmikud" -> favoriteStations
-            "Kõik kanalid" -> stations // Näita kõiki jaamu
+            "Kõik kanalid" -> stations
             else -> stations.filter { it.category == selectedCategory }
         }
     }
