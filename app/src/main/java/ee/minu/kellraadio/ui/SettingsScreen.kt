@@ -1,7 +1,12 @@
 package ee.minu.kellraadio.ui
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -9,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,14 +31,17 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val appVersion = getAppVersionName(context)
+    val scrollState = rememberScrollState()
 
     Column(modifier = modifier.fillMaxSize()) {
+        // --- PÄIS ---
+        // Järgib täpselt teiste ekraanide (Info, Ajalugu) paigutust
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
                 .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp)
-                // --- PARANDUS ---
                 .padding(top = if (isLandscape) 12.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -45,100 +55,149 @@ fun SettingsScreen(
             )
         }
 
-        // SISU - Skrollitav osa koos külgmise paddinguga
+        // --- SISU ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(
                     start = if (isLandscape) 8.dp else 16.dp,
                     end = 16.dp,
                     top = if (isLandscape) 4.dp else 0.dp
-                )
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                ),
+            verticalArrangement = Arrangement.spacedBy(16.dp) // Material 3 standard vahe
         ) {
-            //Spacer(modifier = Modifier.height(4.dp)) // Väike õhuvahe päise ja esimese kaardi vahel
 
-            // 1. KANALITE NIMEKIRI
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Kanalite nimekiri", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Kui mõni jaam ei tööta või on puudu, proovi nimekirja värskendada.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onRefresh,
-                        enabled = !isRefreshing,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (isRefreshing) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Laadin...")
-                        } else {
-                            Icon(Icons.Default.Refresh, null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Värskenda jaamu")
-                        }
-                    }
-                }
+            // SEKTSIOON 1: KANALID
+            SettingsGroup(title = "Raadio ja Kanalid") {
+                SettingsCardItem(
+                    headline = "Värskenda jaamu",
+                    supporting = "Lae serverist uusim kanalite nimekiri",
+                    icon = Icons.Default.Refresh,
+                    isLoading = isRefreshing,
+                    onClick = onRefresh
+                )
             }
 
-            // 2. SILUMINE (TESTIMINE)
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Silumine (Testimine)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Genereeri ajalukku vanu andmeid, et näha grupeerimist ja kalendri toimimist.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedButton(onClick = onAddTestData, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.Science, null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Lisa eilseid andmeid")
-                    }
-                }
+            // SEKTSIOON 2: DIAGNOSTIKA
+            SettingsGroup(title = "Abi ja Diagnostika") {
+                SettingsCardItem(
+                    headline = "Saada logi",
+                    supporting = "Jaga tehnilist infot arendajaga",
+                    icon = Icons.Default.BugReport,
+                    onClick = { LogExporter.exportAndShareLog(context) }
+                )
+
+                // Eraldusjoon kaartide vahel, kui soovid neid ühte gruppi panna,
+                // või eraldi kaart nagu siin:
+                Spacer(modifier = Modifier.height(4.dp))
+
+                SettingsCardItem(
+                    headline = "Testi ajalugu",
+                    supporting = "Lisa andmebaasi prooviandmeid",
+                    icon = Icons.Default.Science,
+                    onClick = onAddTestData,
+                    // Testimise asi võiks olla visuaalselt natuke teistsugune
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
+                )
             }
 
-            // 3. DIAGNOSTIKA
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                modifier = Modifier.fillMaxWidth()
+            // JALUS: VERSIOON
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Diagnostika", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Kui äpp käitub imelikult, salvesta logi ja saada see arendajale.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedButton(
-                        onClick = { LogExporter.exportAndShareLog(context) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.BugReport, null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Saada logi")
-                    }
-                }
+                Text(
+                    text = "Versioon $appVersion",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
             }
-
-            Spacer(modifier = Modifier.height(32.dp)) // Alumine vahe seadme servaga
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
+}
+
+// --- MATERIAL 3 ABIKOMPONENDID ---
+
+@Composable
+fun SettingsGroup(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+        )
+        content()
+    }
+}
+
+@Composable
+fun SettingsCardItem(
+    headline: String,
+    supporting: String,
+    icon: ImageVector,
+    isLoading: Boolean = false,
+    onClick: () -> Unit,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp), // M3 Medium shape
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // ListItem on Material 3 standardkomponent nimekirjade jaoks.
+        // Me paneme selle Cardi sisse, et saada sinu äpi stiili.
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = headline,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            supportingContent = {
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            leadingContent = {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent // Läbipaistev, et Cardi värv paistaks
+            ),
+            modifier = Modifier.clickable(enabled = !isLoading, onClick = onClick)
+        )
+    }
+}
+
+private fun getAppVersionName(context: Context): String {
+    return try {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }
+        packageInfo.versionName ?: "1.0"
+    } catch (e: Exception) { "1.0" }
 }
