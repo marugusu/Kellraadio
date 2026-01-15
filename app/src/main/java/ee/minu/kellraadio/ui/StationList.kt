@@ -32,6 +32,8 @@ fun StationList(
     selectedStationId: Int,
     playerStatus: String,
     isRefreshing: Boolean,
+    columnCountPortrait: Int,
+    columnCountLandscape: Int,
     onCategorySelect: (String) -> Unit,
     onRefresh: () -> Unit,
     onStationSelect: (RadioStation) -> Unit,
@@ -156,7 +158,7 @@ fun StationList(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
+                    columns = GridCells.Fixed(if (isLandscape) columnCountLandscape else columnCountPortrait),
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -198,7 +200,7 @@ fun StationList(
                     }
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
+                        columns = GridCells.Fixed(if (isLandscape) columnCountLandscape else columnCountPortrait),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

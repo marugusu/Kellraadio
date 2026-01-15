@@ -40,6 +40,9 @@ import ee.minu.kellraadio.ui.SettingsScreen
 import ee.minu.kellraadio.ui.SleepTimerDialog
 import ee.minu.kellraadio.ui.StationList
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,10 +76,28 @@ fun RaadioEkraan() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // 1. Kõigepealt defineerime andmebaasi ja seaded (et teised saaksid sealt lugeda)
+    val prefs = remember { context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE) }
+    val database = remember { AppDatabase.getDatabase(context) }
+
     val config = LocalConfiguration.current
     val isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val screenWidth = config.screenWidthDp
     val playerWeight = if (screenWidth < 1000) 0.5f else 0.4f
+
+    // 2. NÜÜD saame kasutada 'prefs' muutujat, sest see on ülalpool olemas
+    var colsPortrait by rememberSaveable { mutableIntStateOf(prefs.getInt("cols_portrait", 3)) }
+    var colsLandscape by rememberSaveable { mutableIntStateOf(prefs.getInt("cols_landscape", 3)) }
+
+    // Funktsioonid salvestamiseks
+    val onColsPortraitChange: (Int) -> Unit = {
+        colsPortrait = it
+        prefs.edit().putInt("cols_portrait", it).apply()
+    }
+    val onColsLandscapeChange: (Int) -> Unit = {
+        colsLandscape = it
+        prefs.edit().putInt("cols_landscape", it).apply()
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(Unit) {
@@ -84,9 +105,6 @@ fun RaadioEkraan() {
             permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-
-    val prefs = remember { context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE) }
-    val database = remember { AppDatabase.getDatabase(context) }
     val stationRepository = remember { RadioStationRepository(StationApiService.create(), database.radioStationDao(), database.historyDao()) }
     val stations by stationRepository.allStations.collectAsState(initial = emptyList())
     val alarmDao = remember { database.alarmDao() }
@@ -295,7 +313,7 @@ fun RaadioEkraan() {
             }
             Box(modifier = Modifier.weight(1f - playerWeight).fillMaxHeight()) {
                 when (currentTab) {
-                    0 -> StationList(stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() }, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                    0 -> StationList(stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, columnCountPortrait = colsPortrait, columnCountLandscape = colsLandscape, onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() }, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
                         onStationSelect = { station ->
                             selectedStationId = station.id
                             selectedStationName = station.name // <<-- Lisame selle rea
@@ -308,7 +326,28 @@ fun RaadioEkraan() {
                         onStationLongClick = { station -> scope.launch { stationRepository.toggleFavorite(station) } })
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
                     2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, "Jaama '$stationName' ei leitud!", Toast.LENGTH_SHORT).show() } })
-                    3 -> SettingsScreen(isRefreshing = isRefreshing, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } }, onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show() } })
+                    3 -> SettingsScreen(
+                        isRefreshing = isRefreshing,
+                        colsPortrait = colsPortrait,
+                        colsLandscape = colsLandscape,
+                        onColsPortraitChange = onColsPortraitChange,
+                        onColsLandscapeChange = onColsLandscapeChange,
+                        onRefresh = {
+                            scope.launch {
+                                isRefreshing = true
+                                try {
+                                    stationRepository.refreshStations()
+                                    Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) { } finally { isRefreshing = false }
+                            }
+                        },
+                        onAddTestData = {
+                            scope.launch {
+                                stationRepository.insertTestHistory()
+                                Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                     4 -> ee.minu.kellraadio.ui.InfoScreen()
                 }
             }
@@ -346,7 +385,7 @@ fun RaadioEkraan() {
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp)
                 )
                 when (currentTab) {
-                    0 -> StationList(stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() }, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                    0 -> StationList(stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, columnCountPortrait = colsPortrait, columnCountLandscape = colsLandscape, onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() }, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
                         onStationSelect = { station ->
                             selectedStationId = station.id
                             selectedStationName = station.name // <<-- Lisame selle rea
@@ -359,7 +398,28 @@ fun RaadioEkraan() {
                         onStationLongClick = { station -> scope.launch { stationRepository.toggleFavorite(station) } })
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
                     2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, "Jaama '$stationName' ei leitud!", Toast.LENGTH_SHORT).show() } })
-                    3 -> SettingsScreen(isRefreshing = isRefreshing, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } }, onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show() } })
+                    3 -> SettingsScreen(
+                        isRefreshing = isRefreshing,
+                        colsPortrait = colsPortrait,
+                        colsLandscape = colsLandscape,
+                        onColsPortraitChange = onColsPortraitChange,
+                        onColsLandscapeChange = onColsLandscapeChange,
+                        onRefresh = {
+                            scope.launch {
+                                isRefreshing = true
+                                try {
+                                    stationRepository.refreshStations()
+                                    Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) { } finally { isRefreshing = false }
+                            }
+                        },
+                        onAddTestData = {
+                            scope.launch {
+                                stationRepository.insertTestHistory()
+                                Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                     4 -> ee.minu.kellraadio.ui.InfoScreen()
                 }
             }

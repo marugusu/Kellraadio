@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -22,9 +21,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ee.minu.kellraadio.LogExporter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     isRefreshing: Boolean,
+    colsPortrait: Int,                    // UUS
+    colsLandscape: Int,                   // UUS
+    onColsPortraitChange: (Int) -> Unit,   // UUS
+    onColsLandscapeChange: (Int) -> Unit,  // UUS
     onRefresh: () -> Unit,
     onAddTestData: () -> Unit,
     modifier: Modifier = Modifier
@@ -36,7 +40,6 @@ fun SettingsScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         // --- PÄIS ---
-        // Järgib täpselt teiste ekraanide (Info, Ajalugu) paigutust
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -46,7 +49,7 @@ fun SettingsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(8.dp))
+            spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Seaded",
                 style = MaterialTheme.typography.titleLarge,
@@ -65,7 +68,7 @@ fun SettingsScreen(
                     end = 16.dp,
                     top = if (isLandscape) 4.dp else 0.dp
                 ),
-            verticalArrangement = Arrangement.spacedBy(16.dp) // Material 3 standard vahe
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
             // SEKTSIOON 1: KANALID
@@ -79,7 +82,60 @@ fun SettingsScreen(
                 )
             }
 
-            // SEKTSIOON 2: DIAGNOSTIKA
+            // SEKTSIOON 2: PAIGUTUS (UUS)
+            SettingsGroup(title = "Välimus ja Paigutus") {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        // Portree vaate tulpade arv
+                        Text(
+                            text = "Tulpade arv (Püsti)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            val portraitOptions = listOf(2, 3, 4, 5)
+                            portraitOptions.forEachIndexed { index, count ->
+                                SegmentedButton(
+                                    selected = colsPortrait == count,
+                                    onClick = { onColsPortraitChange(count) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = portraitOptions.size)
+                                ) {
+                                    Text(count.toString())
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Landscape vaate tulpade arv
+                        Text(
+                            text = "Tulpade arv (Külili)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            val landscapeOptions = listOf(2, 3, 4, 5, 6)
+                            landscapeOptions.forEachIndexed { index, count ->
+                                SegmentedButton(
+                                    selected = colsLandscape == count,
+                                    onClick = { onColsLandscapeChange(count) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = landscapeOptions.size)
+                                ) {
+                                    Text(count.toString())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SEKTSIOON 3: DIAGNOSTIKA
             SettingsGroup(title = "Abi ja Diagnostika") {
                 SettingsCardItem(
                     headline = "Saada logi",
@@ -88,21 +144,18 @@ fun SettingsScreen(
                     onClick = { LogExporter.exportAndShareLog(context) }
                 )
 
-                // Eraldusjoon kaartide vahel, kui soovid neid ühte gruppi panna,
-                // või eraldi kaart nagu siin:
-                Spacer(modifier = Modifier.height(0.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 SettingsCardItem(
                     headline = "Testi ajalugu",
                     supporting = "Lisa andmebaasi prooviandmeid",
                     icon = Icons.Default.Science,
                     onClick = onAddTestData,
-                    // Testimise asi võiks olla visuaalselt natuke teistsugune
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
                 )
             }
 
-            // JALUS: VERSIOON
+            // JALUS
             Spacer(modifier = Modifier.height(16.dp))
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -118,8 +171,6 @@ fun SettingsScreen(
         }
     }
 }
-
-// --- MATERIAL 3 ABIKOMPONENDID ---
 
 @Composable
 fun SettingsGroup(
@@ -147,12 +198,10 @@ fun SettingsCardItem(
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp), // M3 Medium shape
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // ListItem on Material 3 standardkomponent nimekirjade jaoks.
-        // Me paneme selle Cardi sisse, et saada sinu äpi stiili.
         ListItem(
             headlineContent = {
                 Text(
@@ -183,7 +232,7 @@ fun SettingsCardItem(
                 }
             },
             colors = ListItemDefaults.colors(
-                containerColor = Color.Transparent // Läbipaistev, et Cardi värv paistaks
+                containerColor = Color.Transparent
             ),
             modifier = Modifier.clickable(enabled = !isLoading, onClick = onClick)
         )
@@ -200,4 +249,9 @@ private fun getAppVersionName(context: Context): String {
         }
         packageInfo.versionName ?: "1.0"
     } catch (e: Exception) { "1.0" }
+}
+
+@Composable
+fun spacer(modifier: Modifier) {
+    Spacer(modifier = modifier)
 }
