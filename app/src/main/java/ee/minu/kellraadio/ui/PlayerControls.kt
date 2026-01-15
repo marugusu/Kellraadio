@@ -1,10 +1,12 @@
 package ee.minu.kellraadio.ui
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -59,34 +61,45 @@ fun PlayerControls(
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize()
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // 1. PEAMINE INFO (Lugu, Esitaja, Lisa)
                 if (parsedTitle.isNotBlank()) {
                     Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
-                Spacer(Modifier.height(4.dp))
-                val displayName = if (parsedArtist.isNotBlank()) parsedArtist else if (parsedTitle.isNotBlank()) "Otseeeter" else if (activeStationName.isNotEmpty()) activeStationName else "Vali jaam"
+
+                val displayName = if (parsedArtist.isNotBlank()) parsedArtist
+                else if (parsedTitle.isNotBlank()) "Otseeeter"
+                else if (activeStationName.isNotEmpty()) activeStationName
+                else "Vali jaam"
+
                 Text(text = displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = artistColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
+
                 if (parsedExtra.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
                     Text(text = parsedExtra, style = MaterialTheme.typography.titleMedium, color = extraColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
-                Spacer(Modifier.height(12.dp))
+
+                // 2. STAATUSE RIDA (Vähendatud vahe: 2dp + 4dp = 6dp)
+                Spacer(Modifier.height(2.dp))
+
                 val stationPrefix = if (activeStationName.isNotEmpty()) "$activeStationName • " else ""
                 val statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
                 Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = Color.Gray)
 
+                // 3. ÄRATUSE JA TAIMERI RIDA (Vähendatud vahe: 2dp + 4dp = 6dp)
                 if (alarmInfo != null || sleepTimerMillis > 0) {
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(2.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (alarmInfo != null) {
-                            // --- SIIA TULI PARANDUS ---
-                            // Teisendame Long ajatempli tunniks ja minutiks
                             val cal = Calendar.getInstance().apply { timeInMillis = alarmInfo.first }
                             val hour = cal.get(Calendar.HOUR_OF_DAY)
                             val minute = cal.get(Calendar.MINUTE)
-                            // Nüüd kutsume funktsiooni õigete parameetritega
                             val prettyTime = AlarmUtils.getAlarmText(hour, minute, alarmDays)
                             val infoStr = "$prettyTime (${alarmInfo.second})"
 
