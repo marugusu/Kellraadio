@@ -129,16 +129,21 @@ fun RaadioEkraan() {
 
     var currentTab by rememberSaveable { mutableIntStateOf(0) }
 
-    val desiredOrder = listOf("Eesti", "Välis")
-    var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "Eesti") ?: "Eesti") }
+    val desiredOrder = listOf("ERR","Duo Media","Sky Media","All Media","Muu Eesti", "Eesti", "Välis")
+    var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "ERR") ?: "ERR") }
     val favoriteStations = stations.filter { it.isFavorite }
     val baseCategories = stations.map { it.category }.distinct().toMutableList()
     if (favoriteStations.isNotEmpty()) { baseCategories.add(0, "Lemmikud") }
+    baseCategories.add("Kõik kanalid")
     val finalCategories = baseCategories.sortedWith(compareBy<String> {
         if (it == "Lemmikud") -1 else { val index = desiredOrder.indexOf(it); if (index != -1) index else Int.MAX_VALUE }
     }.thenBy { it })
     val filteredStations = remember(selectedCategory, stations, favoriteStations) {
-        if (selectedCategory == "Lemmikud") favoriteStations else stations.filter { it.category == selectedCategory }
+        when (selectedCategory) {
+            "Lemmikud" -> favoriteStations
+            "Kõik kanalid" -> stations // Näita kõiki jaamu
+            else -> stations.filter { it.category == selectedCategory }
+        }
     }
 
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -165,9 +170,16 @@ fun RaadioEkraan() {
                 selectedStationId = actualStation.id
                 selectedStationName = actualStation.name
 
-                // Uuendame ka kategooriat, et kasutaja näeks seda jaama nimekirjas
-                // (Välja arvatud juhul, kui kasutaja on "Lemmikud" vaates, siis me ei sunni teda ära minema)
-                if (selectedCategory != "Lemmikud" && selectedCategory != actualStation.category) {
+                val userWasInFavorites = (selectedCategory == "Lemmikud")
+                val isStationFavorite = actualStation.isFavorite
+
+                // Vahetame kategooriat kahel juhul:
+                // 1. Kasutaja EI OLNUD "Lemmikutes" JA jaama kategooria on teine.
+                // 2. Kasutaja OLI "Lemmikutes", aga see jaam POLE lemmik (ehk pole seal nimekirjas).
+                val shouldChangeCategory = (!userWasInFavorites && selectedCategory != actualStation.category) ||
+                        (userWasInFavorites && !isStationFavorite)
+
+                if (shouldChangeCategory) {
                     selectedCategory = actualStation.category
                     prefs.edit().putString("last_category", actualStation.category).apply()
                 }

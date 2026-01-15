@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,6 +35,17 @@ fun StationList(
     val haptic = LocalHapticFeedback.current
     val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
+    // UUS: Hoiame nimekirja kerimise olekut
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    // UUS: Kui selectedCategory muutub, kerime nimekirja õige koha peale
+    LaunchedEffect(selectedCategory, categories) {
+        val index = categories.indexOf(selectedCategory)
+        if (index >= 0) {
+            listState.animateScrollToItem(index)
+        }
+    }
+
     // Column ilma ülemise pealkirjata, lisatud ainult horisontaalne padding
     Column(
         modifier = Modifier
@@ -43,12 +55,15 @@ fun StationList(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (categories.isNotEmpty()) {
-            FlowRow(
+            // MUUDATUS: FlowRow asendatud LazyRow-ga
+            androidx.compose.foundation.lazy.LazyRow(
+                state = listState, // Ühendame kerimise olekuga
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
-                categories.forEach { category ->
+                items(categories.size) { index ->
+                    val category = categories[index]
                     val isSelected = (selectedCategory == category)
                     val isFavoritesChip = category == "Lemmikud"
 
