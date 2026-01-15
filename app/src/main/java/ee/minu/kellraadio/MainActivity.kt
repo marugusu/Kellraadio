@@ -157,6 +157,30 @@ fun RaadioEkraan() {
         scope.launch { if (!hasFetchedStations) { stationRepository.refreshStations(); hasFetchedStations = true } }
     }
 
+    LaunchedEffect(playingStationName, stations) {
+        if (playingStationName.isNotEmpty()) {
+            val actualStation = stations.find { it.name == playingStationName }
+            // Kui leidsime jaama ja see pole hetkel valitud, siis valime selle
+            if (actualStation != null && selectedStationId != actualStation.id) {
+                selectedStationId = actualStation.id
+                selectedStationName = actualStation.name
+
+                // Uuendame ka kategooriat, et kasutaja näeks seda jaama nimekirjas
+                // (Välja arvatud juhul, kui kasutaja on "Lemmikud" vaates, siis me ei sunni teda ära minema)
+                if (selectedCategory != "Lemmikud" && selectedCategory != actualStation.category) {
+                    selectedCategory = actualStation.category
+                    prefs.edit().putString("last_category", actualStation.category).apply()
+                }
+
+                // Salvestame uue seisu mällu
+                prefs.edit()
+                    .putInt("last_selected_id", actualStation.id)
+                    .putString("last_selected_name", actualStation.name)
+                    .apply()
+            }
+        }
+    }
+
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
