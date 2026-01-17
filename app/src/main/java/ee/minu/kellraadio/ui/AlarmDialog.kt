@@ -18,6 +18,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import ee.minu.kellraadio.RadioStation
 import java.util.Calendar
@@ -62,8 +65,34 @@ fun AlarmDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Alarm, null) },
-        title = { Text(finalTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }, // Kasutame siin uut, dünaamilist pealkirja
+        // 1. Ikoon värviliseks (tertiary)
+        icon = {
+            Icon(
+                Icons.Default.Alarm,
+                null,
+                tint = MaterialTheme.colorScheme.tertiary
+            )
+        },
+        // 2. Pealkiri: "Sea äratus" on tavaline, "Kanali Nimi" on värviline
+        title = {
+            val styledTitle = buildAnnotatedString {
+                append(baseTitle) // "Sea äratus" või "Muuda äratust"
+
+                if (!stationName.isNullOrEmpty()) {
+                    append(": ")
+                    // See plokk muudab järgneva teksti värvi
+                    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.tertiary)) {
+                        append(stationName)
+                    }
+                }
+            }
+
+            Text(
+                text = styledTitle,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),

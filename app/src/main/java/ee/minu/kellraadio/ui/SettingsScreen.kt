@@ -82,7 +82,7 @@ fun SettingsScreen(
                 )
             }
 
-            // SEKTSIOON 2: PAIGUTUS (UUS)
+            // SEKTSIOON 2: PAIGUTUS (UUS KUJUNDUS)
             SettingsGroup(title = "Välimus ja Paigutus") {
                 Card(
                     shape = RoundedCornerShape(12.dp),
@@ -90,42 +90,69 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // Portree vaate tulpade arv
+                        // Päis koos ikooniga (nagu teistel ridadel)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ViewModule, // Sobiv ikoon
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = "Kanalite ruudustik",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Püstine vaade (Portrait)
                         Text(
-                            text = "Tulpade arv (Püsti)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            text = "Püstine vaade (Portrait)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                             val portraitOptions = listOf(2, 3, 4, 5)
                             portraitOptions.forEachIndexed { index, count ->
                                 SegmentedButton(
                                     selected = colsPortrait == count,
                                     onClick = { onColsPortraitChange(count) },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = portraitOptions.size)
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = portraitOptions.size),
+                                    colors = SegmentedButtonDefaults.colors(
+                                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                                        activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                                        inactiveContainerColor = Color.Transparent
+                                    )
                                 ) {
                                     Text(count.toString())
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Landscape vaate tulpade arv
+                        // Külili vaade (Landscape)
                         Text(
-                            text = "Tulpade arv (Külili)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            text = "Külili vaade (Landscape)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                             val landscapeOptions = listOf(2, 3, 4, 5, 6)
                             landscapeOptions.forEachIndexed { index, count ->
                                 SegmentedButton(
                                     selected = colsLandscape == count,
                                     onClick = { onColsLandscapeChange(count) },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = landscapeOptions.size)
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = landscapeOptions.size),
+                                    colors = SegmentedButtonDefaults.colors(
+                                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                                        activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                                        inactiveContainerColor = Color.Transparent
+                                    )
                                 ) {
                                     Text(count.toString())
                                 }
@@ -207,7 +234,8 @@ fun SettingsCardItem(
                 Text(
                     text = headline,
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             supportingContent = {
