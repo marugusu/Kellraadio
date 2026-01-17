@@ -140,8 +140,10 @@ fun StationList(
                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = if (isFavoritesChip) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = if (isFavoritesChip) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimary,
+                        // MUUDATUS: Lemmikute taust on 20% läbipaistvusega oranž, tekst on täisoranž
+                        selectedContainerColor = if (isFavoritesChip) MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = if (isFavoritesChip) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
+
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )

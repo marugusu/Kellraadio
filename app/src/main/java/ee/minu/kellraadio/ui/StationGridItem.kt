@@ -133,7 +133,7 @@ fun StationGridItem(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
+                    tint = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier
                         .size(16.dp)
                         .align(Alignment.TopEnd)

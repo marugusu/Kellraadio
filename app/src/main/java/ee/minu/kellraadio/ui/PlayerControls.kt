@@ -104,7 +104,9 @@ fun PlayerControls(
                             val infoStr = "$prettyTime (${alarmInfo.second})"
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.AlarmOn, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.AlarmOn, null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text(text = infoStr, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
                             }
@@ -114,9 +116,9 @@ fun PlayerControls(
                             val seconds = (sleepTimerMillis / 1000) % 60
                             val timeStr = String.format("%02d:%02d", minutes, seconds)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Bedtime, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Bedtime, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text(text = timeStr, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
+                                Text(text = timeStr, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                             }
                         }
                     }
@@ -132,9 +134,17 @@ fun PlayerControls(
             } else {
                 FilledTonalIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); selectedStation?.let { onPlayStation(it) } }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape) { Icon(Icons.Default.PlayArrow, "Mängi", modifier = Modifier.size(32.dp)) }
             }
-            FilledTonalIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onToggleFavorite() }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape, colors = if (isFavorite) { IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary) } else { IconButtonDefaults.filledTonalIconButtonColors() }) { Icon(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Lemmik", modifier = Modifier.size(28.dp)) }
+            FilledTonalIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onToggleFavorite() }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape,
+                colors = if (isFavorite) { IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onSecondary, contentColor = Color.Black) } else { IconButtonDefaults.filledTonalIconButtonColors() }) { Icon(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, "Lemmik", modifier = Modifier.size(28.dp)) }
             val isTimerSet = sleepTimerMillis > 0
-            FilledTonalIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSleepClick() }, enabled = isPlaying || isTimerSet, modifier = buttonModifier, shape = buttonShape, colors = if (isTimerSet) IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) else IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Bedtime, "Unetaimer", modifier = Modifier.size(28.dp)) }
+            FilledTonalIconButton(
+                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSleepClick() },
+                enabled = isPlaying || isTimerSet,
+                modifier = buttonModifier,
+                shape = buttonShape,
+                // MUUDATUS: containerColor = secondary, contentColor = Black
+                colors = if (isTimerSet) IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = Color.Black) else IconButtonDefaults.filledTonalIconButtonColors()
+            ) { Icon(Icons.Default.Bedtime, "Unetaimer", modifier = Modifier.size(28.dp)) }
             val isAlarmSet = alarmInfo != null
             val interactionSource = remember { MutableInteractionSource() }
             Surface(modifier = buttonModifier.clip(buttonShape).combinedClickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAlarmClick() }, onLongClick = { if (isAlarmSet) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onAlarmLongClick() } }), shape = buttonShape, color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondaryContainer, contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondaryContainer) {
