@@ -1,9 +1,12 @@
 package ee.minu.kellraadio.ui
 
+import android.view.KeyEvent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -16,15 +19,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ee.minu.kellraadio.RadioStation
+import ee.minu.kellraadio.ui.getFlagEmoji
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -37,96 +44,116 @@ fun StationGridItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     showFavoriteIcon: Boolean,
-    showFlag: Boolean // UUS PARAMEETER
+    showFlag: Boolean
 ) {
     val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    var isLongClickPerformed by remember { mutableStateOf(false) }
+    // Olekud
+    var isLongPressDetected by remember { mutableStateOf(false) }
+    var pressJob by remember { mutableStateOf<Job?>(null) }
 
-    LaunchedEffect(interactionSource) {
-        var pressJob: kotlinx.coroutines.Job? = null
-
-        interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> {
-                    isLongClickPerformed = false
-                    pressJob = launch {
-                        delay(700)
-                        isLongClickPerformed = true
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLongClick()
-                    }
-                }
-                is PressInteraction.Release -> {
-                    pressJob?.cancel()
-                }
-                is PressInteraction.Cancel -> {
-                    pressJob?.cancel()
-                }
-            }
-        }
-    }
-
-    val containerColor = if (isSelected && isPlaying) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else if (isFocused) {
-        MaterialTheme.colorScheme.surfaceVariant
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-
-    val borderStroke = if (isFocused) {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-    } else if (isSelected) {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-    } else {
-        null
-    }
+    // VÄRVID
+    val containerColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.primaryContainer else if (isFocused) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+    val contentColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    val borderStroke = if (isFocused || isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                onClick = {
-                    if (!isLongClickPerformed) {
+            .clip(RoundedCornerShape(12.dp))
+            // 1. TV PULDI LOOGIKA
+            .onKeyEvent { event ->
+                val isEnter = event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                        event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_ENTER ||
+                        event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
+
+                if (!isEnter) return@onKeyEvent false
+
+                if (event.type == KeyEventType.KeyDown) {
+                    if (event.nativeKeyEvent.repeatCount == 0) {
+                        // Nupp vajutati alla: alusta lugemist
+                        isLongPressDetected = false
+                        pressJob?.cancel()
+
+                        scope.launch {
+                            interactionSource.emit(PressInteraction.Press(Offset.Zero))
+                        }
+
+                        pressJob = scope.launch {
+                            delay(500)
+                            // Aeg sai täis -> Märgime, et on pikk vajutus
+                            isLongPressDetected = true
+                            // Anname tagasisidet, et kasutaja teaks lahti lasta
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
+                            // NB! Me EI kutsu siin onLongClick(), et vältida fookuse hüppamist
+                            // Me ootame, kuni kasutaja nupu lahti laseb.
+                        }
+                    }
+                    return@onKeyEvent true
+                }
+                else if (event.type == KeyEventType.KeyUp) {
+                    pressJob?.cancel()
+
+                    scope.launch {
+                        interactionSource.emit(PressInteraction.Release(PressInteraction.Press(Offset.Zero)))
+                    }
+
+                    if (isLongPressDetected) {
+                        // Nupp lasti lahti ja see OLI pikk vajutus -> Avame menüü
+                        // Nüüd on "KeyUp" tehtud ja see ei saa enam menüü nupule "selga joosta"
+                        onLongClick()
+                    } else {
+                        // Lühike vajutus
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onClick()
                     }
-                },
-                onLongClick = { }
-            ),
+
+                    isLongPressDetected = false
+                    return@onKeyEvent true
+                }
+                false
+            }
+            // 2. PUUTE-EKRAANI LOOGIKA
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongClick()
+                    },
+                    onTap = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onClick()
+                    },
+                    onPress = {
+                        val press = PressInteraction.Press(it)
+                        interactionSource.emit(press)
+                        tryAwaitRelease()
+                        interactionSource.emit(PressInteraction.Release(press))
+                    }
+                )
+            }
+            .indication(interactionSource, androidx.compose.foundation.LocalIndication.current)
+            .hoverable(interactionSource)
+            .focusable(interactionSource = interactionSource),
+
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isFocused || (isSelected && isPlaying)) 8.dp else 2.dp
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isFocused || (isSelected && isPlaying)) 8.dp else 2.dp),
         border = borderStroke
     ) {
-        Box(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
-
-            // --- LIPP ---
+        Box(modifier = Modifier.fillMaxSize()) {
             if (showFlag && station.countryCode.isNotEmpty()) {
                 Text(
                     text = getFlagEmoji(station.countryCode),
-                    //style = MaterialTheme.typography.labelSmall,
-                    style = androidx.compose.ui.text.TextStyle(fontSize = 9.sp),
-
-                            modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 4.dp, top = 4.dp)
+                    style = androidx.compose.ui.text.TextStyle(fontSize = 10.sp),
+                    modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 4.dp)
                 )
             }
-            // ------------
-
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.bodyMedium,
@@ -135,21 +162,15 @@ fun StationGridItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    // MUUDATUS: Paneme teksti alla serva
                     .align(Alignment.Center)
-                    // MUUDATUS: Jätame servast täpselt 4dp vahet
-                    .padding(bottom = 0.dp, start = 4.dp, end = 4.dp)
+                    .padding(bottom = 0.dp, start = 8.dp, end = 8.dp)
             )
-
             if (station.isFavorite && showFavoriteIcon) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary, // Oranžikas
-                    modifier = Modifier
-                        .size(16.dp)
-                        .align(Alignment.TopEnd)
-                        .padding(top = 4.dp, end = 4.dp)
+                    tint = MaterialTheme.colorScheme.onSecondary,
+                    modifier = Modifier.size(16.dp).align(Alignment.TopEnd).padding(top = 4.dp, end = 8.dp)
                 )
             }
         }

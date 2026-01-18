@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -307,50 +308,81 @@ fun FilterSheet(
     onSelect: (RadioFilterItem) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    // Filtreerime nimekirja lokaalselt
+
     val filteredItems = remember(items, searchQuery) {
         if (searchQuery.isBlank()) items else items.filter { it.name.contains(searchQuery, ignoreCase = true) }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.fillMaxHeight(0.8f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
-            )
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp), // Standardne kaardi kuju
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+        ) {
+            Column(modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 0.dp)) {
+                // PÄIS
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge, // Sama mis mujal pealkirjad
+                    modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
+                )
 
-            // Kiire otsing nimekirja sees
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Otsi nimekirjast...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                singleLine = true
-            )
+                // OTSINGURIBA - Sama stiil mis SearchScreeni põhiotsingul
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Otsi nimekirjast...") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp), // Kandilisemad nurgad (mitte CircleShape)
+                    leadingIcon = { Icon(Icons.Default.Search, null) }
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-            LazyColumn {
-                items(filteredItems) { item ->
-                    // Genereerime lipu, kui kood on olemas
-                    val flag = if (item.isoCode != null) ee.minu.kellraadio.ui.getFlagEmoji(item.isoCode) else ""
+                // NIMEKIRI
+                LazyColumn(
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp) // Standardne tihedus
+                ) {
+                    items(filteredItems) { item ->
+                        val flag = if (item.isoCode != null) ee.minu.kellraadio.ui.getFlagEmoji(item.isoCode) else ""
 
-                    ListItem(
-                        headlineContent = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    text = item.name,
+                                    fontWeight = FontWeight.Normal, // Tavaline, mitte Bold
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            },
+                            supportingContent = {
+                                Text(
+                                    text = "${item.stationCount} jaama",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            leadingContent = {
                                 if (flag.isNotEmpty()) {
-                                    Text(flag, modifier = Modifier.padding(end = 8.dp))
+                                    Text(
+                                        text = flag,
+                                        style = MaterialTheme.typography.titleMedium // Standardne suurus, ei ole suurendatud
+                                    )
                                 }
-                                Text(item.name)
-                            }
-                        },
-                        supportingContent = { Text("${item.stationCount} jaama") },
-                        modifier = Modifier.clickable { onSelect(item) }
-                    )
-                    Divider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 0.5.dp)
+                            },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onSelect(item) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                        // Jooned eemaldatud puhtama ilme saavutamiseks, nagu soovisid
+                    }
                 }
             }
         }
