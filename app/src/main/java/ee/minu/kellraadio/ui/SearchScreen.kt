@@ -35,7 +35,7 @@ fun SearchScreen(
     repository: RadioStationRepository,
     allStations: List<ee.minu.kellraadio.RadioStation>,
     activeUrl: String,
-    onPlayTest: (String, String) -> Unit,
+    onPlayTest: (String, String, Boolean) -> Unit,
     onStationAdded: () -> Unit,
     modifier: Modifier = Modifier
 )  {
@@ -249,7 +249,7 @@ fun SearchScreen(
                             station = station,
                             isPlaying = station.urlResolved == activeUrl,
                             isSaved = isAlreadySaved,
-                            onPlay = { onPlayTest(station.name, station.urlResolved) },
+                            onPlay = { onPlayTest(station.name, station.urlResolved, isAlreadySaved) },
                             onAdd = {
                                 scope.launch {
                                     repository.saveUserStation(station.name, station.urlResolved, station.countryCode)
@@ -284,7 +284,7 @@ fun SearchScreen(
     if (showManualDialog) {
         ManualAddDialog(
             onDismiss = { showManualDialog = false },
-            onTest = onPlayTest,
+            onTest = { name, url -> onPlayTest(if(name.isNotBlank()) name else "Tundmatu", url, false) },
             onSave = { name, url ->
                 scope.launch {
                     repository.saveUserStation(name, url)

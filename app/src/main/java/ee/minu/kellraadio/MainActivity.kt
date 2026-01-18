@@ -384,23 +384,28 @@ fun RaadioEkraan() {
                         repository = stationRepository,
                         allStations = stations,
                         activeUrl = playingStationUrl,
-                        onPlayTest = { name, url ->
+                        // MUUDATUS: Lisasime kolmanda parameetri 'isSaved'
+                        onPlayTest = { name, url, isSaved ->
                             if (url == playingStationUrl && isPlaying) {
                                 val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
                                 context.startService(i)
                                 playingStationUrl = ""
                             } else {
                                 playingStationUrl = url
+
+                                // MUUDATUS: Kui on salvestatud, siis kasuta nime otse. Kui ei, lisa "(Lisamata!)"
+                                val displayName = if (isSaved) name else "$name (Lisamata!)"
+
                                 val i = Intent(context, RadioService::class.java).apply {
                                     putExtra("STREAM_URL", url)
-                                    putExtra("STATION_NAME", "$name (Eelkuulamine)")
+                                    putExtra("STATION_NAME", displayName) // Kasutame uut nime
                                     putExtra("TRIGGERED_BY", "USER")
                                 }
                                 context.startForegroundService(i)
                             }
                         },
                         onStationAdded = {
-                            selectedCategory = "Minu"
+                            selectedCategory = "Minu" // Kontrolli, kas sul on "Minu" või "Minu jaamad"
                             prefs.edit().putString("last_category", "Minu").apply()
                         }
                     )
@@ -507,24 +512,29 @@ fun RaadioEkraan() {
                         repository = stationRepository,
                         allStations = stations,
                         activeUrl = playingStationUrl,
-                        onPlayTest = { name, url ->
+                        // MUUDATUS: Lisasime kolmanda parameetri 'isSaved'
+                        onPlayTest = { name, url, isSaved ->
                             if (url == playingStationUrl && isPlaying) {
                                 val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
                                 context.startService(i)
                                 playingStationUrl = ""
                             } else {
                                 playingStationUrl = url
+
+                                // MUUDATUS: Kui on salvestatud, siis kasuta nime otse. Kui ei, lisa "(Lisamata!)"
+                                val displayName = if (isSaved) name else "$name (Lisamata!)"
+
                                 val i = Intent(context, RadioService::class.java).apply {
                                     putExtra("STREAM_URL", url)
-                                    putExtra("STATION_NAME", "$name (Eelkuulamine)")
+                                    putExtra("STATION_NAME", displayName) // Kasutame uut nime
                                     putExtra("TRIGGERED_BY", "USER")
                                 }
                                 context.startForegroundService(i)
                             }
                         },
                         onStationAdded = {
-                            selectedCategory = "Minu"
-                            prefs.edit().putString("last_category", "Minu jaamad").apply()
+                            selectedCategory = "Minu" // Kontrolli, kas sul on "Minu" või "Minu jaamad"
+                            prefs.edit().putString("last_category", "Minu").apply()
                         }
                     )
                         // UUS: SettingsScreen
@@ -668,7 +678,7 @@ fun RaadioEkraan() {
             onTest = { name, url ->
                 val i = Intent(context, RadioService::class.java).apply {
                     putExtra("STREAM_URL", url)
-                    putExtra("STATION_NAME", "$name (Eelkuulamine)")
+                    putExtra("STATION_NAME", "$name (Lisamata!)")
                     putExtra("TRIGGERED_BY", "USER")
                 }
                 context.startForegroundService(i)

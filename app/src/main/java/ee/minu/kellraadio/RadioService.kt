@@ -420,12 +420,18 @@ class RadioService : Service() {
             // 2. Kontrollime, kas viga on fataalne (nt vale URL, ligipääs puudub)
             // Kood 2004 on tavaliselt IO_BAD_HTTP_STATUS
             val cause = error.cause
-            val isFatalError = if (cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) {
-                // Kui server vastab 4xx (nt 401 Unauthorized, 404 Not Found), pole mõtet uuesti proovida
-                cause.responseCode in 400..499
-            } else {
-                false
+            val isFatalError = when {
+                // HTTP vead (404, 401, 403 jne)
+                cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException -> {
+                    cause.responseCode in 400..499
+                }
+                // Tundmatu formaat (nt HTML leht muusika asemel) - SEE ON SINU VIGA
+                cause is androidx.media3.exoplayer.source.UnrecognizedInputFormatException -> true
+                // Parseri vead (kui fail on katki)
+                error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> true
+                else -> false
             }
+
 
             if (isFatalError) {
                 Log.e(TAG, "Tegemist on fataalse veaga (nt vale URL). Lõpetan teenuse.")
