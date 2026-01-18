@@ -126,7 +126,7 @@ fun PlayerControls(
             }
         }
         Spacer(Modifier.height(16.dp))
-        val buttonShape = RoundedCornerShape(16.dp)
+        val buttonShape = RoundedCornerShape(12.dp)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             val buttonModifier = Modifier.weight(1f).height(64.dp)
             if (isPlaying) {

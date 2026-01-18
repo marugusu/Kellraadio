@@ -101,7 +101,7 @@ fun StationGridItem(
                 },
                 onLongClick = { }
             ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
@@ -134,7 +134,11 @@ fun StationGridItem(
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier
+                    // MUUDATUS: Paneme teksti alla serva
+                    .align(Alignment.Center)
+                    // MUUDATUS: Jätame servast täpselt 4dp vahet
+                    .padding(bottom = 0.dp, start = 4.dp, end = 4.dp)
             )
 
             if (station.isFavorite && showFavoriteIcon) {
