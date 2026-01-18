@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircleOutline // UUS
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
@@ -36,8 +37,11 @@ import ee.minu.kellraadio.ui.AlarmDialog
 import ee.minu.kellraadio.ui.AlarmsScreen
 import ee.minu.kellraadio.ui.HistoryScreen
 import ee.minu.kellraadio.ui.PlayerControls
+import ee.minu.kellraadio.ui.SearchScreen // UUS
 import ee.minu.kellraadio.ui.SettingsScreen
 import ee.minu.kellraadio.ui.SleepTimerDialog
+import ee.minu.kellraadio.ui.StationActionSheet // UUS
+import ee.minu.kellraadio.ui.EditStationDialog
 import ee.minu.kellraadio.ui.StationList
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
@@ -48,6 +52,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            // Sinu originaalsed värvid
             val darkColors = darkColorScheme(
                 primary = Color(0xFFBB86FC),
                 onPrimary = Color.Black,
@@ -76,7 +81,6 @@ fun RaadioEkraan() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // 1. Kõigepealt defineerime andmebaasi ja seaded (et teised saaksid sealt lugeda)
     val prefs = remember { context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE) }
     val database = remember { AppDatabase.getDatabase(context) }
 
@@ -85,11 +89,9 @@ fun RaadioEkraan() {
     val screenWidth = config.screenWidthDp
     val playerWeight = if (screenWidth < 1000) 0.5f else 0.4f
 
-    // 2. NÜÜD saame kasutada 'prefs' muutujat, sest see on ülalpool olemas
     var colsPortrait by rememberSaveable { mutableIntStateOf(prefs.getInt("cols_portrait", 3)) }
     var colsLandscape by rememberSaveable { mutableIntStateOf(prefs.getInt("cols_landscape", 3)) }
 
-    // Funktsioonid salvestamiseks
     val onColsPortraitChange: (Int) -> Unit = {
         colsPortrait = it
         prefs.edit().putInt("cols_portrait", it).apply()
@@ -105,7 +107,17 @@ fun RaadioEkraan() {
             permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    val stationRepository = remember { RadioStationRepository(StationApiService.create(), database.radioStationDao(), database.historyDao()) }
+
+    // --- MUUDATUS: Lisasime searchApiService ---
+    val stationRepository = remember {
+        RadioStationRepository(
+            StationApiService.create(),
+            RadioBrowserApiService.create(), // UUS
+            database.radioStationDao(),
+            database.historyDao()
+        )
+    }
+
     val stations by stationRepository.allStations.collectAsState(initial = emptyList())
     val alarmDao = remember { database.alarmDao() }
     val alarms by alarmDao.getAllAlarms().collectAsState(initial = emptyList())
@@ -115,24 +127,24 @@ fun RaadioEkraan() {
             Pair(AlarmUtils.findNextAlarmTime(alarm.hour, alarm.minute, alarm.days), alarm)
         }.minByOrNull { it.first }
     }
+    var stationToUpdate by remember { mutableStateOf<RadioStation?>(null) } // Jaam, mida muudame
 
     var selectedStationId by rememberSaveable { mutableIntStateOf(prefs.getInt("last_selected_id", -1)) }
-    // Hoiame nime ka mälus, et see säiliks taaskäivitamisel
     var selectedStationName by rememberSaveable { mutableStateOf(prefs.getString("last_selected_name", "") ?: "") }
 
     val selectedStation = stations.find { it.id == selectedStationId }
 
-    // Efekt, mis sünkroniseerib nime, kui jaamade nimekiri muutub või ID muutub
     LaunchedEffect(selectedStation) {
         if (selectedStation != null) {
             selectedStationName = selectedStation.name
-            // Salvestame ka SharedPreferences'i, et see oleks olemas järgmisel käivitusel
             prefs.edit().putString("last_selected_name", selectedStation.name).apply()
         }
     }
 
     var playingStationName by rememberSaveable { mutableStateOf("") }
+    var playingStationUrl by rememberSaveable { mutableStateOf("") }
     var syncedStationName by rememberSaveable { mutableStateOf("") }
+    var showFlags by rememberSaveable { mutableStateOf(prefs.getBoolean("show_flags", true)) }
     var playerStatus by rememberSaveable { mutableStateOf("Peatatud") }
     var bitrateInfo by rememberSaveable { mutableStateOf("") }
     var parsedTitle by rememberSaveable { mutableStateOf("") }
@@ -145,9 +157,15 @@ fun RaadioEkraan() {
     var alarmToEdit by remember { mutableStateOf<Alarm?>(null) }
     var hasFetchedStations by rememberSaveable { mutableStateOf(false) }
 
+    // --- UUED OLEKUD MENÜÜDE JAOKS ---
+    var showDeleteConfirmDialog by remember { mutableStateOf<RadioStation?>(null) }
+    var stationForActionSheet by remember { mutableStateOf<RadioStation?>(null) }
+    var showActionSheet by remember { mutableStateOf(false) }
+    // ----------------------------------
+
     var currentTab by rememberSaveable { mutableIntStateOf(0) }
 
-    val desiredOrder = listOf("ERR","Duo Media","Sky Media","All Media","Muu Eesti", "Eesti", "Välis")
+    val desiredOrder = listOf("ERR","Duo","Sky","Muu Eesti", "Välis")
     var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "ERR") ?: "ERR") }
 
     val categoriesData = remember(stations) {
@@ -155,15 +173,26 @@ fun RaadioEkraan() {
         val base = stations.map { it.category }.distinct().toMutableList()
 
         if (favs.isNotEmpty()) { base.add(0, "Lemmikud") }
-        base.add("Kõik kanalid")
+
+        // --- UUS: Tagame, et "Minu jaamad" on nimekirjas, kui neid on ---
+        val userStations = stations.filter { it.isUserStation }
+        if (userStations.isNotEmpty() && !base.contains("Minu")) {
+            // Lisame "Minu jaamad" kohe lemmikute järele või algusesse
+            val insertIndex = if (favs.isNotEmpty()) 1 else 0
+            base.add(insertIndex, "Minu")
+        }
+        // ----------------------------------------------------------------
+
+        base.add("Kõik")
 
         val sorted = base.sortedWith(compareBy<String> {
             when (it) {
                 "Lemmikud" -> -1
-                "Kõik kanalid" -> Int.MAX_VALUE
+                "Minu" -> 0 // Minu jaamad on eespool
+                "Kõik" -> Int.MAX_VALUE
                 else -> {
                     val index = desiredOrder.indexOf(it)
-                    if (index != -1) index else Int.MAX_VALUE - 1
+                    if (index != -1) index + 1 else Int.MAX_VALUE - 1
                 }
             }
         }.thenBy { it })
@@ -177,7 +206,7 @@ fun RaadioEkraan() {
     val filteredStations = remember(selectedCategory, stations, favoriteStations) {
         when (selectedCategory) {
             "Lemmikud" -> favoriteStations
-            "Kõik kanalid" -> stations
+            "Kõik" -> stations
             else -> stations.filter { it.category == selectedCategory }
         }
     }
@@ -201,30 +230,28 @@ fun RaadioEkraan() {
     LaunchedEffect(playingStationName, stations) {
         if (playingStationName.isNotEmpty()) {
             val actualStation = stations.find { it.name == playingStationName }
-            // Kui leidsime jaama ja see pole hetkel valitud, siis valime selle
-            if (actualStation != null && selectedStationId != actualStation.id) {
-                selectedStationId = actualStation.id
-                selectedStationName = actualStation.name
 
-                val userWasInFavorites = (selectedCategory == "Lemmikud")
-                val isStationFavorite = actualStation.isFavorite
+            if (actualStation != null) {
+                // SÜSTEEMNE/SALVESTATUD JAAM
+                if (selectedStationId != actualStation.id) {
+                    selectedStationId = actualStation.id
+                    selectedStationName = actualStation.name
 
-                // Vahetame kategooriat kahel juhul:
-                // 1. Kasutaja EI OLNUD "Lemmikutes" JA jaama kategooria on teine.
-                // 2. Kasutaja OLI "Lemmikutes", aga see jaam POLE lemmik (ehk pole seal nimekirjas).
-                val shouldChangeCategory = (!userWasInFavorites && selectedCategory != actualStation.category) ||
-                        (userWasInFavorites && !isStationFavorite)
+                    val userWasInFavorites = (selectedCategory == "Lemmikud")
+                    val isStationFavorite = actualStation.isFavorite
+                    val shouldChangeCategory = (!userWasInFavorites && selectedCategory != actualStation.category) || (userWasInFavorites && !isStationFavorite)
 
-                if (shouldChangeCategory) {
-                    selectedCategory = actualStation.category
-                    prefs.edit().putString("last_category", actualStation.category).apply()
+                    if (shouldChangeCategory) {
+                        selectedCategory = actualStation.category
+                        prefs.edit().putString("last_category", actualStation.category).apply()
+                    }
+                    prefs.edit().putInt("last_selected_id", actualStation.id).putString("last_selected_name", actualStation.name).apply()
                 }
-
-                // Salvestame uue seisu mällu
-                prefs.edit()
-                    .putInt("last_selected_id", actualStation.id)
-                    .putString("last_selected_name", actualStation.name)
-                    .apply()
+            } else {
+                // EELKUULAMINE (Või tundmatu jaam)
+                // Uuendame nime UI-s, aga tühistame ID (et ei näitaks valet "Lemmik" staatust)
+                selectedStationId = -1
+                selectedStationName = playingStationName
             }
         }
     }
@@ -237,8 +264,6 @@ fun RaadioEkraan() {
                         val stationId = intent.getIntExtra("STATION_ID", -1)
                         if (stationId != -1) {
                             selectedStationId = stationId
-
-                            // Uuendame ka kategooriat, et UI oleks sünkroonis
                             val station = stations.find { it.id == stationId }
                             if (station != null && selectedCategory != "Lemmikud" && selectedCategory != station.category) {
                                 selectedCategory = station.category
@@ -248,15 +273,15 @@ fun RaadioEkraan() {
                     RadioService.ACTION_STATION_CHANGED -> {
                         playingStationName = intent.getStringExtra("STATION_NAME") ?: ""
                         playerStatus = "Mängib"
-                        // --- PARANDUS 2: Eemaldame siit "Otseeeter" üle kirjutamise ---
-                        // parsedArtist = playingStationName
-                        // parsedTitle = "Otseeeter"
-                        // parsedExtra = ""
                     }
                     RadioService.ACTION_METADATA_UPDATED -> { playerStatus = "Mängib"; parsedTitle = intent.getStringExtra("PARSED_TITLE") ?: ""; parsedArtist = intent.getStringExtra("PARSED_ARTIST") ?: ""; parsedExtra = intent.getStringExtra("PARSED_EXTRA") ?: "" }
                     RadioService.ACTION_BITRATE_UPDATED -> bitrateInfo = intent.getStringExtra("BITRATE_INFO") ?: ""
-                    RadioService.ACTION_PLAYER_ERROR -> { playerStatus = "Viga ühendusega"; bitrateInfo = "" }
-                    RadioService.ACTION_PLAYER_STOPPED -> { playerStatus = "Peatatud"; bitrateInfo = "" }
+                    RadioService.ACTION_PLAYER_ERROR -> { playerStatus = "Viga ühendusega"; bitrateInfo = "";Toast.makeText(context, "Viga: See jaam ei tööta!", Toast.LENGTH_LONG).show()}
+                    RadioService.ACTION_PLAYER_STOPPED -> {
+                        playerStatus = "Peatatud"
+                        bitrateInfo = ""
+                        playingStationUrl = "" // UUS: Nullime URL-i, kui seisab
+                    }
                     RadioService.ACTION_TIMER_TICK -> sleepTimerMillis = intent.getLongExtra("REMAINING_MILLIS", 0L)
                 }
             }
@@ -283,8 +308,12 @@ fun RaadioEkraan() {
                 NavigationRailItem(selected = currentTab == 0, onClick = { currentTab = 0 }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text("Raadio") })
                 NavigationRailItem(selected = currentTab == 1, onClick = { currentTab = 1 }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text("Äratused") })
                 NavigationRailItem(selected = currentTab == 2, onClick = { currentTab = 2 }, icon = { Icon(Icons.Default.History, null) }, label = { Text("Ajalugu") })
-                NavigationRailItem(selected = currentTab == 3, onClick = { currentTab = 3 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Seaded") })
-                NavigationRailItem(selected = currentTab == 4, onClick = { currentTab = 4 }, icon = { Icon(Icons.Default.Info, null) }, label = { Text("Info") })
+
+                // UUS: Lisa kanal
+                NavigationRailItem(selected = currentTab == 3, onClick = { currentTab = 3 }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text("Lisa kanal") })
+                // UUS ASUKOHT: Seaded
+                NavigationRailItem(selected = currentTab == 4, onClick = { currentTab = 4 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text("Seaded") })
+
                 Spacer(modifier = Modifier.weight(1f))
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
@@ -305,50 +334,97 @@ fun RaadioEkraan() {
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
-                    onAlarmClick = { if (alarms.isEmpty()) { alarmToEdit = null; showAlarmDialog = true } else { currentTab = 1 } },
+                    onAlarmClick = {
+                        // 1. Kui oleme otsingu vaates (3), keela kõik ja anna hoiatus
+                        if (currentTab == 3) {
+                            Toast.makeText(context, "Lisa jaam enne äratuse seadmist", Toast.LENGTH_SHORT).show()
+                        }
+                        // 2. Muul ajal käitu tavaliselt
+                        else if (alarms.isNotEmpty()) {
+                            currentTab = 1
+                        } else {
+                            if (selectedStationId != -1) {
+                                alarmToEdit = null
+                                showAlarmDialog = true
+                            } else {
+                                // See juhtub harva (nt viga), aga igaks juhuks
+                                Toast.makeText(context, "Vali jaam", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
                     onAlarmLongClick = { nextAlarmInfo?.second?.let { AlarmUtils.deleteAlarm(context, it) } },
                     onToggleFavorite = { selectedStation?.let { scope.launch { stationRepository.toggleFavorite(it) } } },
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 )
             }
             Box(modifier = Modifier.weight(1f - playerWeight).fillMaxHeight()) {
+                // --- SISU LOOGIKA ---
                 when (currentTab) {
-                    0 -> StationList(stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, columnCountPortrait = colsPortrait, columnCountLandscape = colsLandscape, onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() }, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                    0 -> StationList(
+                        stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing,showFlags = showFlags, columnCountPortrait = colsPortrait, columnCountLandscape = colsLandscape,
+                        onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
+                        onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
                         onStationSelect = { station ->
                             selectedStationId = station.id
-                            selectedStationName = station.name // <<-- Lisame selle rea
-                            prefs.edit()
-                                .putInt("last_selected_id", station.id)
-                                .putString("last_selected_name", station.name) // <<-- Lisame selle rea
-                                .apply()
+                            selectedStationName = station.name
+                            prefs.edit().putInt("last_selected_id", station.id).putString("last_selected_name", station.name).apply()
                             playRadio(station)
                         },
-                        onStationLongClick = { station -> scope.launch { stationRepository.toggleFavorite(station) } })
+                        onStationLongClick = { station ->
+                            // UUS: Avame menüü
+                            stationForActionSheet = station
+                            showActionSheet = true
+                        }
+                    )
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
                     2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, "Jaama '$stationName' ei leitud!", Toast.LENGTH_SHORT).show() } })
-                    3 -> SettingsScreen(
+
+                    // SearchScreen
+                    3 -> SearchScreen(
+                        repository = stationRepository,
+                        allStations = stations,
+                        activeUrl = playingStationUrl,
+                        onPlayTest = { name, url ->
+                            if (url == playingStationUrl && isPlaying) {
+                                val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
+                                context.startService(i)
+                                playingStationUrl = ""
+                            } else {
+                                playingStationUrl = url
+                                val i = Intent(context, RadioService::class.java).apply {
+                                    putExtra("STREAM_URL", url)
+                                    putExtra("STATION_NAME", "$name (Eelkuulamine)")
+                                    putExtra("TRIGGERED_BY", "USER")
+                                }
+                                context.startForegroundService(i)
+                            }
+                        },
+                        onStationAdded = {
+                            selectedCategory = "Minu"
+                            prefs.edit().putString("last_category", "Minu").apply()
+                        }
+                    )
+
+                        // SettingsScreen
+                    4 -> SettingsScreen(
                         isRefreshing = isRefreshing,
                         colsPortrait = colsPortrait,
                         colsLandscape = colsLandscape,
+                        showFlags = showFlags,
+                        onToggleShowFlags = {
+                            showFlags = it
+                            prefs.edit().putBoolean("show_flags", it).apply()
+                        },
                         onColsPortraitChange = onColsPortraitChange,
                         onColsLandscapeChange = onColsLandscapeChange,
                         onRefresh = {
                             scope.launch {
                                 isRefreshing = true
-                                try {
-                                    stationRepository.refreshStations()
-                                    Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show()
-                                } catch (e: Exception) { } finally { isRefreshing = false }
+                                try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false }
                             }
                         },
-                        onAddTestData = {
-                            scope.launch {
-                                stationRepository.insertTestHistory()
-                                Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show() } }
                     )
-                    4 -> ee.minu.kellraadio.ui.InfoScreen()
                 }
             }
         }
@@ -358,8 +434,11 @@ fun RaadioEkraan() {
                 NavigationBarItem(selected = currentTab == 0, onClick = { currentTab = 0 }, icon = { Icon(Icons.Default.Radio, contentDescription = null) }, label = { Text("Raadio") })
                 NavigationBarItem(selected = currentTab == 1, onClick = { currentTab = 1 }, icon = { Icon(Icons.Default.Alarm, contentDescription = null) }, label = { Text("Äratused") })
                 NavigationBarItem(selected = currentTab == 2, onClick = { currentTab = 2 }, icon = { Icon(Icons.Default.History, contentDescription = null) }, label = { Text("Ajalugu") })
-                NavigationBarItem(selected = currentTab == 3, onClick = { currentTab = 3 }, icon = { Icon(Icons.Default.Settings, contentDescription = null) }, label = { Text("Seaded") })
-                NavigationBarItem(selected = currentTab == 4, onClick = { currentTab = 4 }, icon = { Icon(Icons.Default.Info, contentDescription = null) }, label = { Text("Info") })
+
+                // UUS: Lisa kanal
+                NavigationBarItem(selected = currentTab == 3, onClick = { currentTab = 3 }, icon = { Icon(Icons.Default.AddCircleOutline, contentDescription = null) }, label = { Text("Lisa kanal") })
+                // UUS: Seaded
+                NavigationBarItem(selected = currentTab == 4, onClick = { currentTab = 4 }, icon = { Icon(Icons.Default.Settings, contentDescription = null) }, label = { Text("Seaded") })
             }
         }) { innerPadding ->
             Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
@@ -379,48 +458,95 @@ fun RaadioEkraan() {
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
-                    onAlarmClick = { if (alarms.isEmpty()) { alarmToEdit = null; showAlarmDialog = true } else { currentTab = 1 } },
+                    onAlarmClick = {
+                        // 1. Kui oleme otsingu vaates (3), keela kõik ja anna hoiatus
+                        if (currentTab == 3) {
+                            Toast.makeText(context, "Lisa enne jaam! Mine -> Raadio ", Toast.LENGTH_SHORT).show()
+                        }
+                        // 2. Muul ajal käitu tavaliselt
+                        else if (alarms.isNotEmpty()) {
+                            currentTab = 1
+                        } else {
+                            if (selectedStationId != -1) {
+                                alarmToEdit = null
+                                showAlarmDialog = true
+                            } else {
+                                // See juhtub harva (nt viga), aga igaks juhuks
+                                Toast.makeText(context, "Vali jaam", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
                     onAlarmLongClick = { nextAlarmInfo?.second?.let { AlarmUtils.deleteAlarm(context, it) } },
                     onToggleFavorite = { selectedStation?.let { scope.launch { stationRepository.toggleFavorite(it) } } },
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp)
                 )
+
+                // --- SISU (sama loogika mis landscape'is) ---
                 when (currentTab) {
-                    0 -> StationList(stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, columnCountPortrait = colsPortrait, columnCountLandscape = colsLandscape, onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() }, onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
+                    0 -> StationList(
+                        stations, filteredStations, finalCategories, selectedCategory, selectedStationId, playerStatus, isRefreshing, columnCountPortrait = colsPortrait,showFlags = showFlags, columnCountLandscape = colsLandscape,
+                        onCategorySelect = { cat -> selectedCategory = cat; prefs.edit().putString("last_category", cat).apply() },
+                        onRefresh = { scope.launch { isRefreshing = true; try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false } } },
                         onStationSelect = { station ->
                             selectedStationId = station.id
-                            selectedStationName = station.name // <<-- Lisame selle rea
-                            prefs.edit()
-                                .putInt("last_selected_id", station.id)
-                                .putString("last_selected_name", station.name) // <<-- Lisame selle rea
-                                .apply()
+                            selectedStationName = station.name
+                            prefs.edit().putInt("last_selected_id", station.id).putString("last_selected_name", station.name).apply()
                             playRadio(station)
                         },
-                        onStationLongClick = { station -> scope.launch { stationRepository.toggleFavorite(station) } })
+                        onStationLongClick = { station ->
+                            // UUS: Avame menüü
+                            stationForActionSheet = station
+                            showActionSheet = true
+                        }
+                    )
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
                     2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, "Jaama '$stationName' ei leitud!", Toast.LENGTH_SHORT).show() } })
-                    3 -> SettingsScreen(
+
+                    // UUS: SearchScreen
+                    3 -> SearchScreen(
+                        repository = stationRepository,
+                        allStations = stations,
+                        activeUrl = playingStationUrl,
+                        onPlayTest = { name, url ->
+                            if (url == playingStationUrl && isPlaying) {
+                                val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
+                                context.startService(i)
+                                playingStationUrl = ""
+                            } else {
+                                playingStationUrl = url
+                                val i = Intent(context, RadioService::class.java).apply {
+                                    putExtra("STREAM_URL", url)
+                                    putExtra("STATION_NAME", "$name (Eelkuulamine)")
+                                    putExtra("TRIGGERED_BY", "USER")
+                                }
+                                context.startForegroundService(i)
+                            }
+                        },
+                        onStationAdded = {
+                            selectedCategory = "Minu"
+                            prefs.edit().putString("last_category", "Minu jaamad").apply()
+                        }
+                    )
+                        // UUS: SettingsScreen
+                    4 -> SettingsScreen(
                         isRefreshing = isRefreshing,
                         colsPortrait = colsPortrait,
                         colsLandscape = colsLandscape,
+                        showFlags = showFlags,
+                        onToggleShowFlags = {
+                            showFlags = it
+                            prefs.edit().putBoolean("show_flags", it).apply()
+                        },
                         onColsPortraitChange = onColsPortraitChange,
                         onColsLandscapeChange = onColsLandscapeChange,
                         onRefresh = {
                             scope.launch {
                                 isRefreshing = true
-                                try {
-                                    stationRepository.refreshStations()
-                                    Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show()
-                                } catch (e: Exception) { } finally { isRefreshing = false }
+                                try { stationRepository.refreshStations(); Toast.makeText(context, "Uuendatud!", Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false }
                             }
                         },
-                        onAddTestData = {
-                            scope.launch {
-                                stationRepository.insertTestHistory()
-                                Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, "Testandmed lisatud!", Toast.LENGTH_SHORT).show() } }
                     )
-                    4 -> ee.minu.kellraadio.ui.InfoScreen()
                 }
             }
         }
@@ -428,6 +554,132 @@ fun RaadioEkraan() {
 
     if (showSleepDialog) { SleepTimerDialog(initialMillis = sleepTimerMillis, onDismiss = { showSleepDialog = false }) }
     if (showAlarmDialog) {
-        AlarmDialog(selectedStation = selectedStation, initialHour = alarmToEdit?.hour, initialMinute = alarmToEdit?.minute, initialDays = alarmToEdit?.days ?: emptySet(), onDismiss = { showAlarmDialog = false }, onDelete = if (alarmToEdit != null) { { alarmToEdit?.let { AlarmUtils.deleteAlarm(context, it) } } } else null, onAlarmSaved = { hour, minute, days -> selectedStation?.let { station -> val alarm = alarmToEdit?.copy(hour = hour, minute = minute, days = days, stationName = station.name, stationUrl = station.url, isEnabled = true) ?: Alarm(hour = hour, minute = minute, days = days, stationName = station.name, stationUrl = station.url); AlarmUtils.saveOrUpdateAlarm(context, alarm) } })
+        // --- PARANDUS: Leiame õige jaama nime dialoogi jaoks ---
+        // Kui meil on alarmToEdit (nt menüüst tulles), kasutame selle jaama nime.
+        // Muidu kasutame seda jaama, mis on äpis hetkel valitud/mängib.
+        val stationForDialog = if (alarmToEdit != null) {
+            // Teeme ajutise jaama objekti kuvamiseks
+            stations.find { it.name == alarmToEdit!!.stationName }
+                ?: RadioStation(0, alarmToEdit!!.stationName, alarmToEdit!!.stationUrl)
+        } else {
+            selectedStation
+        }
+
+        AlarmDialog(
+            selectedStation = stationForDialog, // Kasutame siin uut muutujat
+            initialHour = alarmToEdit?.hour,
+            initialMinute = alarmToEdit?.minute,
+            initialDays = alarmToEdit?.days ?: emptySet(),
+            onDismiss = { showAlarmDialog = false },
+
+            // --- KRITILINE PARANDUS ---
+            // Näitame kustutamise nuppu AINULT siis, kui äratusel on päris ID (ehk see on andmebaasis).
+            // Kui ID on 0 (mis juhtub "Sea äratus" nupust), siis on see UUS äratus ja kustutada ei saa.
+            onDelete = if (alarmToEdit != null && alarmToEdit!!.id != 0) {
+                { alarmToEdit?.let { AlarmUtils.deleteAlarm(context, it) } }
+            } else null,
+            // ---------------------------
+
+            onAlarmSaved = { hour, minute, days ->
+                stationForDialog?.let { station -> // Kasutame siin ka stationForDialog
+                    val alarm = alarmToEdit?.copy(
+                        hour = hour, minute = minute, days = days,
+                        stationName = station.name, stationUrl = station.url, isEnabled = true
+                    ) ?: Alarm(
+                        hour = hour, minute = minute, days = days,
+                        stationName = station.name, stationUrl = station.url
+                    )
+                    AlarmUtils.saveOrUpdateAlarm(context, alarm)
+                }
+            }
+        )
+    }
+
+    // --- UUED DIALOOGID ---
+
+    // Kontekstimenüü (Bottom Sheet)
+    if (showActionSheet && stationForActionSheet != null) {
+
+        val liveStation = stations.find { it.id == stationForActionSheet!!.id } ?: stationForActionSheet!!
+        StationActionSheet(
+            station = liveStation, // Kasutame siin 'liveStation', mitte 'stationForActionSheet'
+            onDismiss = { showActionSheet = false },
+            onToggleFavorite = {
+                scope.launch { stationRepository.toggleFavorite(liveStation) }
+            },
+            onSetAlarm = {
+                alarmToEdit = Alarm(
+                    hour = 7, minute = 0, days = emptySet(),
+                    stationName = liveStation.name,
+                    stationUrl = liveStation.url
+                )
+                showAlarmDialog = true
+                currentTab = 1
+            },
+            onEdit = {
+                // Anname muutmiseks värske objekti
+                stationToUpdate = liveStation
+            },
+            onDelete = {
+                showDeleteConfirmDialog = liveStation
+            }
+        )
+    }
+
+    // Kustutamise kinnitusdialoog
+    if (showDeleteConfirmDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = null },
+            title = { Text("Kustuta jaam?") },
+            text = { Text("Kas soovid jäädavalt kustutada jaama '${showDeleteConfirmDialog?.name}'?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // --- PARANDUS ALGAB ---
+                        // 1. Salvestame jaama kohalikku muutujasse ENNE, kui nullime globaalse oleku
+                        val stationToDelete = showDeleteConfirmDialog
+
+                        if (stationToDelete != null) {
+                            scope.launch {
+                                // 2. Kasutame kohalikku muutujat, mis ei muutu nulliks
+                                stationRepository.deleteStation(stationToDelete)
+                                Toast.makeText(context, "Kustutatud!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        // 3. Nüüd võime dialoogi sulgeda
+                        showDeleteConfirmDialog = null
+                        // --- PARANDUS LÕPEB ---
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Kustuta") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = null }) { Text("Loobu") }
+            }
+        )
+    }
+
+    // Muutmise dialoog
+    if (stationToUpdate != null) {
+        ee.minu.kellraadio.ui.EditStationDialog(
+            stationName = stationToUpdate!!.name,
+            stationUrl = stationToUpdate!!.url,
+            onDismiss = { stationToUpdate = null },
+            onTest = { name, url ->
+                val i = Intent(context, RadioService::class.java).apply {
+                    putExtra("STREAM_URL", url)
+                    putExtra("STATION_NAME", "$name (Eelkuulamine)")
+                    putExtra("TRIGGERED_BY", "USER")
+                }
+                context.startForegroundService(i)
+            },
+            onSave = { newName, newUrl ->
+                scope.launch {
+                    stationRepository.updateUserStation(stationToUpdate!!, newName, newUrl)
+                    Toast.makeText(context, "Muudetud!", Toast.LENGTH_SHORT).show()
+                    stationToUpdate = null
+                }
+            }
+        )
     }
 }

@@ -413,21 +413,40 @@ class RadioService : Service() {
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Log.e(TAG, "Player Error: ${error.message} (kood: ${error.errorCode})")
-            isChangingStation = false // Nullime lipu ka vea korral
+
+            // 1. Teavita UI-d veast (et kasutaja näeks Toasti)
+            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_ERROR))
+
+            // 2. Kontrollime, kas viga on fataalne (nt vale URL, ligipääs puudub)
+            // Kood 2004 on tavaliselt IO_BAD_HTTP_STATUS
+            val cause = error.cause
+            val isFatalError = if (cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) {
+                // Kui server vastab 4xx (nt 401 Unauthorized, 404 Not Found), pole mõtet uuesti proovida
+                cause.responseCode in 400..499
+            } else {
+                false
+            }
+
+            if (isFatalError) {
+                Log.e(TAG, "Tegemist on fataalse veaga (nt vale URL). Lõpetan teenuse.")
+                stopRadio(isError = true)
+                return // Välju funktsioonist, ära käivita uuesti laadimist
+            }
+
+            // 3. Kui viga polnud fataalne (nt levi kadus korraks), proovime uuesti
+            isChangingStation = false
             serviceScope.launch {
-                Log.i(TAG, "Viga tuvastatud. Ootan 2 sekundit ja laen striimi uuesti...")
+                Log.i(TAG, "Võrguviga? Ootan 2 sekundit ja laen striimi uuesti...")
                 delay(2000)
                 withContext(Dispatchers.Main) {
                     if (currentStreamUrl.isNotEmpty()) {
+                        // Taastame meedia
                         val mediaItem = MediaItem.Builder()
                             .setUri(currentStreamUrl)
                             .setMediaId("Raadio")
                             .setMediaMetadata(player.playlistMetadata)
                             .build()
                         player.setMediaItem(mediaItem)
-                        player.prepare()
-                        player.play()
-                    } else {
                         player.prepare()
                         player.play()
                     }

@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import ee.minu.kellraadio.RadioStation
 import kotlinx.coroutines.delay
@@ -35,24 +36,22 @@ fun StationGridItem(
     isPlaying: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    showFavoriteIcon: Boolean // <--- UUS PARAMEETER
+    showFavoriteIcon: Boolean,
+    showFlag: Boolean // UUS PARAMEETER
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    // Jälgime pika vajutuse olekut, et vältida lühikese kliki käivitumist pärast pikka vajutust
     var isLongClickPerformed by remember { mutableStateOf(false) }
 
     LaunchedEffect(interactionSource) {
-        // Hoiame käimasolevat taimerit siin muutujas
         var pressJob: kotlinx.coroutines.Job? = null
 
         interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is PressInteraction.Press -> {
                     isLongClickPerformed = false
-                    // Käivitame uue ootamise (700ms)
                     pressJob = launch {
                         delay(700)
                         isLongClickPerformed = true
@@ -61,11 +60,9 @@ fun StationGridItem(
                     }
                 }
                 is PressInteraction.Release -> {
-                    // Kui nupp lasti lahti, siis tühistame taimeri (et ei muutuks lemmikuks)
                     pressJob?.cancel()
                 }
                 is PressInteraction.Cancel -> {
-                    // Kui liigutus katkestati, tühistame samuti
                     pressJob?.cancel()
                 }
             }
@@ -91,23 +88,20 @@ fun StationGridItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .height(72.dp)
+            .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = {
-                    // Käivitame raadio ainult siis, kui see EI olnud pikk vajutus
                     if (!isLongClickPerformed) {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onClick()
                     }
                 },
-                onLongClick = {
-                    // See jääb tühjaks, sest meie taimer teeb töö ära nii telefonis kui telekas
-                }
+                onLongClick = { }
             ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
@@ -118,6 +112,21 @@ fun StationGridItem(
         border = borderStroke
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
+
+            // --- LIPP ---
+            if (showFlag && station.countryCode.isNotEmpty()) {
+                Text(
+                    text = getFlagEmoji(station.countryCode),
+                    //style = MaterialTheme.typography.labelSmall,
+                    style = androidx.compose.ui.text.TextStyle(fontSize = 9.sp),
+
+                            modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 4.dp, top = 4.dp)
+                )
+            }
+            // ------------
+
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.bodyMedium,
@@ -128,12 +137,11 @@ fun StationGridItem(
                 modifier = Modifier.align(Alignment.Center)
             )
 
-            // --- MUUDETUD LOOGIKA ---
             if (station.isFavorite && showFavoriteIcon) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary,
+                    tint = MaterialTheme.colorScheme.onSecondary, // Oranžikas
                     modifier = Modifier
                         .size(16.dp)
                         .align(Alignment.TopEnd)

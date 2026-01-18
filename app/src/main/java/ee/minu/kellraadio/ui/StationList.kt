@@ -34,6 +34,7 @@ fun StationList(
     isRefreshing: Boolean,
     columnCountPortrait: Int,
     columnCountLandscape: Int,
+    showFlags: Boolean,
     onCategorySelect: (String) -> Unit,
     onRefresh: () -> Unit,
     onStationSelect: (RadioStation) -> Unit,
@@ -173,7 +174,8 @@ fun StationList(
                             isPlaying = playerStatus.contains("Mängib"),
                             onClick = { onStationSelect(station) },
                             onLongClick = { onStationLongClick(station) },
-                            showFavoriteIcon = selectedCategory != "Lemmikud"
+                            showFavoriteIcon = selectedCategory != "Lemmikud",
+                            showFlag = showFlags
                         )
                     }
                 }
@@ -191,7 +193,7 @@ fun StationList(
                 val stationsForPage = remember(pageCategory, stations) {
                     when (pageCategory) {
                         "Lemmikud" -> stations.filter { it.isFavorite }
-                        "Kõik kanalid" -> stations
+                        "Kõik" -> stations
                         else -> stations.filter { it.category == pageCategory }
                     }
                 }
@@ -215,7 +217,8 @@ fun StationList(
                                 isPlaying = playerStatus.contains("Mängib"),
                                 onClick = { onStationSelect(station) },
                                 onLongClick = { onStationLongClick(station) },
-                                showFavoriteIcon = pageCategory != "Lemmikud"
+                                showFavoriteIcon = pageCategory != "Lemmikud",
+                                showFlag = showFlags
                             )
                         }
                     }

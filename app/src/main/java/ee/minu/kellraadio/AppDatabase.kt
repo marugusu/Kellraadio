@@ -6,19 +6,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-// --- MUUDATUSED ---
-// 1. Lisasime 'Alarm::class' entities nimekirja.
-// 2. Tõstsime versiooni 4 -> 5.
-// 3. Lisasime @TypeConverters(Converters::class), et Room oskaks Set<Int> käsitleda.
-@Database(entities = [RadioStation::class, HistoryItem::class, Alarm::class], version = 5, exportSchema = false)
+@Database(entities = [RadioStation::class, HistoryItem::class, Alarm::class], version = 7, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun radioStationDao(): RadioStationDao
     abstract fun historyDao(): HistoryDao
-
-    // --- UUS FUNKTSIOON ---
-    // See annab meile ligipääsu AlarmDao liidesele.
     abstract fun alarmDao(): AlarmDao
 
     companion object {

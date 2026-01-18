@@ -21,14 +21,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ee.minu.kellraadio.LogExporter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class) // JÄTA SEE ALLES!
 @Composable
 fun SettingsScreen(
     isRefreshing: Boolean,
-    colsPortrait: Int,                    // UUS
-    colsLandscape: Int,                   // UUS
-    onColsPortraitChange: (Int) -> Unit,   // UUS
-    onColsLandscapeChange: (Int) -> Unit,  // UUS
+    colsPortrait: Int,
+    colsLandscape: Int,
+    showFlags: Boolean,
+    onToggleShowFlags: (Boolean) -> Unit,
+    onColsPortraitChange: (Int) -> Unit,
+    onColsLandscapeChange: (Int) -> Unit,
     onRefresh: () -> Unit,
     onAddTestData: () -> Unit,
     modifier: Modifier = Modifier
@@ -115,7 +117,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            val portraitOptions = listOf(2, 3, 4, 5)
+                            val portraitOptions = listOf(2, 3, 4, 5, 6)
                             portraitOptions.forEachIndexed { index, count ->
                                 SegmentedButton(
                                     selected = colsPortrait == count,
@@ -157,6 +159,34 @@ fun SettingsScreen(
                                     Text(count.toString())
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider(color = MaterialTheme.colorScheme.surface) // Väike joon vahele
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // UUS: Lippude lüliti
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Näita riigilippe",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Kuva kanalite juures päritoluriigi lippu",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = showFlags,
+                                onCheckedChange = onToggleShowFlags
+                            )
                         }
                     }
                 }
