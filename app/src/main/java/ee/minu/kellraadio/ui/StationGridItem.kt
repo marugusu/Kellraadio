@@ -63,7 +63,7 @@ fun StationGridItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(64.dp)
             .clip(RoundedCornerShape(12.dp))
             // 1. TV PULDI LOOGIKA
             .onKeyEvent { event ->
@@ -151,7 +151,7 @@ fun StationGridItem(
                 Text(
                     text = getFlagEmoji(station.countryCode),
                     style = androidx.compose.ui.text.TextStyle(fontSize = 10.sp),
-                    modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 4.dp)
+                    modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 4.dp, bottom = 4.dp,)
                 )
             }
             Text(
@@ -163,14 +163,14 @@ fun StationGridItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(bottom = 0.dp, start = 8.dp, end = 8.dp)
+                    .padding(top = 8.dp, bottom = 0.dp, start = 8.dp, end = 8.dp)
             )
             if (station.isFavorite && showFavoriteIcon) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(16.dp).align(Alignment.TopEnd).padding(top = 4.dp, end = 8.dp)
+                    modifier = Modifier.size(16.dp).align(Alignment.TopEnd).padding(top = 4.dp, end = 8.dp,bottom = 4.dp,)
                 )
             }
         }

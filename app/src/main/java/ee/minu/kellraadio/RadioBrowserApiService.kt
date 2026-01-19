@@ -38,7 +38,7 @@ interface RadioBrowserApiService {
     @GET("json/stations/search")
     suspend fun advancedSearch(
         @Query("name") name: String,
-        @Query("country") country: String? = null,
+        @Query("countrycode") countryCode: String? = null,
         @Query("tag") tag: String? = null, // UUS: Žanr
         @Query("hidebroken") hideBroken: Boolean = true,
         @Query("limit") limit: Int = 100,

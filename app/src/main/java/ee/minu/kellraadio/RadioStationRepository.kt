@@ -90,26 +90,6 @@ class RadioStationRepository(
             Log.e("RADIO_DEBUG", "Viga värskendamisel: ${e.message}")
         }
     }
-
-    // --- SEE ON NÜÜD AINUS OTSINGU FUNKTSIOON ---
-    suspend fun searchStations(query: String): List<RadioBrowserStation> {
-        return try {
-            if (query.length < 2) return emptyList()
-
-            // 1. Teeme päringu (kasutame advancedSearch)
-            val rawResults = searchApiService.advancedSearch(
-                name = query
-            )
-
-            // 2. TURVAFILTER: Blokeerime Venemaa (RU)
-            return rawResults.filter { station ->
-                station.countryCode != "RU" && !station.country.contains("Russia", ignoreCase = true)
-            }
-        } catch (e: Exception) {
-            Log.e("RADIO_DEBUG", "Otsingu viga: ${e.message}")
-            emptyList()
-        }
-    }
     suspend fun getCountries(): List<RadioFilterItem> {
         if (countriesCache != null) return countriesCache!!
         return try {
@@ -132,25 +112,24 @@ class RadioStationRepository(
     }
 
     // UUENDATUD OTSING
-    suspend fun searchStations(query: String, country: String?, tag: String?): List<RadioBrowserStation> {
+    suspend fun searchStations(query: String, countryCode: String?, tag: String?): List<RadioBrowserStation> {
         return try {
-            // Otsing peab olema võimalik ka ilma nimeta, kui on valitud filter
-            // Aga API nõuab midagi. Kui nimi on tühi, aga filter on, saadame nimeks "" (tühi).
-            // Kui kõik on tühjad, tagastame tühja listi.
-            if (query.length < 2 && country == null && tag == null) return emptyList()
+            // Kontrollime sisendit
+            if (query.length < 2 && countryCode == null && tag == null) return emptyList()
 
+            // Teeme päringu
             val rawResults = searchApiService.advancedSearch(
                 name = query,
-                country = country,
+                countryCode = countryCode, // Siin kasutame parameetrit countryCode
                 tag = tag
             )
 
-            // Turvafilter (Venemaa)
+            // Filtreerime tulemused
             rawResults.filter { station ->
                 station.countryCode != "RU" && !station.country.contains("Russia", ignoreCase = true)
             }
         } catch (e: Exception) {
-            Log.e("RADIO_DEBUG", "Otsingu viga: ${e.message}")
+            android.util.Log.e("RADIO_DEBUG", "Otsingu viga: ${e.message}")
             emptyList()
         }
     }

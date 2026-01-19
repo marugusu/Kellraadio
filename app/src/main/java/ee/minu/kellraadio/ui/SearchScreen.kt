@@ -57,7 +57,7 @@ fun SearchScreen(
 
 
     // FILTRITE OLEKUD
-    var selectedCountry by remember { mutableStateOf<String?>(null) }
+    var selectedCountry by remember { mutableStateOf<RadioFilterItem?>(null) }
     var selectedGenre by remember { mutableStateOf<String?>(null) }
 
     // SHEET OLEKUD
@@ -85,7 +85,7 @@ fun SearchScreen(
         hasSearched = true
 
         scope.launch {
-            results = repository.searchStations(query, selectedCountry, selectedGenre)
+            results = repository.searchStations(query, selectedCountry?.isoCode, selectedGenre)
             isLoading = false
             if (results.isEmpty()) {
                 Toast.makeText(context, "Ei leidnud midagi", Toast.LENGTH_SHORT).show()
@@ -168,12 +168,13 @@ fun SearchScreen(
                 FilterChip(
                     selected = selectedCountry != null,
                     onClick = {
+                        // Kui on valitud, siis tühistame (null), muidu avame menüü
                         if (selectedCountry == null) openFilter("COUNTRY") else selectedCountry = null
                     },
-                    // Lühendame teksti, kui liiga pikk
                     label = {
+                        // Kuvame NIME kasutajale
                         Text(
-                            text = selectedCountry ?: "Kõik riigid",
+                            text = selectedCountry?.name ?: "Kõik riigid",
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
@@ -276,7 +277,11 @@ fun SearchScreen(
             items = filterItems,
             onDismiss = { showFilterSheet = false },
             onSelect = { item ->
-                if (filterType == "COUNTRY") selectedCountry = item.name else selectedGenre = item.name
+                if (filterType == "COUNTRY") {
+                    selectedCountry = item // SALVESTAME KOGU OBJEKTI
+                } else {
+                    selectedGenre = item.name // Žanril pole koodi, jääb nimi
+                }
                 showFilterSheet = false
             }
         )
