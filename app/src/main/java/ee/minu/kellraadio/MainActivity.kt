@@ -43,6 +43,9 @@ import ee.minu.kellraadio.ui.SleepTimerDialog
 import ee.minu.kellraadio.ui.StationActionSheet // UUS
 import ee.minu.kellraadio.ui.EditStationDialog
 import ee.minu.kellraadio.ui.StationList
+import androidx.lifecycle.viewmodel.compose.viewModel
+import ee.minu.kellraadio.ui.SearchViewModel
+import ee.minu.kellraadio.ui.SearchViewModelFactory
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -118,6 +121,7 @@ fun RaadioEkraan() {
         )
     }
 
+    val searchViewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(stationRepository))
     val stations by stationRepository.allStations.collectAsState(initial = emptyList())
     val alarmDao = remember { database.alarmDao() }
     val alarms by alarmDao.getAllAlarms().collectAsState(initial = emptyList())
@@ -381,10 +385,9 @@ fun RaadioEkraan() {
 
                     // SearchScreen
                     3 -> SearchScreen(
-                        repository = stationRepository,
+                        repository = stationRepository, // <--- SEE RIDA ON TAGASI LISATUD
                         allStations = stations,
                         activeUrl = playingStationUrl,
-                        // MUUDATUS: Lisasime kolmanda parameetri 'isSaved'
                         onPlayTest = { name, url, isSaved ->
                             if (url == playingStationUrl && isPlaying) {
                                 val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
@@ -392,24 +395,21 @@ fun RaadioEkraan() {
                                 playingStationUrl = ""
                             } else {
                                 playingStationUrl = url
-
-                                // MUUDATUS: Kui on salvestatud, siis kasuta nime otse. Kui ei, lisa "(Lisamata!)"
                                 val displayName = if (isSaved) name else "$name (Lisamata!)"
-
                                 val i = Intent(context, RadioService::class.java).apply {
                                     putExtra("STREAM_URL", url)
-                                    putExtra("STATION_NAME", displayName) // Kasutame uut nime
+                                    putExtra("STATION_NAME", displayName)
                                     putExtra("TRIGGERED_BY", "USER")
                                 }
                                 context.startForegroundService(i)
                             }
                         },
                         onStationAdded = {
-                            selectedCategory = "Minu" // Kontrolli, kas sul on "Minu" või "Minu jaamad"
+                            selectedCategory = "Minu"
                             prefs.edit().putString("last_category", "Minu").apply()
-                        }
+                        },
+                        viewModel = searchViewModel
                     )
-
                         // SettingsScreen
                     4 -> SettingsScreen(
                         isRefreshing = isRefreshing,
@@ -509,10 +509,9 @@ fun RaadioEkraan() {
 
                     // UUS: SearchScreen
                     3 -> SearchScreen(
-                        repository = stationRepository,
+                        repository = stationRepository, // <--- SEE RIDA ON TAGASI LISATUD
                         allStations = stations,
                         activeUrl = playingStationUrl,
-                        // MUUDATUS: Lisasime kolmanda parameetri 'isSaved'
                         onPlayTest = { name, url, isSaved ->
                             if (url == playingStationUrl && isPlaying) {
                                 val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
@@ -520,22 +519,20 @@ fun RaadioEkraan() {
                                 playingStationUrl = ""
                             } else {
                                 playingStationUrl = url
-
-                                // MUUDATUS: Kui on salvestatud, siis kasuta nime otse. Kui ei, lisa "(Lisamata!)"
                                 val displayName = if (isSaved) name else "$name (Lisamata!)"
-
                                 val i = Intent(context, RadioService::class.java).apply {
                                     putExtra("STREAM_URL", url)
-                                    putExtra("STATION_NAME", displayName) // Kasutame uut nime
+                                    putExtra("STATION_NAME", displayName)
                                     putExtra("TRIGGERED_BY", "USER")
                                 }
                                 context.startForegroundService(i)
                             }
                         },
                         onStationAdded = {
-                            selectedCategory = "Minu" // Kontrolli, kas sul on "Minu" või "Minu jaamad"
+                            selectedCategory = "Minu"
                             prefs.edit().putString("last_category", "Minu").apply()
-                        }
+                        },
+                        viewModel = searchViewModel
                     )
                         // UUS: SettingsScreen
                     4 -> SettingsScreen(

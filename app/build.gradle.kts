@@ -46,6 +46,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.0")
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("androidx.activity:activity-compose:1.8.2")
 
     // Compose (Disain) - Kasutame BOM-i, et versioonid klapiks
@@ -56,6 +57,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
     implementation("androidx.compose.foundation:foundation")
+
 
     // RAADIO MOOTOR (Need on kõige tähtsamad)
     implementation("androidx.media3:media3-exoplayer:1.2.0")

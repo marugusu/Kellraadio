@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ee.minu.kellraadio.RadioBrowserStation
 import ee.minu.kellraadio.RadioFilterItem
 import ee.minu.kellraadio.RadioStationRepository
@@ -38,8 +39,23 @@ fun SearchScreen(
     activeUrl: String,
     onPlayTest: (String, String, Boolean) -> Unit,
     onStationAdded: () -> Unit,
-    modifier: Modifier = Modifier
-)  {
+    modifier: Modifier = Modifier,
+    // Loome ViewModeli siin, kasutades tehast
+    viewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(repository))
+) {
+    // Kogume andmed ViewModelist kui "state", et UI uuendaks ennast automaatselt
+    val query by viewModel.query.collectAsState()
+    val results by viewModel.results.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val hasSearched by viewModel.hasSearched.collectAsState()
+    val selectedCountry by viewModel.selectedCountry.collectAsState()
+    val selectedGenre by viewModel.selectedGenre.collectAsState()
+    val showFilterSheet by viewModel.showFilterSheet.collectAsState()
+    val filterType by viewModel.filterType.collectAsState()
+    val filterItems by viewModel.filterItems.collectAsState()
+    val showManualDialog by viewModel.showManualDialog.collectAsState()
+    val listState = viewModel.listState // Kasutame ViewModeli LazyListState'i
+
     val savedIdentifiers = remember(allStations) {
         allStations.flatMap { listOf(it.url, it.uuid) }.filter { it.isNotEmpty() }.toSet()
     }
@@ -49,69 +65,18 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<RadioBrowserStation>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var hasSearched by remember { mutableStateOf(false) }
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-
-
-    // FILTRITE OLEKUD
-    var selectedCountry by remember { mutableStateOf<RadioFilterItem?>(null) }
-    var selectedGenre by remember { mutableStateOf<String?>(null) }
-
-    // SHEET OLEKUD
-    var showFilterSheet by remember { mutableStateOf(false) }
-    var filterType by remember { mutableStateOf("") } // "COUNTRY" või "GENRE"
-    var filterItems by remember { mutableStateOf<List<RadioFilterItem>>(emptyList()) }
-
-    var showManualDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(results) {
-        if (results.isNotEmpty()) {
-            listState.scrollToItem(0)
-        }
-    }
-
-    fun performSearch() {
-        // Lubame otsida ka tühja nimega, kui filter on valitud
-        if (query.trim().length < 2 && selectedCountry == null && selectedGenre == null) {
-            Toast.makeText(context, "Sisesta nimi või vali filter", Toast.LENGTH_SHORT).show()
-            return
-        }
+    // See funktsioon on nüüd lühem, sest loogika on ViewModelis
+    fun performSearchWithUIEffects() {
         keyboardController?.hide()
         focusManager.clearFocus()
-        isLoading = true
-        hasSearched = true
-
-        scope.launch {
-            results = repository.searchStations(query, selectedCountry?.isoCode, selectedGenre)
-            isLoading = false
-            if (results.isEmpty()) {
-                Toast.makeText(context, "Ei leidnud midagi", Toast.LENGTH_SHORT).show()
-            }
-        }
+        viewModel.performSearch()
     }
 
-    // Kui filter muutub, otsime automaatselt (kui on midagi otsida)
-    LaunchedEffect(selectedCountry, selectedGenre) {
-        if (query.length >= 2 || selectedCountry != null || selectedGenre != null) {
-            performSearch()
-        }
-    }
-
-    fun openFilter(type: String) {
-        scope.launch {
-            isLoading = true
-            filterItems = if (type == "COUNTRY") repository.getCountries() else repository.getTags()
-            filterType = type
-            isLoading = false
-            showFilterSheet = true
-        }
-    }
+    // Kui filter muutub, otsime automaatselt (see loogika on nüüd ViewModelis)
+    // LaunchedEffect on siit eemaldatud, kuna ViewModel tegeleb sellega ise.
 
     Column(modifier = modifier.fillMaxSize()) {
-        // --- PÄIS ---
+        // --- PÄIS --- (JÄI SAMAKS)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -137,22 +102,25 @@ fun SearchScreen(
         ) {
             Spacer(modifier = Modifier.height(0.dp))
 
-            // OTSINGURIBA
+            // OTSINGURIBA (Väärtus ja onValueChange tulevad ViewModelist)
             OutlinedTextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = { viewModel.onQueryChange(it) },
                 placeholder = { Text("Otsi jaama...") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = ""; performSearch() }) {
+                        IconButton(onClick = {
+                            viewModel.onQueryChange("")
+                            performSearchWithUIEffects()
+                        }) {
                             Icon(Icons.Default.Close, null)
                         }
                     }
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { performSearch() }),
+                keyboardActions = KeyboardActions(onSearch = { performSearchWithUIEffects() }),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -164,47 +132,26 @@ fun SearchScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // RIIK (50% laiusest)
+                // RIIK
                 FilterChip(
                     selected = selectedCountry != null,
                     onClick = {
-                        // Kui on valitud, siis tühistame (null), muidu avame menüü
-                        if (selectedCountry == null) openFilter("COUNTRY") else selectedCountry = null
+                        if (selectedCountry == null) viewModel.openFilter("COUNTRY") else viewModel.onCountrySelected(null)
                     },
-                    label = {
-                        // Kuvame NIME kasutajale
-                        Text(
-                            text = selectedCountry?.name ?: "Kõik riigid",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    },
-                    leadingIcon = {
-                        if (selectedCountry != null) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
-                        else Icon(Icons.Default.Public, null, modifier = Modifier.size(16.dp))
-                    },
-                    modifier = Modifier.weight(1f) // Jagab ruumi võrdselt
+                    label = { Text(text = selectedCountry?.name ?: "Kõik riigid", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                    leadingIcon = { if (selectedCountry != null) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) else Icon(Icons.Default.Public, null, modifier = Modifier.size(16.dp)) },
+                    modifier = Modifier.weight(1f)
                 )
 
-                // ŽANR (50% laiusest)
+                // ŽANR
                 FilterChip(
                     selected = selectedGenre != null,
                     onClick = {
-                        if (selectedGenre == null) openFilter("GENRE") else selectedGenre = null
+                        if (selectedGenre == null) viewModel.openFilter("GENRE") else viewModel.onGenreSelected(null)
                     },
-                    // Lühendame teksti
-                    label = {
-                        Text(
-                            text = selectedGenre ?: "Kõik žanrid",
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    },
-                    leadingIcon = {
-                        if (selectedGenre != null) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
-                        else Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(16.dp))
-                    },
-                    modifier = Modifier.weight(1f) // Jagab ruumi võrdselt
+                    label = { Text(text = selectedGenre ?: "Kõik žanrid", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                    leadingIcon = { if (selectedGenre != null) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) else Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(16.dp)) },
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -215,7 +162,7 @@ fun SearchScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { performSearch() },
+                    onClick = { performSearchWithUIEffects() },
                     enabled = !isLoading,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -228,7 +175,7 @@ fun SearchScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                TextButton(onClick = { showManualDialog = true }) {
+                TextButton(onClick = { viewModel.openManualAddDialog() }) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Lisa käsitsi")
@@ -240,7 +187,7 @@ fun SearchScreen(
             // TULEMUSED
             if (results.isNotEmpty()) {
                 LazyColumn(
-                    state = listState,
+                    state = listState, // Kasutame ViewModeli olekut
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
@@ -275,27 +222,27 @@ fun SearchScreen(
         FilterSheet(
             title = if (filterType == "COUNTRY") "Vali riik" else "Vali žanr",
             items = filterItems,
-            onDismiss = { showFilterSheet = false },
+            onDismiss = { viewModel.closeFilterSheet() },
             onSelect = { item ->
                 if (filterType == "COUNTRY") {
-                    selectedCountry = item // SALVESTAME KOGU OBJEKTI
+                    viewModel.onCountrySelected(item)
                 } else {
-                    selectedGenre = item.name // Žanril pole koodi, jääb nimi
+                    viewModel.onGenreSelected(item.name)
                 }
-                showFilterSheet = false
+                viewModel.closeFilterSheet()
             }
         )
     }
 
     if (showManualDialog) {
         ManualAddDialog(
-            onDismiss = { showManualDialog = false },
+            onDismiss = { viewModel.closeManualAddDialog() },
             onTest = { name, url -> onPlayTest(if(name.isNotBlank()) name else "Tundmatu", url, false) },
             onSave = { name, url ->
                 scope.launch {
                     repository.saveUserStation(name, url)
                     Toast.makeText(context, "Lisatud: $name", Toast.LENGTH_SHORT).show()
-                    showManualDialog = false
+                    viewModel.closeManualAddDialog()
                     onStationAdded()
                 }
             }
@@ -303,7 +250,10 @@ fun SearchScreen(
     }
 }
 
-// UUS KOMPONENT: Filtri valik (otsinguga nimekiri)
+
+// --- ÜLEJÄÄNUD KOOD (FilterSheet, SearchResultItem, jne) JÄÄB SAMAKS ---
+// Kopeerin selle siia, et sul oleks terve fail ühes tükis.
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterSheet(
@@ -320,7 +270,7 @@ fun FilterSheet(
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp), // Standardne kaardi kuju
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
             modifier = Modifier
@@ -328,14 +278,11 @@ fun FilterSheet(
                 .fillMaxHeight(0.85f)
         ) {
             Column(modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 0.dp)) {
-                // PÄIS
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge, // Sama mis mujal pealkirjad
+                    style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
                 )
-
-                // OTSINGURIBA - Sama stiil mis SearchScreeni põhiotsingul
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -344,25 +291,21 @@ fun FilterSheet(
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp), // Kandilisemad nurgad (mitte CircleShape)
+                    shape = RoundedCornerShape(12.dp),
                     leadingIcon = { Icon(Icons.Default.Search, null) }
                 )
-
                 Spacer(modifier = Modifier.height(4.dp))
-
-                // NIMEKIRI
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(0.dp) // Standardne tihedus
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     items(filteredItems) { item ->
                         val flag = if (item.isoCode != null) ee.minu.kellraadio.ui.getFlagEmoji(item.isoCode) else ""
-
                         ListItem(
                             headlineContent = {
                                 Text(
                                     text = item.name,
-                                    fontWeight = FontWeight.Normal, // Tavaline, mitte Bold
+                                    fontWeight = FontWeight.Normal,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                             },
@@ -377,7 +320,7 @@ fun FilterSheet(
                                 if (flag.isNotEmpty()) {
                                     Text(
                                         text = flag,
-                                        style = MaterialTheme.typography.titleMedium // Standardne suurus, ei ole suurendatud
+                                        style = MaterialTheme.typography.titleMedium
                                     )
                                 }
                             },
@@ -386,7 +329,6 @@ fun FilterSheet(
                                 .clickable { onSelect(item) },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         )
-                        // Jooned eemaldatud puhtama ilme saavutamiseks, nagu soovisid
                     }
                 }
             }
@@ -394,7 +336,6 @@ fun FilterSheet(
     }
 }
 
-// See on juba olemas (SearchResultItem), aga peab olema siin failis (või importida)
 @Composable
 fun SearchResultItem(
     station: RadioBrowserStation,
@@ -404,7 +345,6 @@ fun SearchResultItem(
     onAdd: () -> Unit
 ) {
     val flag = ee.minu.kellraadio.ui.getFlagEmoji(station.countryCode)
-
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp),
@@ -414,7 +354,6 @@ fun SearchResultItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. PLAY/STOP NUPP (VASAKUL)
             IconButton(
                 onClick = onPlay,
                 modifier = Modifier
@@ -427,10 +366,7 @@ fun SearchResultItem(
                     tint = if (isPlaying) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
-
             Spacer(modifier = Modifier.width(12.dp))
-
-            // 2. INFO (KESKEL)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = station.name,
@@ -447,8 +383,6 @@ fun SearchResultItem(
                 }
                 Text(text = infoText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-
-            // 3. LISA NUPP (PAREMAL)
             IconButton(
                 onClick = {
                     if (!isSaved) {
@@ -467,11 +401,8 @@ fun SearchResultItem(
     }
 }
 
-// ... ManualAddDialog ja EditStationDialog jäävad faili lõppu nagu enne ...
-// (Lühendasin siin ruumi säästmiseks, aga sinu failis peavad need alles jääma)
 @Composable
 fun ManualAddDialog(onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String) -> Unit) {
-    // ... (sama sisu mis enne) ...
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     AlertDialog(
@@ -484,7 +415,6 @@ fun ManualAddDialog(onDismiss: () -> Unit, onTest: (String, String) -> Unit, onS
 
 @Composable
 fun EditStationDialog(stationName: String, stationUrl: String, onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String) -> Unit) {
-    // ... (sama sisu mis enne) ...
     var name by remember { mutableStateOf(stationName) }
     var url by remember { mutableStateOf(stationUrl) }
     AlertDialog(
