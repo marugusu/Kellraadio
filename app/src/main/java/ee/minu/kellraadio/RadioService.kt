@@ -198,7 +198,7 @@ class RadioService : Service() {
 
             // 2. Filtreerime nimekirja vastavalt salvestatud kategooriale
             val navigationList = when (currentCategory) {
-                "Lemmikud" -> allStations.filter { it.isFavorite }
+                "Favorites" -> allStations.filter { it.isFavorite }
                 "" -> allStations // Kui kategooriat pole määratud (nt äratus), võta kõik
                 else -> allStations.filter { it.category == currentCategory }
             }

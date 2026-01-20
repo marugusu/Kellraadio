@@ -251,7 +251,7 @@ fun RaadioEkraan() {
                     selectedStationId = actualStation.id
                     selectedStationName = actualStation.name
 
-                    val userWasInFavorites = (selectedCategory == "Lemmikud")
+                    val userWasInFavorites = (selectedCategory == "Favorites")
                     val isStationFavorite = actualStation.isFavorite
                     val shouldChangeCategory = (!userWasInFavorites && selectedCategory != actualStation.category) || (userWasInFavorites && !isStationFavorite)
 
@@ -278,7 +278,7 @@ fun RaadioEkraan() {
                         if (stationId != -1) {
                             selectedStationId = stationId
                             val station = stations.find { it.id == stationId }
-                            if (station != null && selectedCategory != "Lemmikud" && selectedCategory != station.category) {
+                            if (station != null && selectedCategory != "Favorites" && selectedCategory != station.category) {
                                 selectedCategory = station.category
                             }
                         }
@@ -397,7 +397,7 @@ fun RaadioEkraan() {
                         }
                     )
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
-                    2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show() } })
+                    2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Favorites" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show() } })
                     3 -> SearchScreen(
                         repository = stationRepository,
                         allStations = stations,
@@ -511,7 +511,7 @@ fun RaadioEkraan() {
                         }
                     )
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
-                    2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Lemmikud" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show() } })
+                    2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Favorites" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show() } })
                     3 -> SearchScreen(
                         repository = stationRepository,
                         allStations = stations,
