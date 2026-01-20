@@ -1,0 +1,133 @@
+<resources>
+    <string name="app_name">rRaadio</string>
+
+    <!-- Navigation -->
+    <string name="nav_radio">Raadio</string>
+    <string name="nav_alarms">Äratused</string>
+    <string name="nav_history">Ajalugu</string>
+    <string name="nav_add_channel">Lisa</string>
+    <string name="nav_settings">Seaded</string>
+
+    <!-- Categories -->
+    <string name="cat_favorites">Lemmikud</string>
+    <string name="cat_my_stations">Minu jaamad</string>
+    <string name="cat_all">Kõik</string>
+
+    <!-- General Actions -->
+    <string name="action_cancel">Loobu</string>
+    <string name="action_save">Salvesta</string>
+    <string name="action_delete">Kustuta</string>
+    <string name="action_close">Sulge</string>
+    <string name="action_search">Otsi</string>
+    <string name="action_play">Mängi</string>
+    <string name="action_pause">Paus</string>
+    <string name="action_stop">Stopp</string>
+    <string name="action_test">Testi</string>
+
+    <!-- Player & Service -->
+    <string name="status_playing">Mängib</string>
+    <string name="status_stopped">Peatatud</string>
+    <string name="status_buffering">Laen...</string>
+    <string name="status_error">Ühenduse viga</string>
+    <string name="live_broadcast">Otseeeter</string>
+    <string name="select_station">Vali jaam</string>
+    <string name="notification_playing">Mängib: %1$s</string>
+    <string name="notification_alarm">Äratus!</string>
+    <string name="error_station_not_found">Jaama ei leitud!</string>
+
+    <!-- Alarms -->
+    <string name="alarm_title">Äratused</string>
+    <string name="alarm_no_alarms">Äratusi pole lisatud</string>
+    <string name="alarm_add_new">Lisa äratus</string>
+    <string name="alarm_set_title">Sea äratus</string>
+    <string name="alarm_edit_title">Muuda äratust</string>
+    <string name="alarm_toast_saved">Äratus salvestatud!</string>
+    <string name="alarm_toast_deleted">Äratus kustutatud!</string>
+    <string name="timer_dialog_title">Unetaimer</string>
+    <string name="timer_minutes">%1$d minutit</string>
+    <string name="timer_until">Mängib kuni kella %1$s-ni</string>
+    <string name="timer_start">Käivita</string>
+
+    <!-- History -->
+    <string name="history_title">Ajalugu</string>
+    <string name="history_empty">Ajalugu on tühi.</string>
+    <string name="history_empty_day">Sellel päeval kuulamisi polnud.</string>
+    <string name="history_delete_confirm_title">Ajaloo kustutamine</string>
+    <string name="history_delete_confirm_text">Kas oled kindel, et soovid kogu kuulamisajaloo jäädavalt kustutada?</string>
+    <string name="history_today">Täna</string>
+    <string name="history_yesterday">Eile</string>
+    <string name="date_picker_title">Vali kuupäev</string>
+
+    <!-- Search / Add Station -->
+    <string name="search_title">Lisa kanal</string>
+    <string name="search_placeholder">Otsi jaama...</string>
+    <string name="search_manual">Lisa käsitsi</string>
+    <string name="search_no_results">Tulemusi ei leitud.</string>
+    <string name="filter_country">Riik</string>
+    <string name="filter_genre">Žanr</string>
+    <string name="filter_all_countries">Kõik riigid</string>
+    <string name="filter_all_genres">Kõik žanrid</string>
+    <string name="manual_dialog_title">Lisa jaam käsitsi</string>
+    <string name="station_name">Jaama nimi</string>
+    <string name="stream_url">Striimi URL</string>
+    <string name="station_added">Lisatud: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Seaded</string>
+    <string name="settings_group_radio">Raadio ja Kanalid</string>
+    <string name="settings_refresh">Värskenda jaamu</string>
+    <string name="settings_refresh_desc">Lae serverist uusim kanalite nimekiri</string>
+    <string name="settings_group_appearance">Välimus ja Paigutus</string>
+    <string name="settings_grid_layout">Kanalite ruudustik</string>
+    <string name="settings_portrait">Püstine vaade (Portrait)</string>
+    <string name="settings_landscape">Külili vaade (Landscape)</string>
+    <string name="settings_show_flags">Näita riigilippe</string>
+    <string name="settings_show_flags_desc">Kuva kanalite juures päritoluriigi lippu</string>
+    <string name="settings_group_general">Üldine</string>
+    <string name="settings_language">Keel / Language</string>
+    <string name="settings_language_desc">Vali rakenduse keel</string>
+    <string name="settings_group_help">Abi ja Diagnostika</string>
+    <string name="settings_send_log">Saada logi</string>
+    <string name="settings_send_log_desc">Jaga tehnilist infot arendajaga</string>
+    <string name="settings_test_data">Testi ajalugu</string>
+    <string name="settings_test_data_desc">Lisa andmebaasi prooviandmeid</string>
+    <string name="app_version">Versioon %1$s</string>
+    <string name="toast_updated">Uuendatud!</string>
+
+    <!-- Info Screen -->
+    <string name="info_title">Rakendusest</string>
+    <string name="info_card_1_title">Sinu igapäevane raadiokaaslane</string>
+    <string name="info_card_1_text">Kellraadio on loodud pakkuma lihtsat ja mugavat viisi Eesti ja välismaiste raadiojaamade kuulamiseks.</string>
+    <string name="info_card_2_title">Töökindel äratussüsteem</string>
+    <string name="info_card_2_text">Rakendus on optimeeritud nii, et Sinu lemmikjaam hakkaks mängima täpselt määratud ajal.</string>
+    <string name="info_card_3_title">Stabiilne taustaheli</string>
+    <string name="info_card_3_text">Oleme pööranud erilist tähelepanu sellele, et muusika mängiks katkematult ka siis, kui kasutad teisi äppe.</string>
+    <string name="info_card_4_title">Nutikas kuulmisajalugu</string>
+    <string name="info_card_4_text">Kas kuulsid raadiost head lugu, aga ei mäleta nime? Ajaloo vaatest leiad kiiresti viimati mängitud palad.</string>
+    <string name="info_dev_location">Arendatud Eestis</string>
+
+    <!-- Station Actions -->
+    <string name="action_remove_favorite">Eemalda lemmikutest</string>
+    <string name="action_add_favorite">Lisa lemmikuks</string>
+    <string name="action_set_alarm">Sea äratus</string>
+    <string name="action_edit_station">Muuda jaama</string>
+    <string name="action_delete_station">Kustuta jaam</string>
+    <string name="delete_station_confirm_title">Kustuta jaam?</string>
+    <string name="delete_station_confirm_text">Kas soovid jäädavalt kustutada jaama \'%1$s\'?</string>
+
+    <!-- Days of week (Short) -->
+    <string name="day_mon">E</string>
+    <string name="day_tue">T</string>
+    <string name="day_wed">K</string>
+    <string name="day_thu">N</string>
+    <string name="day_fri">R</string>
+    <string name="day_sat">L</string>
+    <string name="day_sun">P</string>
+
+    <!-- Week ranges -->
+    <string name="days_every_day">Iga päev</string>
+    <string name="days_weekdays">E-R</string>
+    <string name="days_weekend">L-P</string>
+    <string name="alarm_once">1x</string>
+
+</resources>
