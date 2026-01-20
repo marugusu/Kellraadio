@@ -155,6 +155,7 @@ fun RaadioEkraan() {
     var parsedArtist by rememberSaveable { mutableStateOf("") }
     var parsedExtra by rememberSaveable { mutableStateOf("") }
     var isRefreshing by rememberSaveable { mutableStateOf(false) }
+    var previousPlayingStationName by rememberSaveable { mutableStateOf<String?>(null) }
     var sleepTimerMillis by rememberSaveable { mutableLongStateOf(0L) }
     var showSleepDialog by rememberSaveable { mutableStateOf(false) }
     var showAlarmDialog by rememberSaveable { mutableStateOf(false) }
@@ -232,7 +233,9 @@ fun RaadioEkraan() {
     }
 
     LaunchedEffect(playingStationName, stations) {
-        if (playingStationName.isNotEmpty()) {
+        // UUS KONTROLL: Teeme midagi ainult siis, kui jaama nimi on reaalselt muutunud.
+        // See väldib kategooria lähtestamist ekraani pööramisel.
+        if (playingStationName.isNotEmpty() && playingStationName != previousPlayingStationName) {
             val actualStation = stations.find { it.name == playingStationName }
 
             if (actualStation != null) {
@@ -253,10 +256,13 @@ fun RaadioEkraan() {
                 }
             } else {
                 // EELKUULAMINE (Või tundmatu jaam)
-                // Uuendame nime UI-s, aga tühistame ID (et ei näitaks valet "Lemmik" staatust)
                 selectedStationId = -1
                 selectedStationName = playingStationName
             }
+
+            // UUENDAME MEIE JÄLGIMISMUUTUJAT
+            // Nüüd on see tegevus tehtud ja ootame järgmist reaalset jaama vahetust.
+            previousPlayingStationName = playingStationName
         }
     }
 
