@@ -13,11 +13,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource // UUS IMPORT
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ee.minu.kellraadio.Alarm
 import ee.minu.kellraadio.AlarmUtils
+import ee.minu.kellraadio.R // UUS IMPORT
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +37,8 @@ fun AlarmsScreen(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
             FloatingActionButton(onClick = onAddAlarm) {
-                Icon(Icons.Default.Add, contentDescription = "Lisa äratus")
+                // TÕLGITUD: "Lisa äratus"
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.alarm_add_new))
             }
         }
     ) { innerPadding ->
@@ -48,35 +52,34 @@ fun AlarmsScreen(
                     .fillMaxWidth()
                     .height(48.dp)
                     .padding(horizontal = if (isLandscape) 8.dp else 16.dp)
-                    // --- PARANDUS ---
                     .padding(top = if (isLandscape) 12.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.Alarm, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Äratused",
+                    // TÕLGITUD: "Äratused"
+                    text = stringResource(R.string.alarm_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
 
-            // PARANDUS: Eemaldasime siit Spacer(modifier = Modifier.height(8.dp))
-
             if (alarms.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(horizontal = if (isLandscape) 8.dp else 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Äratusi pole lisatud", color = Color.Gray)
+                    // TÕLGITUD: "Äratusi pole lisatud"
+                    Text(stringResource(R.string.alarm_no_alarms), color = Color.Gray)
                 }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(
                         start = if (isLandscape) 8.dp else 16.dp,
                         end = if (isLandscape) 8.dp else 16.dp,
-                        top = 0.dp, // PARANDUS: 8.dp -> 0.dp
+                        top = 0.dp,
                         bottom = 80.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -101,6 +104,7 @@ fun AlarmItem(
     onClick: () -> Unit
 ) {
     val textColor = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface else Color.Gray
+    val context = LocalContext.current // Vaja tõlgete jaoks
 
     Card(
         modifier = Modifier
@@ -124,7 +128,8 @@ fun AlarmItem(
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                val alarmTextParts = AlarmUtils.getAlarmText(alarm.hour, alarm.minute, alarm.days).split("•")
+                // MUUDATUS: Kasutame context-i, et saada tõlgitud päevad (E-R vs Mon-Fri)
+                val alarmTextParts = AlarmUtils.getAlarmText(context, alarm.hour, alarm.minute, alarm.days).split("•")
                 val daysText = if(alarmTextParts.size > 1) alarmTextParts[1].trim() else alarmTextParts[0].trim()
 
                 Text(

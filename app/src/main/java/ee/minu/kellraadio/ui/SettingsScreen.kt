@@ -3,6 +3,9 @@ package ee.minu.kellraadio.ui
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,17 +14,31 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import ee.minu.kellraadio.LogExporter
+import ee.minu.kellraadio.R
 
-@OptIn(ExperimentalMaterial3Api::class) // JÄTA SEE ALLES!
+// Defineerime toetatud keeled ühes kohas
+data class AppLanguage(val code: String, val flag: String, val name: String)
+
+val SUPPORTED_LANGUAGES = listOf(
+    AppLanguage("et", "🇪🇪", "Eesti"),
+    AppLanguage("en", "🇬🇧", "English"),
+    AppLanguage("liv", "\uD83D\uDFE2", "Līvõ kēļ"),
+    AppLanguage("ko", "🇰🇷", "한국어")
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     isRefreshing: Boolean,
@@ -40,6 +57,17 @@ fun SettingsScreen(
     val appVersion = getAppVersionName(context)
     val scrollState = rememberScrollState()
 
+    // Olek dialoogi avamiseks
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    // KEELE LOOGIKA
+    val currentLocales = AppCompatDelegate.getApplicationLocales()
+    val appLang = if (!currentLocales.isEmpty) currentLocales.get(0)?.language else "et" // Vaikimisi Eesti, kui pole määratud
+
+    // Leiame praeguse keele objekti kuvamiseks
+    val currentLanguageObj = SUPPORTED_LANGUAGES.find { it.code == appLang }
+        ?: SUPPORTED_LANGUAGES.find { it.code == "et" }!!
+
     Column(modifier = modifier.fillMaxSize()) {
         // --- PÄIS ---
         Row(
@@ -53,7 +81,7 @@ fun SettingsScreen(
             Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
             spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Seaded",
+                text = stringResource(R.string.settings_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.primary
@@ -73,35 +101,52 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // SEKTSIOON 1: KANALID
-            SettingsGroup(title = "Raadio ja Kanalid") {
+            // SEKTSIOON 0: ÜLDINE (KEEL)
+            SettingsGroup(title = stringResource(R.string.settings_group_general)) {
                 SettingsCardItem(
-                    headline = "Värskenda jaamu",
-                    supporting = "Lae serverist uusim kanalite nimekiri",
+                    headline = stringResource(R.string.settings_language),
+                    supporting = stringResource(R.string.settings_language_desc),
+                    icon = Icons.Default.Language,
+                    onClick = { showLanguageDialog = true }, // Avab dialoogi
+                    trailingContent = {
+                        Text(
+                            text = "${currentLanguageObj.flag} ${currentLanguageObj.name}",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
+            }
+
+            // SEKTSIOON 1: KANALID
+            SettingsGroup(title = stringResource(R.string.settings_group_radio)) {
+                SettingsCardItem(
+                    headline = stringResource(R.string.settings_refresh),
+                    supporting = stringResource(R.string.settings_refresh_desc),
                     icon = Icons.Default.Refresh,
                     isLoading = isRefreshing,
                     onClick = onRefresh
                 )
             }
 
-            // SEKTSIOON 2: PAIGUTUS (UUS KUJUNDUS)
-            SettingsGroup(title = "Välimus ja Paigutus") {
+            // SEKTSIOON 2: PAIGUTUS
+            SettingsGroup(title = stringResource(R.string.settings_group_appearance)) {
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // Päis koos ikooniga (nagu teistel ridadel)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.ViewModule, // Sobiv ikoon
+                                imageVector = Icons.Default.ViewModule,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = "Kanalite ruudustik",
+                                text = stringResource(R.string.settings_grid_layout),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -109,9 +154,8 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Püstine vaade (Portrait)
                         Text(
-                            text = "Püstine vaade (Portrait)",
+                            text = stringResource(R.string.settings_portrait),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -136,9 +180,8 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Külili vaade (Landscape)
                         Text(
-                            text = "Külili vaade (Landscape)",
+                            text = stringResource(R.string.settings_landscape),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -162,10 +205,9 @@ fun SettingsScreen(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-                        Divider(color = MaterialTheme.colorScheme.surface) // Väike joon vahele
+                        Divider(color = MaterialTheme.colorScheme.surface)
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // UUS: Lippude lüliti
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -173,12 +215,12 @@ fun SettingsScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Näita riigilippe",
+                                    text = stringResource(R.string.settings_show_flags),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Kuva kanalite juures päritoluriigi lippu",
+                                    text = stringResource(R.string.settings_show_flags_desc),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -193,10 +235,10 @@ fun SettingsScreen(
             }
 
             // SEKTSIOON 3: DIAGNOSTIKA
-            SettingsGroup(title = "Abi ja Diagnostika") {
+            SettingsGroup(title = stringResource(R.string.settings_group_help)) {
                 SettingsCardItem(
-                    headline = "Saada logi",
-                    supporting = "Jaga tehnilist infot arendajaga",
+                    headline = stringResource(R.string.settings_send_log),
+                    supporting = stringResource(R.string.settings_send_log_desc),
                     icon = Icons.Default.BugReport,
                     onClick = { LogExporter.exportAndShareLog(context) }
                 )
@@ -204,8 +246,8 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 SettingsCardItem(
-                    headline = "Testi ajalugu",
-                    supporting = "Lisa andmebaasi prooviandmeid",
+                    headline = stringResource(R.string.settings_test_data),
+                    supporting = stringResource(R.string.settings_test_data_desc),
                     icon = Icons.Default.Science,
                     onClick = onAddTestData,
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
@@ -219,12 +261,80 @@ fun SettingsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Versioon $appVersion",
+                    text = stringResource(R.string.app_version, appVersion),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+
+    // --- KEELEVALIKU DIALOOG ---
+    if (showLanguageDialog) {
+        Dialog(onDismissRequest = { showLanguageDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.settings_language),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp, start = 8.dp)
+                    )
+
+                    SUPPORTED_LANGUAGES.forEach { lang ->
+                        val isSelected = lang.code == appLang
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                .clickable {
+                                    val appLocale = LocaleListCompat.forLanguageTags(lang.code)
+                                    AppCompatDelegate.setApplicationLocales(appLocale)
+                                    showLanguageDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = lang.flag,
+                                style = MaterialTheme.typography.headlineSmall
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = lang.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (isSelected) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showLanguageDialog = false }) {
+                            Text(stringResource(R.string.action_cancel))
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -252,7 +362,8 @@ fun SettingsCardItem(
     icon: ImageVector,
     isLoading: Boolean = false,
     onClick: () -> Unit,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    trailingContent: @Composable (() -> Unit)? = null
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -289,6 +400,7 @@ fun SettingsCardItem(
                     )
                 }
             },
+            trailingContent = trailingContent,
             colors = ListItemDefaults.colors(
                 containerColor = Color.Transparent
             ),

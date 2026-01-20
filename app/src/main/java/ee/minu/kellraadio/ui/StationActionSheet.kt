@@ -10,8 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource // UUS IMPORT
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import ee.minu.kellraadio.R // UUS IMPORT
 import ee.minu.kellraadio.RadioStation
 
 @Composable
@@ -23,14 +25,13 @@ fun StationActionSheet(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    // MUUDATUS: Kasutame Dialogi ModalBottomSheet asemel
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
             modifier = Modifier
-                .fillMaxWidth(0.9f) // Laius 90% ekraanist (nii tel kui tv)
+                .fillMaxWidth(0.9f)
                 .wrapContentHeight()
         ) {
             Column(
@@ -62,13 +63,15 @@ fun StationActionSheet(
                 // MENÜÜ PUNKTID
                 ActionItem(
                     icon = if (station.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                    text = if (station.isFavorite) "Eemalda lemmikutest" else "Lisa lemmikuks",
+                    // TÕLGITUD
+                    text = if (station.isFavorite) stringResource(R.string.action_remove_favorite) else stringResource(R.string.action_add_favorite),
                     onClick = { onToggleFavorite(); onDismiss() }
                 )
 
                 ActionItem(
                     icon = Icons.Default.Alarm,
-                    text = "Sea äratus",
+                    // TÕLGITUD
+                    text = stringResource(R.string.action_set_alarm),
                     onClick = { onSetAlarm(); onDismiss() }
                 )
 
@@ -77,26 +80,29 @@ fun StationActionSheet(
 
                     ActionItem(
                         icon = Icons.Default.Edit,
-                        text = "Muuda jaama",
+                        // TÕLGITUD
+                        text = stringResource(R.string.action_edit_station),
                         onClick = { onEdit(); onDismiss() }
                     )
 
                     ActionItem(
                         icon = Icons.Default.Delete,
-                        text = "Kustuta jaam",
+                        // TÕLGITUD
+                        text = stringResource(R.string.action_delete_station),
                         textColor = MaterialTheme.colorScheme.error,
                         iconColor = MaterialTheme.colorScheme.error,
                         onClick = { onDelete(); onDismiss() }
                     )
                 }
 
-                // SULGEMISE NUPP (Valikuline, aga telekas hea)
+                // SULGEMISE NUPP
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 16.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Sulge")
+                        // TÕLGITUD
+                        Text(stringResource(R.string.action_close))
                     }
                 }
             }

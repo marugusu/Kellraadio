@@ -22,11 +22,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource // UUS IMPORT
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ee.minu.kellraadio.HistoryItem
 import ee.minu.kellraadio.RadioStationRepository
+import ee.minu.kellraadio.R // UUS IMPORT
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -49,7 +51,7 @@ fun HistoryScreen(
     // OLEKUD
     var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) } // UUS: Hoiatuse olek
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     // 1. AKTIIVSED KUUPÄEVAD KALENDRI JAOKS
     val activeDatesUTC = remember(historyItems) {
@@ -90,8 +92,9 @@ fun HistoryScreen(
         }
     }
 
-    val groupedHistory = remember(filteredItems) {
-        filteredItems.groupBy { item -> getDateHeader(item.timestamp) }
+    // 3. GRUPEERIMINE (Kasutame nüüd context-i tõlgete jaoks)
+    val groupedHistory = remember(filteredItems, context) {
+        filteredItems.groupBy { item -> getDateHeader(context, item.timestamp) }
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -100,7 +103,6 @@ fun HistoryScreen(
                 .fillMaxWidth()
                 .height(48.dp)
                 .padding(start = if (isLandscape) 8.dp else 16.dp, end = 16.dp)
-                // --- PARANDUS ---
                 .padding(top = if (isLandscape) 12.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -109,7 +111,8 @@ fun HistoryScreen(
                 Icon(Icons.Default.History, null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Ajalugu",
+                    // TÕLGITUD
+                    text = stringResource(R.string.history_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.primary
@@ -117,7 +120,6 @@ fun HistoryScreen(
             }
 
             Row {
-                // Kalendri ikoon (nüüd püsivalt Primary värvi)
                 IconButton(onClick = { showDatePicker = true }) {
                     Icon(
                         Icons.Default.Event,
@@ -126,7 +128,6 @@ fun HistoryScreen(
                     )
                 }
 
-                // Kustutamise nupp (nüüd on värv mahedam, kooskõlas disainiga)
                 if (historyItems.isNotEmpty()) {
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(
@@ -153,7 +154,8 @@ fun HistoryScreen(
                         val dateStr = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).apply {
                             timeZone = TimeZone.getTimeZone("UTC")
                         }.format(Date(selectedDateMillis!!))
-                        Text("Kuupäev: $dateStr")
+                        // TÕLGE: Eemaldasin eesliite "Kuupäev: ", näitame lihtsalt kuupäeva
+                        Text(dateStr)
                     },
                     trailingIcon = { Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp)) },
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -162,7 +164,12 @@ fun HistoryScreen(
 
             if (filteredItems.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(if (selectedDateMillis != null) "Sellel päeval kuulamisi polnud." else "Ajalugu on tühi.", color = Color.Gray)
+                    // TÕLGITUD
+                    Text(
+                        if (selectedDateMillis != null) stringResource(R.string.history_empty_day)
+                        else stringResource(R.string.history_empty),
+                        color = Color.Gray
+                    )
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
@@ -174,7 +181,6 @@ fun HistoryScreen(
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold,
-                                    // MUUDATUS SIIN: vertical = 8.dp -> top = 0.dp, bottom = 8.dp
                                     modifier = Modifier.padding(top = 0.dp, bottom = 8.dp)
                                 )
                             }
@@ -197,8 +203,9 @@ fun HistoryScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Ajaloo kustutamine") },
-            text = { Text("Kas oled kindel, et soovid kogu kuulamisajaloo jäädavalt kustutada?") },
+            // TÕLGITUD
+            title = { Text(stringResource(R.string.history_delete_confirm_title)) },
+            text = { Text(stringResource(R.string.history_delete_confirm_text)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -206,12 +213,14 @@ fun HistoryScreen(
                         showDeleteConfirm = false
                     }
                 ) {
-                    Text("Kustuta", color = MaterialTheme.colorScheme.error)
+                    // TÕLGITUD
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Loobu")
+                    // TÕLGITUD
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -226,29 +235,36 @@ fun HistoryScreen(
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
-            confirmButton = { TextButton(onClick = { selectedDateMillis = datePickerState.selectedDateMillis; showDatePicker = false }) { Text("Vali") } },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Tühista") } }
+            confirmButton = {
+                TextButton(onClick = { selectedDateMillis = datePickerState.selectedDateMillis; showDatePicker = false }) {
+                    Text("OK") // Androidi standardnupp, jätame nii või kasutame "Vali"
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
         ) {
             DatePicker(
                 state = datePickerState,
-                // Title kuvatakse endiselt ainult portrait-vaates
                 title = if (isLandscape) null else {
                     {
                         Text(
-                            "Vali kuupäev",
+                            // TÕLGITUD
+                            stringResource(R.string.date_picker_title),
                             modifier = Modifier.padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 12.dp),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 },
-                // --- PARANDUS ---
-                // Headline kuvatakse nüüd MÕLEMAS vaates (portrait ja landscape)
                 headline = {
                     val formatter = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
-                    val dateText = datePickerState.selectedDateMillis?.let { formatter.format(Date(it)) } ?: "Vali päev"
+                    // TÕLGITUD (varuvariant)
+                    val dateText = datePickerState.selectedDateMillis?.let { formatter.format(Date(it)) }
+                        ?: stringResource(R.string.date_picker_title)
 
-                    // Rõhtpaigutuses on vaja teistsugust paddingut
                     val padding = if (isLandscape) {
                         PaddingValues(start = 24.dp, top = 16.dp, end = 24.dp)
                     } else {
@@ -266,7 +282,6 @@ fun HistoryScreen(
     }
 }
 
-// HistoryRow ja muud abifunktsioonid jäävad samaks
 @Composable
 fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () -> Unit, onPlayStationClick: () -> Unit) {
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -279,13 +294,12 @@ fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () 
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp), // Kompaktsem padding
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. VASAK BLOKK: Aeg ja Jaam (Klikitav)
             Column(
                 modifier = Modifier
-                    .width(70.dp) // Piisav laius jaama nime jaoks
+                    .width(70.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .clickable { onPlayStationClick() }
                     .padding(vertical = 4.dp),
@@ -306,7 +320,6 @@ fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () 
                 )
             }
 
-            // 2. VERTIKAALNE JOON
             Box(
                 modifier = Modifier
                     .height(32.dp)
@@ -316,11 +329,10 @@ fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () 
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 3. KESKMINE BLOKK: Loo info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.bodyMedium, // Veidi väiksem font (BodyLarge -> BodyMedium)
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -334,7 +346,6 @@ fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () 
                 )
             }
 
-            // 4. PAREMPUULNE BLOKK: Otsingu nupud
             Row {
                 IconButton(onClick = onSearchClick, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Search, "YouTube", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
@@ -347,11 +358,16 @@ fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () 
     }
 }
 
-private fun getDateHeader(timestamp: Long): String {
+// TÕLGITUD ABIFUNKTSIOON
+private fun getDateHeader(context: Context, timestamp: Long): String {
     val now = Calendar.getInstance(); val time = Calendar.getInstance().apply { timeInMillis = timestamp }
     return when {
-        now.get(Calendar.YEAR) == time.get(Calendar.YEAR) && now.get(Calendar.DAY_OF_YEAR) == time.get(Calendar.DAY_OF_YEAR) -> "Täna"
-        now.get(Calendar.YEAR) == time.get(Calendar.YEAR) && now.get(Calendar.DAY_OF_YEAR) - 1 == time.get(Calendar.DAY_OF_YEAR) -> "Eile"
+        now.get(Calendar.YEAR) == time.get(Calendar.YEAR) && now.get(Calendar.DAY_OF_YEAR) == time.get(Calendar.DAY_OF_YEAR) ->
+            context.getString(R.string.history_today) // TÕLGE
+
+        now.get(Calendar.YEAR) == time.get(Calendar.YEAR) && now.get(Calendar.DAY_OF_YEAR) - 1 == time.get(Calendar.DAY_OF_YEAR) ->
+            context.getString(R.string.history_yesterday) // TÕLGE
+
         else -> SimpleDateFormat("dd. MMMM yyyy", Locale.getDefault()).format(Date(timestamp))
     }
 }

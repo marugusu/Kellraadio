@@ -1,0 +1,133 @@
+<resources>
+    <string name="app_name">라디오 알람</string> <!-- Raadio Äratus -->
+
+    <!-- Navigation -->
+    <string name="nav_radio">라디오</string>
+    <string name="nav_alarms">알람</string>
+    <string name="nav_history">기록</string> <!-- Ajalugu/Kirjed -->
+    <string name="nav_add_channel">채널 추가</string>
+    <string name="nav_settings">설정</string>
+
+    <!-- General Actions -->
+    <string name="action_cancel">취소</string>
+    <string name="action_save">저장</string>
+    <string name="action_delete">삭제</string>
+    <string name="action_close">닫기</string>
+    <string name="action_search">검색</string>
+    <string name="action_play">재생</string>
+    <string name="action_pause">일시정지</string>
+    <string name="action_stop">정지</string>
+    <string name="action_test">테스트</string>
+
+    <!-- Player & Service -->
+    <string name="status_playing">재생 중</string>
+    <string name="status_stopped">정지됨</string>
+    <string name="status_buffering">버퍼링...</string>
+    <string name="status_error">연결 오류</string>
+    <string name="live_broadcast">생방송</string> <!-- Otseeeter -->
+    <string name="select_station">방송국 선택</string>
+    <string name="notification_playing">재생 중: %1$s</string>
+    <string name="notification_alarm">알람!</string>
+    <string name="error_station_not_found">방송국을 찾을 수 없습니다!</string>
+
+    <!-- Alarms -->
+    <string name="alarm_title">알람</string>
+    <string name="alarm_no_alarms">설정된 알람 없음</string>
+    <string name="alarm_add_new">알람 추가</string>
+    <string name="alarm_set_title">알람 설정</string>
+    <string name="alarm_edit_title">알람 편집</string>
+    <string name="alarm_toast_saved">알람 저장됨!</string>
+    <string name="alarm_toast_deleted">알람 삭제됨!</string>
+    <string name="timer_dialog_title">취침 타이머</string>
+    <string name="timer_minutes">%1$d분</string>
+    <string name="timer_until">%1$s까지 재생</string>
+    <string name="timer_start">시작</string>
+
+    <!-- History -->
+    <string name="history_title">청취 기록</string>
+    <string name="history_empty">기록이 없습니다.</string>
+    <string name="history_empty_day">이 날짜의 기록이 없습니다.</string>
+    <string name="history_delete_confirm_title">기록 삭제</string>
+    <string name="history_delete_confirm_text">모든 청취 기록을 영구적으로 삭제하시겠습니까?</string>
+    <string name="history_today">오늘</string>
+    <string name="history_yesterday">어제</string>
+    <string name="date_picker_title">날짜 선택</string>
+
+    <!-- Search / Add Station -->
+    <string name="search_title">채널 추가</string>
+    <string name="search_placeholder">방송국 검색...</string>
+    <string name="search_manual">수동 추가</string>
+    <string name="search_no_results">검색 결과 없음.</string>
+    <string name="filter_country">국가</string>
+    <string name="filter_genre">장르</string>
+    <string name="filter_all_countries">모든 국가</string>
+    <string name="filter_all_genres">모든 장르</string>
+    <string name="manual_dialog_title">방송국 수동 추가</string>
+    <string name="station_name">방송국 이름</string>
+    <string name="stream_url">스트림 URL</string>
+    <string name="station_added">추가됨: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">설정</string>
+    <string name="settings_group_radio">라디오 및 채널</string>
+    <string name="settings_refresh">방송국 목록 갱신</string>
+    <string name="settings_refresh_desc">서버에서 최신 목록 다운로드</string>
+    <string name="settings_group_appearance">화면 및 레이아웃</string>
+    <string name="settings_grid_layout">채널 그리드</string>
+    <string name="settings_portrait">세로 모드 (Portrait)</string>
+    <string name="settings_landscape">가로 모드 (Landscape)</string>
+    <string name="settings_show_flags">국기 표시</string>
+    <string name="settings_show_flags_desc">방송국 이름 옆에 국기 표시</string>
+    <string name="settings_group_general">일반</string>
+    <string name="settings_language">언어 / Language</string>
+    <string name="settings_language_desc">앱 언어 선택</string>
+    <string name="settings_group_help">도움말 및 진단</string>
+    <string name="settings_send_log">로그 보내기</string>
+    <string name="settings_send_log_desc">개발자에게 기술 정보 공유</string>
+    <string name="settings_test_data">테스트 데이터</string>
+    <string name="settings_test_data_desc">데이터베이스에 샘플 데이터 추가</string>
+    <string name="app_version">버전 %1$s</string>
+    <string name="toast_updated">갱신됨!</string>
+
+    <!-- Info Screen -->
+    <string name="info_title">앱 정보</string>
+    <string name="info_card_1_title">매일의 라디오 친구</string>
+    <string name="info_card_1_text">Kellraadio는 다양한 라디오 방송을 쉽고 편하게 들을 수 있도록 설계되었습니다.</string>
+    <string name="info_card_2_title">안정적인 알람 시스템</string>
+    <string name="info_card_2_text">정해진 시간에 좋아하는 방송국이 정확히 재생되도록 최적화되었습니다.</string>
+    <string name="info_card_3_title">끊김 없는 백그라운드 재생</string>
+    <string name="info_card_3_text">다른 앱을 사용하는 동안에도 음악이 멈추지 않도록 특별히 신경 썼습니다.</string>
+    <string name="info_card_4_title">스마트 청취 기록</string>
+    <string name="info_card_4_text">좋은 노래를 들었는데 제목이 기억나지 않나요? 기록 화면에서 최근 재생된 곡을 빠르게 찾아보세요.</string>
+    <string name="info_dev_location">에스토니아에서 개발됨</string>
+
+    <!-- Station Actions -->
+    <string name="action_remove_favorite">즐겨찾기 해제</string>
+    <string name="action_add_favorite">즐겨찾기 추가</string>
+    <string name="action_set_alarm">알람 설정</string>
+    <string name="action_edit_station">방송국 편집</string>
+    <string name="action_delete_station">방송국 삭제</string>
+    <string name="delete_station_confirm_title">방송국 삭제?</string>
+    <string name="delete_station_confirm_text">\'%1$s\' 방송국을 영구적으로 삭제하시겠습니까?</string>
+
+    <!-- Categories -->
+    <string name="cat_favorites">즐겨찾기</string>
+    <string name="cat_my_stations">내 방송국</string>
+    <string name="cat_all">전체</string>
+
+    <!-- Days of week -->
+    <string name="day_mon">월</string>
+    <string name="day_tue">화</string>
+    <string name="day_wed">수</string>
+    <string name="day_thu">목</string>
+    <string name="day_fri">금</string>
+    <string name="day_sat">토</string>
+    <string name="day_sun">일</string>
+
+    <!-- Week ranges -->
+    <string name="days_every_day">매일</string>
+    <string name="days_weekdays">주중 (월-금)</string>
+    <string name="days_weekend">주말 (토-일)</string>
+    <string name="alarm_once">한 번만</string>
+
+</resources>

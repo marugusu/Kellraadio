@@ -171,7 +171,7 @@ class RadioService : Service() {
             streamStartTime = SystemClock.elapsedRealtime()
 
             // UI uuendus (See on lokaalne, ei mõjuta Bluetoothi)
-            sendMetadataUpdate(name, "Otseeeter")
+            sendMetadataUpdate(name, getString(R.string.live_broadcast))
 
             // PARANDUS: Eemaldasime siit updateExternalDevices() väljakutse.
             // Põhjus: onStartCommand (allpool) loob täiesti uue MediaItemi koos õigete algandmetega.
@@ -600,7 +600,7 @@ class RadioService : Service() {
             // Määrame kohe alguses vaikeväärtused. See imiteerib olukorda,
             // nagu striim oleks juba saatnud tühja signaali.
             // See väldib olukorda, kus autos on vana laulu nimi.
-            currentArtist = "Otseeeter"          // Title rida
+            currentArtist = getString(R.string.live_broadcast)          // Title rida
             currentTitle = currentStationName    // Artist rida
             currentExtra = ""
 
@@ -634,7 +634,7 @@ class RadioService : Service() {
             val initialMeta = MediaMetadata.Builder()
                 .setTitle(currentStationName)
                 .setDisplayTitle(currentStationName)
-                .setArtist("Otseeeter")
+                .setArtist(getString(R.string.live_broadcast))
                 .setAlbumTitle(currentStationName)
                 .setTrackNumber(1)
                 .setTotalTrackCount(1) // ALATI 1, et auto ei näitaks "1/999"
@@ -709,10 +709,12 @@ class RadioService : Service() {
             notificationManager.createNotificationChannel(NotificationChannel("PLAYING_RADIO_CHANNEL_v21", "Raadio", NotificationManager.IMPORTANCE_LOW))
         }
         val stopPendingIntent = PendingIntent.getService(this, 2, Intent(this, RadioService::class.java).apply { action = ACTION_STOP }, PendingIntent.FLAG_IMMUTABLE)
-        //val title = if (isAlarmMode) "Äratus!" else (if (currentTrackTitle.isNotBlank()) currentTrackTitle else currentStationName)
-        val title = if (isAlarmMode) "Äratus!" else (if (currentTitle.isNotBlank()) currentTitle else currentStationName)
-        //val text = if (isAlarmMode) "Mängib $currentStationName" else currentStationName
-        val text = if (isAlarmMode) "Mängib $currentStationName" else (if (currentArtist.isNotBlank()) currentArtist else currentStationName)
+
+        // MUUDATUS: Tõlgitud tekstid
+        val title = if (isAlarmMode) getString(R.string.notification_alarm) else (if (currentTitle.isNotBlank()) currentTitle else currentStationName)
+
+        val text = if (isAlarmMode) getString(R.string.notification_playing, currentStationName) else (if (currentArtist.isNotBlank()) currentArtist else currentStationName)
+
         val priority = if (isAlarmMode) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW
         val icon = if (isAlarmMode) android.R.drawable.ic_lock_idle_alarm else R.drawable.ic_radio_notification
 
@@ -722,9 +724,9 @@ class RadioService : Service() {
             .setDefaults(if (isAlarmMode) Notification.DEFAULT_ALL else 0)
             .setContentIntent(mediaSession!!.sessionActivity)
             .setStyle(MediaStyleNotificationHelper.MediaStyle(mediaSession!!).setShowActionsInCompactView(0, 1, 2))
-            .addAction(R.drawable.ic_skip_previous, "Eelmine", null)
-            .addAction(R.drawable.ic_stop, "Stopp", stopPendingIntent)
-            .addAction(R.drawable.ic_skip_next, "Järgmine", null)
+            .addAction(R.drawable.ic_skip_previous, "Previous", null) // Jätame süsteemseks/inglise keelseks, see on accessibility jaoks
+            .addAction(R.drawable.ic_stop, getString(R.string.action_stop), stopPendingIntent) // MUUDATUS: Tõlgitud "Stopp"
+            .addAction(R.drawable.ic_skip_next, "Next", null)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).build()
     }
 
@@ -734,10 +736,15 @@ class RadioService : Service() {
             notificationManager.createNotificationChannel(NotificationChannel(alarmChannelId, "Äratuse märguanne", NotificationManager.IMPORTANCE_HIGH))
         }
         val openAppIntent = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+        // MUUDATUS: Tõlgitud pealkiri ja tekst
         val alarmNotification = NotificationCompat.Builder(this, alarmChannelId)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm).setContentTitle("Äratus!").setContentText("Mängib: $stationName")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle(getString(R.string.notification_alarm))
+            .setContentText(getString(R.string.notification_playing, stationName))
             .setPriority(NotificationCompat.PRIORITY_HIGH).setCategory(NotificationCompat.CATEGORY_ALARM).setAutoCancel(true)
             .setContentIntent(openAppIntent).build()
+
         notificationManager.notify(100, alarmNotification)
     }
 
@@ -770,11 +777,9 @@ class RadioService : Service() {
     private fun splitMetadata(raw: String): Triple<String, String, String> {
         val cleaned = raw.trim()
 
-        // 1. Tühja info puhul (nagu Raadio Kadi algus)
         if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -") {
-            // TAGASTAB: (Artist, Title, Extra)
-            // Artist = "Otseeeter", Title = Jaama nimi
-            return Triple("Otseeeter", currentStationName, "")
+            // MUUDATUS: Tõlgitud "Otseeeter"
+            return Triple(getString(R.string.live_broadcast), currentStationName, "")
         }
 
         val parts = cleaned.split(" - ", limit = 3)
@@ -785,12 +790,9 @@ class RadioService : Service() {
         if (parts.size >= 2) {
             artist = parts[0].trim()
             val t = parts[1].trim()
-            // 2. Kui pealkiri on vigane, kasutame jaama nime
             title = if (t.equals(artist, ignoreCase = true) || t.isBlank()) currentStationName else t
         } else {
-            // 3. Meil on ainult üks osa (nt saate nimi "Tarkade klubi")
             artist = cleaned
-            // Paneme pealkirjaks jaama nime, et see oleks alati näha
             title = currentStationName
         }
 

@@ -34,11 +34,11 @@ class RadioStationRepository(
             id = newId,
             name = name,
             url = url,
-            category = "Minu",
+            category = "My", // MUUDATUS: Inglise keeles
             priority = 10000 + (newId - 10000),
             isUserStation = true,
             uuid = UUID.randomUUID().toString(),
-            countryCode = countryCode // <--- SALVESTAME
+            countryCode = countryCode
         )
         stationDao.insert(newStation)
     }

@@ -20,8 +20,6 @@ object LogExporter {
             val fileName = "kellraadio_log_$timestamp.txt"
             val logFile = File(logDir, fileName)
 
-            // MUUDATUS: Lisasime "-b all", et saada kätte ka krahhid ja raadio puhvrid.
-            // See võib faili natuke suuremaks teha ja annab rohkem infot.
             val process = Runtime.getRuntime().exec("logcat -b all -d -v threadtime")
 
             val bufferedReader = process.inputStream.bufferedReader()
@@ -56,7 +54,9 @@ object LogExporter {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        val chooser = Intent.createChooser(intent, "Saada logi...")
+        // MUUDATUS: Kasutame tõlgitud pealkirja "Saada logi"
+        val chooserTitle = context.getString(R.string.settings_send_log)
+        val chooser = Intent.createChooser(intent, chooserTitle)
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(chooser)
     }

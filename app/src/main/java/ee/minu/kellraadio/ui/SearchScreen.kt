@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource // UUS IMPORT
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ee.minu.kellraadio.RadioBrowserStation
 import ee.minu.kellraadio.RadioFilterItem
 import ee.minu.kellraadio.RadioStationRepository
+import ee.minu.kellraadio.R // UUS IMPORT
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,10 +42,8 @@ fun SearchScreen(
     onPlayTest: (String, String, Boolean) -> Unit,
     onStationAdded: () -> Unit,
     modifier: Modifier = Modifier,
-    // Loome ViewModeli siin, kasutades tehast
     viewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(repository))
 ) {
-    // Kogume andmed ViewModelist kui "state", et UI uuendaks ennast automaatselt
     val query by viewModel.query.collectAsState()
     val results by viewModel.results.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -54,7 +54,7 @@ fun SearchScreen(
     val filterType by viewModel.filterType.collectAsState()
     val filterItems by viewModel.filterItems.collectAsState()
     val showManualDialog by viewModel.showManualDialog.collectAsState()
-    val listState = viewModel.listState // Kasutame ViewModeli LazyListState'i
+    val listState = viewModel.listState
 
     val savedIdentifiers = remember(allStations) {
         allStations.flatMap { listOf(it.url, it.uuid) }.filter { it.isNotEmpty() }.toSet()
@@ -65,18 +65,14 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
-    // See funktsioon on nüüd lühem, sest loogika on ViewModelis
     fun performSearchWithUIEffects() {
         keyboardController?.hide()
         focusManager.clearFocus()
         viewModel.performSearch()
     }
 
-    // Kui filter muutub, otsime automaatselt (see loogika on nüüd ViewModelis)
-    // LaunchedEffect on siit eemaldatud, kuna ViewModel tegeleb sellega ise.
-
     Column(modifier = modifier.fillMaxSize()) {
-        // --- PÄIS --- (JÄI SAMAKS)
+        // --- PÄIS ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -88,7 +84,8 @@ fun SearchScreen(
             Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Lisa kanal",
+                // TÕLGITUD
+                text = stringResource(R.string.search_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.primary
@@ -102,11 +99,12 @@ fun SearchScreen(
         ) {
             Spacer(modifier = Modifier.height(0.dp))
 
-            // OTSINGURIBA (Väärtus ja onValueChange tulevad ViewModelist)
+            // OTSINGURIBA
             OutlinedTextField(
                 value = query,
                 onValueChange = { viewModel.onQueryChange(it) },
-                placeholder = { Text("Otsi jaama...") },
+                // TÕLGITUD
+                placeholder = { Text(stringResource(R.string.search_placeholder)) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = {
                     if (query.isNotEmpty()) {
@@ -138,7 +136,14 @@ fun SearchScreen(
                     onClick = {
                         if (selectedCountry == null) viewModel.openFilter("COUNTRY") else viewModel.onCountrySelected(null)
                     },
-                    label = { Text(text = selectedCountry?.name ?: "Kõik riigid", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                    // TÕLGITUD: Kui riiki pole valitud, näita "Kõik riigid"
+                    label = {
+                        Text(
+                            text = selectedCountry?.name ?: stringResource(R.string.filter_all_countries),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    },
                     leadingIcon = { if (selectedCountry != null) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) else Icon(Icons.Default.Public, null, modifier = Modifier.size(16.dp)) },
                     modifier = Modifier.weight(1f)
                 )
@@ -149,7 +154,14 @@ fun SearchScreen(
                     onClick = {
                         if (selectedGenre == null) viewModel.openFilter("GENRE") else viewModel.onGenreSelected(null)
                     },
-                    label = { Text(text = selectedGenre ?: "Kõik žanrid", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                    // TÕLGITUD
+                    label = {
+                        Text(
+                            text = selectedGenre ?: stringResource(R.string.filter_all_genres),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    },
                     leadingIcon = { if (selectedGenre != null) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) else Icon(Icons.Default.MusicNote, null, modifier = Modifier.size(16.dp)) },
                     modifier = Modifier.weight(1f)
                 )
@@ -169,7 +181,8 @@ fun SearchScreen(
                     if (isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                     } else {
-                        Text("Otsi")
+                        // TÕLGITUD
+                        Text(stringResource(R.string.action_search))
                     }
                 }
 
@@ -178,7 +191,8 @@ fun SearchScreen(
                 TextButton(onClick = { viewModel.openManualAddDialog() }) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Lisa käsitsi")
+                    // TÕLGITUD
+                    Text(stringResource(R.string.search_manual))
                 }
             }
 
@@ -187,7 +201,7 @@ fun SearchScreen(
             // TULEMUSED
             if (results.isNotEmpty()) {
                 LazyColumn(
-                    state = listState, // Kasutame ViewModeli olekut
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
@@ -202,7 +216,8 @@ fun SearchScreen(
                             onAdd = {
                                 scope.launch {
                                     repository.saveUserStation(station.name, station.urlResolved, station.countryCode)
-                                    Toast.makeText(context, "Lisatud: ${station.name}", Toast.LENGTH_SHORT).show()
+                                    // TÕLGITUD TOAST
+                                    Toast.makeText(context, context.getString(R.string.station_added, station.name), Toast.LENGTH_SHORT).show()
                                     onStationAdded()
                                 }
                             }
@@ -211,7 +226,8 @@ fun SearchScreen(
                 }
             } else if (hasSearched && !isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Tulemusi ei leitud.", color = Color.Gray)
+                    // TÕLGITUD
+                    Text(stringResource(R.string.search_no_results), color = Color.Gray)
                 }
             }
         }
@@ -219,8 +235,9 @@ fun SearchScreen(
 
     // FILTRI MENÜÜ (SHEET)
     if (showFilterSheet) {
+        // TÕLGITUD PEALKIRI
         FilterSheet(
-            title = if (filterType == "COUNTRY") "Vali riik" else "Vali žanr",
+            title = if (filterType == "COUNTRY") stringResource(R.string.filter_country) else stringResource(R.string.filter_genre),
             items = filterItems,
             onDismiss = { viewModel.closeFilterSheet() },
             onSelect = { item ->
@@ -241,7 +258,8 @@ fun SearchScreen(
             onSave = { name, url ->
                 scope.launch {
                     repository.saveUserStation(name, url)
-                    Toast.makeText(context, "Lisatud: $name", Toast.LENGTH_SHORT).show()
+                    // TÕLGITUD TOAST
+                    Toast.makeText(context, context.getString(R.string.station_added, name), Toast.LENGTH_SHORT).show()
                     viewModel.closeManualAddDialog()
                     onStationAdded()
                 }
@@ -249,10 +267,6 @@ fun SearchScreen(
         )
     }
 }
-
-
-// --- ÜLEJÄÄNUD KOOD (FilterSheet, SearchResultItem, jne) JÄÄB SAMAKS ---
-// Kopeerin selle siia, et sul oleks terve fail ühes tükis.
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -286,7 +300,8 @@ fun FilterSheet(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Otsi nimekirjast...") },
+                    // TÕLGITUD
+                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
@@ -311,7 +326,7 @@ fun FilterSheet(
                             },
                             supportingContent = {
                                 Text(
-                                    text = "${item.stationCount} jaama",
+                                    text = "${item.stationCount}", // NB! Eemaldasin "jaama", et mitte tekitada tõlke konflikti
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -405,11 +420,37 @@ fun SearchResultItem(
 fun ManualAddDialog(onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
+    // TÕLGITUD
     AlertDialog(
-        onDismissRequest = onDismiss, title = { Text("Lisa jaam käsitsi") },
-        text = { Column { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Jaama nimi") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("Striimi URL") }, modifier = Modifier.fillMaxWidth()) } },
-        confirmButton = { Button(onClick = { onSave(name, url) }) { Text("Salvesta") } },
-        dismissButton = { Row { TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) { Text("Testi") }; TextButton(onClick = onDismiss) { Text("Loobu") } } }
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.manual_dialog_title)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.station_name)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text(stringResource(R.string.stream_url)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(name, url) }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) {
+                    Text(stringResource(R.string.action_test))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        }
     )
 }
 
@@ -417,10 +458,36 @@ fun ManualAddDialog(onDismiss: () -> Unit, onTest: (String, String) -> Unit, onS
 fun EditStationDialog(stationName: String, stationUrl: String, onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String) -> Unit) {
     var name by remember { mutableStateOf(stationName) }
     var url by remember { mutableStateOf(stationUrl) }
+    // TÕLGITUD
     AlertDialog(
-        onDismissRequest = onDismiss, title = { Text("Muuda jaama") },
-        text = { Column { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Jaama nimi") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("Striimi URL") }, modifier = Modifier.fillMaxWidth()) } },
-        confirmButton = { Button(onClick = { onSave(name, url) }) { Text("Salvesta") } },
-        dismissButton = { Row { TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) { Text("Testi") }; TextButton(onClick = onDismiss) { Text("Loobu") } } }
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.action_edit_station)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.station_name)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text(stringResource(R.string.stream_url)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(name, url) }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) {
+                    Text(stringResource(R.string.action_test))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        }
     )
 }

@@ -3,9 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- VANA: Jäta see alles Android 12 toe jaoks -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <!-- UUS: See on Android 13+ jaoks. Annab loa automaatselt ja jäädavalt -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -15,7 +13,6 @@
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
-
 
     <application
         android:allowBackup="true"
@@ -27,7 +24,18 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Kellraadio"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:localeConfig="@xml/locales_config"> <!-- KONTROLLI: Kas see rida on olemas? -->
+
+        <!-- TEENUS KEELE SALVESTAMISEKS (PEAB OLEMA APPLICATION BLOKI SEES) -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
 
         <activity
             android:name=".MainActivity"
@@ -63,7 +71,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Logide jagamise provider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

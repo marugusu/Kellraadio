@@ -100,7 +100,8 @@ fun PlayerControls(
                             val cal = Calendar.getInstance().apply { timeInMillis = alarmInfo.first }
                             val hour = cal.get(Calendar.HOUR_OF_DAY)
                             val minute = cal.get(Calendar.MINUTE)
-                            val prettyTime = AlarmUtils.getAlarmText(hour, minute, alarmDays)
+                            val context = androidx.compose.ui.platform.LocalContext.current // Tavaliselt juba olemas
+                            val prettyTime = AlarmUtils.getAlarmText(context, hour, minute, alarmDays)
                             val infoStr = "$prettyTime (${alarmInfo.second})"
 
                             Row(verticalAlignment = Alignment.CenterVertically) {

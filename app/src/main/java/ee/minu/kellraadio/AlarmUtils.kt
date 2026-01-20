@@ -119,7 +119,8 @@ object AlarmUtils {
             }
             if (showToast) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Äratus salvestatud!", Toast.LENGTH_SHORT).show()
+                    // MUUDATUS: Tõlgitav tekst
+                    Toast.makeText(context, context.getString(R.string.alarm_toast_saved), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -140,7 +141,8 @@ object AlarmUtils {
             db.alarmDao().delete(alarm)
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Äratus kustutatud!", Toast.LENGTH_SHORT).show()
+                // MUUDATUS: Tõlgitav tekst
+                Toast.makeText(context, context.getString(R.string.alarm_toast_deleted), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -208,25 +210,31 @@ object AlarmUtils {
     }
 
     // See abifunktsioon jääb samaks, et UI-s ilusaid tekste kuvada.
-    fun getAlarmText(hour: Int, minute: Int, days: Set<Int>): String {
+    // MUUDATUS: Lisasime 'context' parameetri, et saaks tõlkeid küsida
+    fun getAlarmText(context: Context, hour: Int, minute: Int, days: Set<Int>): String {
         val timeStr = String.format("%02d:%02d", hour, minute)
-        if (days.isEmpty()) return "$timeStr (1x)"
+        if (days.isEmpty()) return "$timeStr (${context.getString(R.string.alarm_once)})"
 
         val workDays = setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)
         val weekend = setOf(Calendar.SATURDAY, Calendar.SUNDAY)
         val allDays = workDays + weekend
 
         val dayStr = when (days) {
-            allDays -> "Iga päev"
-            workDays -> "E-R"
-            weekend -> "L-P"
+            allDays -> context.getString(R.string.days_every_day)
+            workDays -> context.getString(R.string.days_weekdays)
+            weekend -> context.getString(R.string.days_weekend)
             else -> {
                 // Sorteerime nii, et esmaspäev on esimene
                 days.sortedBy { if (it == Calendar.SUNDAY) 8 else it }
                     .joinToString(" ") { dayId ->
                         when (dayId) {
-                            Calendar.MONDAY -> "E"; Calendar.TUESDAY -> "T"; Calendar.WEDNESDAY -> "K"
-                            Calendar.THURSDAY -> "N"; Calendar.FRIDAY -> "R"; Calendar.SATURDAY -> "L"; Calendar.SUNDAY -> "P"
+                            Calendar.MONDAY -> context.getString(R.string.day_mon)
+                            Calendar.TUESDAY -> context.getString(R.string.day_tue)
+                            Calendar.WEDNESDAY -> context.getString(R.string.day_wed)
+                            Calendar.THURSDAY -> context.getString(R.string.day_thu)
+                            Calendar.FRIDAY -> context.getString(R.string.day_fri)
+                            Calendar.SATURDAY -> context.getString(R.string.day_sat)
+                            Calendar.SUNDAY -> context.getString(R.string.day_sun)
                             else -> ""
                         }
                     }

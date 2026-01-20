@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import ee.minu.kellraadio.RadioStation
+import ee.minu.kellraadio.R // IMPORDI RESSURSID
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -26,7 +28,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 @Composable
 fun StationList(
     stations: List<RadioStation>,
-    filteredStations: List<RadioStation>, // Landscape'i jaoks
+    filteredStations: List<RadioStation>,
     categories: List<String>,
     selectedCategory: String,
     selectedStationId: Int,
@@ -45,17 +47,26 @@ fun StationList(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val context = LocalContext.current
 
-    // --- 1. KAITSEKIHT: Ära tee midagi, enne kui andmed on olemas ---
-    // See on kõige tähtsam rida. See välistab "Kõik kanalid" käivitamise vea.
+    // ABIFUNKTSIOON: Tõlgib süsteemsed ID-d loetavaks tekstiks
+    fun getCategoryDisplayName(categoryId: String): String {
+        return when (categoryId) {
+            "Favorites" -> context.getString(R.string.cat_favorites)
+            "My" -> context.getString(R.string.cat_my_stations)
+            "All" -> context.getString(R.string.cat_all)
+            // Kui on serveri kategooria (ERR, Sky), siis näita otse
+            else -> categoryId
+        }
+    }
+
     if (stations.isEmpty() || categories.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Laadin jaamu...", color = Color.Gray)
+            Text(context.getString(R.string.status_buffering), color = Color.Gray)
         }
         return
     }
 
-    // --- Pageri loogika (ainult Portrait) ---
     val initialIndex = remember(categories, selectedCategory) {
         categories.indexOf(selectedCategory).coerceAtLeast(0)
     }
@@ -64,20 +75,15 @@ fun StationList(
         categories.size
     }
 
-    // --- SÜNKRONISEERIMINE 1: Kategooria muutus -> Liiguta Pagerit ---
-    // Kui vajutad nuppu või äratus vahetab kategooriat, liigub Pager kaasa.
     LaunchedEffect(selectedCategory, categories) {
         if (!isLandscape) {
             val targetIndex = categories.indexOf(selectedCategory)
-            // Kontrollime, et me ei liigutaks, kui juba oleme seal (väldib värelust)
             if (targetIndex >= 0 && pagerState.currentPage != targetIndex) {
                 pagerState.scrollToPage(targetIndex)
             }
         }
     }
 
-    // --- SÜNKRONISEERIMINE 2: Pageri viipamine -> Muuda kategooriat ---
-    // Jälgime Pageri lehe muutust reaalajas.
     val currentCategories by rememberUpdatedState(categories)
     val currentSelectedCategory by rememberUpdatedState(selectedCategory)
 
@@ -86,7 +92,6 @@ fun StationList(
             snapshotFlow { pagerState.currentPage }
                 .distinctUntilChanged()
                 .collectLatest { page ->
-                    // Kontrollime otse currentCategories pealt
                     if (currentCategories.size > 1) {
                         val categoryOnPage = currentCategories.getOrNull(page)
                         if (categoryOnPage != null && categoryOnPage != currentSelectedCategory) {
@@ -97,19 +102,13 @@ fun StationList(
         }
     }
 
-    // --- Ülemise nupurea (Chips) kerimine ---
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-
-    // PARANDUS: Arvutame nihke vastavalt sellele, kui palju nimekiri ekraanil ruumi võtab.
-    // Portrait: Nimekiri on 100% lai, nihe on 1/3.
-    // Landscape: Nimekiri on u 50-60% lai (sest pleier on kõrval), seega nihe peab olema poole väiksem (1/6).
     val offsetDivisor = if (isLandscape) 6 else 3
     val scrollOffsetPx = with(density) { -(configuration.screenWidthDp / offsetDivisor).dp.toPx() }.toInt()
 
     LaunchedEffect(selectedCategory) {
         val index = categories.indexOf(selectedCategory)
         if (index >= 0) {
-            // animateScrollToItem viib nupu õigesse kohta sujuva liikumisega
             listState.animateScrollToItem(index, scrollOffset = scrollOffsetPx)
         }
     }
@@ -129,22 +128,21 @@ fun StationList(
             contentPadding = PaddingValues(horizontal = 0.dp)
         ) {
             items(categories.size) { index ->
-                val category = categories[index]
-                val isSelected = (selectedCategory == category)
-                val isFavoritesChip = category == "Lemmikud"
+                val categoryId = categories[index]
+                val isSelected = (selectedCategory == categoryId)
+                val isFavoritesChip = categoryId == "Favorites"
 
                 FilterChip(
                     selected = isSelected,
-                    onClick = { onCategorySelect(category) },
-                    label = { Text(category) },
+                    onClick = { onCategorySelect(categoryId) },
+                    // SIIN KASUTAME TÕLKIMIST
+                    label = { Text(getCategoryDisplayName(categoryId)) },
                     leadingIcon = if (isSelected) {
                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(
-                        // MUUDATUS: Lemmikute taust on 20% läbipaistvusega oranž, tekst on täisoranž
                         selectedContainerColor = if (isFavoritesChip) MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary,
                         selectedLabelColor = if (isFavoritesChip) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
-
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -154,10 +152,9 @@ fun StationList(
 
         // --- SISU ---
         if (isLandscape) {
-            // Landscape: Üks Grid
             if (filteredStations.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Selles kategoorias pole jaamu.", color = Color.Gray)
+                    Text(context.getString(R.string.search_no_results), color = Color.Gray)
                 }
             } else {
                 LazyVerticalGrid(
@@ -171,17 +168,16 @@ fun StationList(
                         StationGridItem(
                             station = station,
                             isSelected = station.id == selectedStationId,
-                            isPlaying = playerStatus.contains("Mängib"),
+                            isPlaying = playerStatus.contains(context.getString(R.string.status_playing)),
                             onClick = { onStationSelect(station) },
                             onLongClick = { onStationLongClick(station) },
-                            showFavoriteIcon = selectedCategory != "Lemmikud",
+                            showFavoriteIcon = selectedCategory != "Favorites", // UUS ID
                             showFlag = showFlags
                         )
                     }
                 }
             }
         } else {
-            // Portrait: Pager
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -192,15 +188,15 @@ fun StationList(
 
                 val stationsForPage = remember(pageCategory, stations) {
                     when (pageCategory) {
-                        "Lemmikud" -> stations.filter { it.isFavorite }
-                        "Kõik" -> stations
+                        "Favorites" -> stations.filter { it.isFavorite }
+                        "All" -> stations
                         else -> stations.filter { it.category == pageCategory }
                     }
                 }
 
                 if (stationsForPage.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Selles kategoorias pole jaamu.", color = Color.Gray)
+                        Text(context.getString(R.string.search_no_results), color = Color.Gray)
                     }
                 } else {
                     LazyVerticalGrid(
@@ -214,10 +210,10 @@ fun StationList(
                             StationGridItem(
                                 station = station,
                                 isSelected = station.id == selectedStationId,
-                                isPlaying = playerStatus.contains("Mängib"),
+                                isPlaying = playerStatus.contains(context.getString(R.string.status_playing)),
                                 onClick = { onStationSelect(station) },
                                 onLongClick = { onStationLongClick(station) },
-                                showFavoriteIcon = pageCategory != "Lemmikud",
+                                showFavoriteIcon = pageCategory != "Favorites",
                                 showFlag = showFlags
                             )
                         }

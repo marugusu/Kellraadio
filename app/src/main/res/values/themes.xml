@@ -1,6 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Kellraadio" parent="android:Theme.Material.Light.NoActionBar">
-        <!-- Kasutame sinu enda defineeritud värvi -->
+    <!-- MUUDATUS: parent peab olema Theme.AppCompat... -->
+    <style name="Theme.Kellraadio" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Kasutame sinu enda defineeritud värvi taustaks -->
         <item name="android:windowBackground">@color/black</item>
     </style>
 </resources>

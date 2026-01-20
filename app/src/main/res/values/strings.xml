@@ -1,3 +1,133 @@
 <resources>
-    <string name="app_name">Raadio</string>
+    <string name="app_name">Radio</string>
+
+    <!-- Navigation -->
+    <string name="nav_radio">Radio</string>
+    <string name="nav_alarms">Alarms</string>
+    <string name="nav_history">History</string>
+    <string name="nav_add_channel">Add</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Categories -->
+    <string name="cat_favorites">Favorites</string>
+    <string name="cat_my_stations">My Stations</string>
+    <string name="cat_all">All</string>
+
+    <!-- General Actions -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_close">Close</string>
+    <string name="action_search">Search</string>
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_test">Test</string>
+
+    <!-- Player & Service -->
+    <string name="status_playing">Playing</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_buffering">Buffering</string>
+    <string name="status_error">Connection error</string>
+    <string name="live_broadcast">Live Stream</string>
+    <string name="select_station">Select station</string>
+    <string name="notification_playing">Playing: %1$s</string>
+    <string name="notification_alarm">Alarm!</string>
+    <string name="error_station_not_found">Station not found!</string>
+
+    <!-- Alarms -->
+    <string name="alarm_title">Alarms</string>
+    <string name="alarm_no_alarms">No alarms set</string>
+    <string name="alarm_add_new">Add alarm</string>
+    <string name="alarm_set_title">Set Alarm</string>
+    <string name="alarm_edit_title">Edit Alarm</string>
+    <string name="alarm_toast_saved">Alarm saved!</string>
+    <string name="alarm_toast_deleted">Alarm deleted!</string>
+    <string name="timer_dialog_title">Sleep Timer</string>
+    <string name="timer_minutes">%1$d minutes</string>
+    <string name="timer_until">Plays until %1$s</string>
+    <string name="timer_start">Start</string>
+
+    <!-- History -->
+    <string name="history_title">History</string>
+    <string name="history_empty">History is empty.</string>
+    <string name="history_empty_day">No history for this day.</string>
+    <string name="history_delete_confirm_title">Clear History</string>
+    <string name="history_delete_confirm_text">Are you sure you want to permanently delete your listening history?</string>
+    <string name="history_today">Today</string>
+    <string name="history_yesterday">Yesterday</string>
+    <string name="date_picker_title">Select date</string>
+
+    <!-- Search / Add Station -->
+    <string name="search_title">Add Channel</string>
+    <string name="search_placeholder">Search station...</string>
+    <string name="search_manual">Add manually</string>
+    <string name="search_no_results">No results found.</string>
+    <string name="filter_country">Country</string>
+    <string name="filter_genre">Genre</string>
+    <string name="filter_all_countries">All countries</string>
+    <string name="filter_all_genres">All genres</string>
+    <string name="manual_dialog_title">Add station manually</string>
+    <string name="station_name">Station Name</string>
+    <string name="stream_url">Stream URL</string>
+    <string name="station_added">Added: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_group_radio">Radio &amp; Channels</string>
+    <string name="settings_refresh">Refresh stations</string>
+    <string name="settings_refresh_desc">Download latest channel list from server</string>
+    <string name="settings_group_appearance">Appearance &amp; Layout</string>
+    <string name="settings_grid_layout">Channel Grid</string>
+    <string name="settings_portrait">Portrait view</string>
+    <string name="settings_landscape">Landscape view</string>
+    <string name="settings_show_flags">Show country flags</string>
+    <string name="settings_show_flags_desc">Display origin flag next to station name</string>
+    <string name="settings_group_general">General</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_desc">Choose app language</string>
+    <string name="settings_group_help">Help &amp; Diagnostics</string>
+    <string name="settings_send_log">Send log</string>
+    <string name="settings_send_log_desc">Share technical info with developer</string>
+    <string name="settings_test_data">Test history</string>
+    <string name="settings_test_data_desc">Add sample data to database</string>
+    <string name="app_version">Version %1$s</string>
+    <string name="toast_updated">Updated!</string>
+
+    <!-- Info Screen -->
+    <string name="info_title">About App</string>
+    <string name="info_card_1_title">Your daily radio companion</string>
+    <string name="info_card_1_text">Kellraadio is designed to provide a simple and convenient way to listen to radio stations.</string>
+    <string name="info_card_2_title">Reliable alarm system</string>
+    <string name="info_card_2_text">The app is optimized to ensure your favorite station starts playing exactly on time.</string>
+    <string name="info_card_3_title">Stable background audio</string>
+    <string name="info_card_3_text">Special attention has been paid to uninterrupted playback even when using other apps.</string>
+    <string name="info_card_4_title">Smart listening history</string>
+    <string name="info_card_4_text">Heard a good song but forgot the name? Quickly find recently played tracks in the history view.</string>
+    <string name="info_dev_location">Developed in Estonia</string>
+
+    <!-- Station Actions -->
+    <string name="action_remove_favorite">Remove from favorites</string>
+    <string name="action_add_favorite">Add to favorites</string>
+    <string name="action_set_alarm">Set alarm</string>
+    <string name="action_edit_station">Edit station</string>
+    <string name="action_delete_station">Delete station</string>
+    <string name="delete_station_confirm_title">Delete station?</string>
+    <string name="delete_station_confirm_text">Are you sure you want to permanently delete station \'%1$s\'?</string>
+
+    <!-- Days of week (Short) -->
+    <string name="day_mon">M</string>
+    <string name="day_tue">T</string>
+    <string name="day_wed">W</string>
+    <string name="day_thu">T</string>
+    <string name="day_fri">F</string>
+    <string name="day_sat">S</string>
+    <string name="day_sun">S</string>
+
+    <!-- Week ranges -->
+    <string name="days_every_day">Every day</string>
+    <string name="days_weekdays">Mon-Fri</string>
+    <string name="days_weekend">Sat-Sun</string>
+    <string name="alarm_once">Once</string>
+
 </resources>

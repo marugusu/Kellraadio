@@ -17,12 +17,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource // UUS IMPORT
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import ee.minu.kellraadio.RadioStation
+import ee.minu.kellraadio.R // UUS IMPORT
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +41,6 @@ fun AlarmDialog(
     val haptic = LocalHapticFeedback.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
-
     val currentTime = Calendar.getInstance()
     val startHour = initialHour ?: currentTime.get(Calendar.HOUR_OF_DAY)
     val startMinute = initialMinute ?: currentTime.get(Calendar.MINUTE)
@@ -52,20 +53,24 @@ fun AlarmDialog(
 
     val days = remember { mutableStateListOf<Int>().apply { addAll(initialDays) } }
 
+    // TÕLGITUD NÄDALAPÄEVAD
     val weekDays = listOf(
-        Calendar.MONDAY to "E", Calendar.TUESDAY to "T", Calendar.WEDNESDAY to "K",
-        Calendar.THURSDAY to "N", Calendar.FRIDAY to "R", Calendar.SATURDAY to "L", Calendar.SUNDAY to "P"
+        Calendar.MONDAY to stringResource(R.string.day_mon),
+        Calendar.TUESDAY to stringResource(R.string.day_tue),
+        Calendar.WEDNESDAY to stringResource(R.string.day_wed),
+        Calendar.THURSDAY to stringResource(R.string.day_thu),
+        Calendar.FRIDAY to stringResource(R.string.day_fri),
+        Calendar.SATURDAY to stringResource(R.string.day_sat),
+        Calendar.SUNDAY to stringResource(R.string.day_sun)
     )
 
-    // --- PARANDUS ALGAB SIIT ---
-    val baseTitle = if (onDelete != null) "Muuda äratust" else "Sea äratus"
+    // TÕLGITUD PEALKIRI
+    val baseTitle = if (onDelete != null) stringResource(R.string.alarm_edit_title) else stringResource(R.string.alarm_set_title)
     val stationName = selectedStation?.name
     val finalTitle = if (!stationName.isNullOrEmpty()) "$baseTitle: $stationName" else baseTitle
-    // --- PARANDUS LÕPPEB ---
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        // 1. Ikoon värviliseks (tertiary)
         icon = {
             Icon(
                 Icons.Default.Alarm,
@@ -73,14 +78,12 @@ fun AlarmDialog(
                 tint = MaterialTheme.colorScheme.tertiary
             )
         },
-        // 2. Pealkiri: "Sea äratus" on tavaline, "Kanali Nimi" on värviline
         title = {
             val styledTitle = buildAnnotatedString {
-                append(baseTitle) // "Sea äratus" või "Muuda äratust"
+                append(baseTitle)
 
                 if (!stationName.isNullOrEmpty()) {
                     append(": ")
-                    // See plokk muudab järgneva teksti värvi
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.tertiary)) {
                         append(stationName)
                     }
@@ -140,11 +143,13 @@ fun AlarmDialog(
                     onAlarmSaved(timePickerState.hour, timePickerState.minute, days.toSet())
                     onDismiss()
                 }
-            ) { Text("Salvesta") }
+            ) {
+                // TÕLGITUD
+                Text(stringResource(R.string.action_save))
+            }
         },
         dismissButton = {
             if (onDelete != null) {
-                // Kui muudame, näitame "Kustuta" nuppu
                 TextButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -153,17 +158,20 @@ fun AlarmDialog(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Kustuta")
+                    // TÕLGITUD
+                    Text(stringResource(R.string.action_delete))
                 }
             }
 
-            // "Loobu" nupp on alati olemas
             TextButton(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onDismiss()
                 }
-            ) { Text("Loobu") }
+            ) {
+                // TÕLGITUD
+                Text(stringResource(R.string.action_cancel))
+            }
         }
     )
 }
