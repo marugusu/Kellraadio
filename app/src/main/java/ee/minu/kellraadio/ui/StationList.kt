@@ -130,19 +130,42 @@ fun StationList(
             items(categories.size) { index ->
                 val categoryId = categories[index]
                 val isSelected = (selectedCategory == categoryId)
+
+                // Tuvastame eritooni vajavad nupud
                 val isFavoritesChip = categoryId == "Favorites"
+                val isMyStationsChip = categoryId == "My"
+                val isAllChip = categoryId == "All" // UUS: Tuvastame "Kõik" nupu
 
                 FilterChip(
                     selected = isSelected,
                     onClick = { onCategorySelect(categoryId) },
-                    // SIIN KASUTAME TÕLKIMIST
                     label = { Text(getCategoryDisplayName(categoryId)) },
                     leadingIcon = if (isSelected) {
                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = if (isFavoritesChip) MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = if (isFavoritesChip) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
+                        // 1. KUI ON VALITUD (Taustad)
+                        selectedContainerColor = when {
+                            isFavoritesChip -> MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.2f) // Kuldne
+                            isMyStationsChip -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)   // Roosakas
+                            isAllChip -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)         // Rohekassinine (UUS)
+                            else -> MaterialTheme.colorScheme.primary                                   // Lilla
+                        },
+                        // 2. KUI ON VALITUD (Tekst ja Ikoon)
+                        selectedLabelColor = when {
+                            isFavoritesChip -> MaterialTheme.colorScheme.onSecondary
+                            isMyStationsChip -> MaterialTheme.colorScheme.tertiary
+                            isAllChip -> MaterialTheme.colorScheme.secondary // UUS
+                            else -> MaterialTheme.colorScheme.onPrimary
+                        },
+                        selectedLeadingIconColor = when {
+                            isFavoritesChip -> MaterialTheme.colorScheme.onSecondary
+                            isMyStationsChip -> MaterialTheme.colorScheme.tertiary
+                            isAllChip -> MaterialTheme.colorScheme.secondary // UUS
+                            else -> MaterialTheme.colorScheme.onPrimary
+                        },
+
+                        // 3. KUI EI OLE VALITUD
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
