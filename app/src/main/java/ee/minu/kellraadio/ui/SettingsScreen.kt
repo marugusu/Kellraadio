@@ -60,13 +60,25 @@ fun SettingsScreen(
     // Olek dialoogi avamiseks
     var showLanguageDialog by remember { mutableStateOf(false) }
 
-    // KEELE LOOGIKA
+    // KEELE LOOGIKA PARANDUS
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-    val appLang = if (!currentLocales.isEmpty) currentLocales.get(0)?.language else "et" // Vaikimisi Eesti, kui pole määratud
+
+    // 1. Kas kasutaja on käsitsi keele valinud?
+    val manualLang = if (!currentLocales.isEmpty) currentLocales.get(0)?.language else null
+
+    // 2. Kui ei, siis vaatame, mis on telefoni süsteemi keel
+    val systemLang = java.util.Locale.getDefault().language
+
+    // 3. Otsustame, millist koodi nupul näidata
+    val displayLangCode = manualLang ?: if (SUPPORTED_LANGUAGES.any { it.code == systemLang }) {
+        systemLang
+    } else {
+        "en" // Fallback inglise keelele
+    }
 
     // Leiame praeguse keele objekti kuvamiseks
-    val currentLanguageObj = SUPPORTED_LANGUAGES.find { it.code == appLang }
-        ?: SUPPORTED_LANGUAGES.find { it.code == "et" }!!
+    val currentLanguageObj = SUPPORTED_LANGUAGES.find { it.code == displayLangCode }
+        ?: SUPPORTED_LANGUAGES.find { it.code == "en" }!!
 
     Column(modifier = modifier.fillMaxSize()) {
         // --- PÄIS ---
@@ -288,7 +300,7 @@ fun SettingsScreen(
                     )
 
                     SUPPORTED_LANGUAGES.forEach { lang ->
-                        val isSelected = lang.code == appLang
+                        val isSelected = lang.code == displayLangCode
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

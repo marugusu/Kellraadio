@@ -152,6 +152,7 @@ fun RaadioEkraan() {
     var syncedStationName by rememberSaveable { mutableStateOf("") }
     // ------------------------------
     var showFlags by rememberSaveable { mutableStateOf(prefs.getBoolean("show_flags", true)) }
+    var isPlayingState by rememberSaveable { mutableStateOf(false) }
 
     // Siin on OK kasutada context.getString, sest see on Composable'i initsialiseerimise ajal
     var playerStatus by rememberSaveable { mutableStateOf(context.getString(R.string.status_stopped)) }
@@ -227,7 +228,7 @@ fun RaadioEkraan() {
     }
 
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
-    val isPlaying = playerStatus.contains(stringResource(R.string.status_playing))
+    val isPlaying = isPlayingState
 
     LaunchedEffect(isPlaying) {
         val w = (context as? android.app.Activity)?.window
@@ -286,23 +287,27 @@ fun RaadioEkraan() {
                     RadioService.ACTION_STATION_CHANGED -> {
                         playingStationName = intent.getStringExtra("STATION_NAME") ?: ""
                         playerStatus = context.getString(R.string.status_playing)
+                        isPlayingState = true
                     }
                     RadioService.ACTION_METADATA_UPDATED -> {
                         playerStatus = context.getString(R.string.status_playing)
                         parsedTitle = intent.getStringExtra("PARSED_TITLE") ?: ""
                         parsedArtist = intent.getStringExtra("PARSED_ARTIST") ?: ""
                         parsedExtra = intent.getStringExtra("PARSED_EXTRA") ?: ""
+                        isPlayingState = true
                     }
                     RadioService.ACTION_BITRATE_UPDATED -> bitrateInfo = intent.getStringExtra("BITRATE_INFO") ?: ""
                     RadioService.ACTION_PLAYER_ERROR -> {
                         playerStatus = context.getString(R.string.status_error)
                         bitrateInfo = ""
+                        isPlayingState = false
                         Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_LONG).show()
                     }
                     RadioService.ACTION_PLAYER_STOPPED -> {
                         playerStatus = context.getString(R.string.status_stopped)
                         bitrateInfo = ""
                         playingStationUrl = ""
+                        isPlayingState = false
                     }
                     RadioService.ACTION_TIMER_TICK -> sleepTimerMillis = intent.getLongExtra("REMAINING_MILLIS", 0L)
                 }
