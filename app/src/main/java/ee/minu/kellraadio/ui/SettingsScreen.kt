@@ -49,6 +49,7 @@ fun SettingsScreen(
     onColsPortraitChange: (Int) -> Unit,
     onColsLandscapeChange: (Int) -> Unit,
     onRefresh: () -> Unit,
+    onClearHistory: () -> Unit, // UUS PARAMEETER
     onAddTestData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -57,26 +58,16 @@ fun SettingsScreen(
     val appVersion = getAppVersionName(context)
     val scrollState = rememberScrollState()
 
-    // Olek dialoogi avamiseks
+    // Olekud
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showDeleteHistoryDialog by remember { mutableStateOf(false) } // UUS OLEK
 
-    // KEELE LOOGIKA PARANDUS
+    // KEELE LOOGIKA
     val currentLocales = AppCompatDelegate.getApplicationLocales()
-
-    // 1. Kas kasutaja on käsitsi keele valinud?
     val manualLang = if (!currentLocales.isEmpty) currentLocales.get(0)?.language else null
-
-    // 2. Kui ei, siis vaatame, mis on telefoni süsteemi keel
     val systemLang = java.util.Locale.getDefault().language
+    val displayLangCode = manualLang ?: if (SUPPORTED_LANGUAGES.any { it.code == systemLang }) systemLang else "en"
 
-    // 3. Otsustame, millist koodi nupul näidata
-    val displayLangCode = manualLang ?: if (SUPPORTED_LANGUAGES.any { it.code == systemLang }) {
-        systemLang
-    } else {
-        "en" // Fallback inglise keelele
-    }
-
-    // Leiame praeguse keele objekti kuvamiseks
     val currentLanguageObj = SUPPORTED_LANGUAGES.find { it.code == displayLangCode }
         ?: SUPPORTED_LANGUAGES.find { it.code == "en" }!!
 
@@ -119,7 +110,7 @@ fun SettingsScreen(
                     headline = stringResource(R.string.settings_language),
                     supporting = stringResource(R.string.settings_language_desc),
                     icon = Icons.Default.Language,
-                    onClick = { showLanguageDialog = true }, // Avab dialoogi
+                    onClick = { showLanguageDialog = true },
                     trailingContent = {
                         Text(
                             text = "${currentLanguageObj.flag} ${currentLanguageObj.name}",
@@ -139,6 +130,16 @@ fun SettingsScreen(
                     icon = Icons.Default.Refresh,
                     isLoading = isRefreshing,
                     onClick = onRefresh
+                )
+
+                //Spacer(modifier = Modifier.height(4.dp))
+
+                // UUS NUPP: Kustuta ajalugu
+                SettingsCardItem(
+                    headline = stringResource(R.string.settings_clear_history),
+                    supporting = stringResource(R.string.settings_clear_history_desc),
+                    icon = Icons.Default.DeleteSweep,
+                    onClick = { showDeleteHistoryDialog = true }
                 )
             }
 
@@ -255,7 +256,7 @@ fun SettingsScreen(
                     onClick = { LogExporter.exportAndShareLog(context) }
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+              //  Spacer(modifier = Modifier.height(4.dp))
 
                 SettingsCardItem(
                     headline = stringResource(R.string.settings_test_data),
@@ -348,6 +349,30 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    // --- UUS: AJALOO KUSTUTAMISE DIALOOG ---
+    if (showDeleteHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteHistoryDialog = false },
+            title = { Text(stringResource(R.string.history_delete_confirm_title)) },
+            text = { Text(stringResource(R.string.history_delete_confirm_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onClearHistory()
+                        showDeleteHistoryDialog = false
+                    }
+                ) {
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteHistoryDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
     }
 }
 

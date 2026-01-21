@@ -93,6 +93,8 @@
     <string name="settings_test_data_desc">Add sample data to database</string>
     <string name="app_version">Version %1$s</string>
     <string name="toast_updated">Updated!</string>
+    <string name="settings_clear_history">Clear history</string>
+    <string name="settings_clear_history_desc">Delete all listening records</string>
 
     <!-- Info Screen -->
     <string name="info_title">About App</string>

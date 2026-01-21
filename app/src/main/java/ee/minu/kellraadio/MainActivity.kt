@@ -402,7 +402,27 @@ fun RaadioEkraan() {
                         }
                     )
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
-                    2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Favorites" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show() } })
+                    2 -> HistoryScreen(
+                        repository = stationRepository,
+                        // onClearHistory on siit EEMALDATUD
+                        onPlayStationByName = { stationName ->
+                            val stationToPlay = stations.find { it.name == stationName }
+                            if (stationToPlay != null) {
+                                selectedStationId = stationToPlay.id
+                                selectedStationName = stationToPlay.name
+                                syncedStationName = stationToPlay.name
+                                prefs.edit().putInt("last_selected_id", stationToPlay.id).apply()
+                                if (selectedCategory != "Favorites" && selectedCategory != stationToPlay.category) {
+                                    selectedCategory = stationToPlay.category
+                                    prefs.edit().putString("last_category", stationToPlay.category).apply()
+                                }
+                                playRadio(stationToPlay)
+                                currentTab = 0
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                     3 -> SearchScreen(
                         repository = stationRepository,
                         allStations = stations,
@@ -444,9 +464,17 @@ fun RaadioEkraan() {
                         onRefresh = {
                             scope.launch {
                                 isRefreshing = true
-                                try { stationRepository.refreshStations(); Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false }
+                                try {
+                                    stationRepository.refreshStations()
+                                    Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                } finally {
+                                    isRefreshing = false
+                                }
                             }
                         },
+                        // UUS RIDA: Ühendame kustutamise funktsiooni
+                        onClearHistory = { scope.launch { stationRepository.clearHistory() } },
                         onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show() } }
                     )
                 }
@@ -516,7 +544,27 @@ fun RaadioEkraan() {
                         }
                     )
                     1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
-                    2 -> HistoryScreen(repository = stationRepository, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onPlayStationByName = { stationName -> val stationToPlay = stations.find { it.name == stationName }; if (stationToPlay != null) { selectedStationId = stationToPlay.id; selectedStationName = stationToPlay.name; syncedStationName = stationToPlay.name; prefs.edit().putInt("last_selected_id", stationToPlay.id).apply(); if (selectedCategory != "Favorites" && selectedCategory != stationToPlay.category) { selectedCategory = stationToPlay.category; prefs.edit().putString("last_category", stationToPlay.category).apply() }; playRadio(stationToPlay); currentTab = 0 } else { Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show() } })
+                    2 -> HistoryScreen(
+                        repository = stationRepository,
+                        // onClearHistory on siit EEMALDATUD
+                        onPlayStationByName = { stationName ->
+                            val stationToPlay = stations.find { it.name == stationName }
+                            if (stationToPlay != null) {
+                                selectedStationId = stationToPlay.id
+                                selectedStationName = stationToPlay.name
+                                syncedStationName = stationToPlay.name
+                                prefs.edit().putInt("last_selected_id", stationToPlay.id).apply()
+                                if (selectedCategory != "Favorites" && selectedCategory != stationToPlay.category) {
+                                    selectedCategory = stationToPlay.category
+                                    prefs.edit().putString("last_category", stationToPlay.category).apply()
+                                }
+                                playRadio(stationToPlay)
+                                currentTab = 0
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                     3 -> SearchScreen(
                         repository = stationRepository,
                         allStations = stations,
@@ -557,9 +605,17 @@ fun RaadioEkraan() {
                         onRefresh = {
                             scope.launch {
                                 isRefreshing = true
-                                try { stationRepository.refreshStations(); Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show() } catch (e: Exception) { } finally { isRefreshing = false }
+                                try {
+                                    stationRepository.refreshStations()
+                                    Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                } finally {
+                                    isRefreshing = false
+                                }
                             }
                         },
+                        // UUS RIDA: Ühendame kustutamise funktsiooni
+                        onClearHistory = { scope.launch { stationRepository.clearHistory() } },
                         onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show() } }
                     )
                 }

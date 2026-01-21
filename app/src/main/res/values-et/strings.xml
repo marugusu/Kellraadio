@@ -93,6 +93,8 @@
     <string name="settings_test_data_desc">Lisa andmebaasi prooviandmeid</string>
     <string name="app_version">Versioon %1$s</string>
     <string name="toast_updated">Uuendatud!</string>
+    <string name="settings_clear_history">Kustuta ajalugu</string>
+    <string name="settings_clear_history_desc">Eemalda kõik salvestatud kuulamised</string>
 
     <!-- Info Screen -->
     <string name="info_title">Rakendusest</string>

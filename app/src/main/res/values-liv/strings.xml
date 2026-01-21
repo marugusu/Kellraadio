@@ -88,6 +88,8 @@
     <string name="settings_test_data_desc">Lizā test datā</string>
     <string name="app_version">Versij %1$s</string>
     <string name="toast_updated">Uddistõd!</string>
+    <string name="settings_clear_history">Kistūtõ aig</string>
+    <string name="settings_clear_history_desc">Kistūtõ amā kūldtõd aig</string>
 
     <!-- Info Screen (Lühidalt) -->
     <string name="info_title">Etsõ</string>
