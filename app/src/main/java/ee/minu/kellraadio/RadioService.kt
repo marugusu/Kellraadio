@@ -53,6 +53,11 @@ import java.util.concurrent.CopyOnWriteArraySet
 
 @Suppress("DEPRECATION")
 class RadioService : Service() {
+    private val REVERSED_METADATA_STATIONS = listOf(
+        "Star FM 80's",
+        "Star FM 90's"
+        // Lisa siia need jaamad, mis valesti näitavad
+    )
     private lateinit var player: Player
     private var mediaSession: MediaSession? = null
     private var currentStationName: String = "Raadio"
@@ -786,21 +791,37 @@ class RadioService : Service() {
     private fun splitMetadata(raw: String): Triple<String, String, String> {
         val cleaned = raw.trim()
 
+        // 1. Tühja info kontroll
         if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -") {
-            // MUUDATUS: Tõlgitud "Otseeeter"
             return Triple(getString(R.string.live_broadcast), currentStationName, "")
         }
 
         val parts = cleaned.split(" - ", limit = 3)
-        val artist: String
-        val title: String
+        var artist: String
+        var title: String
         val extra = if (parts.size >= 3) parts[2].trim() else ""
 
         if (parts.size >= 2) {
-            artist = parts[0].trim()
-            val t = parts[1].trim()
-            title = if (t.equals(artist, ignoreCase = true) || t.isBlank()) currentStationName else t
+            // Kontrollime, kas see jaam saadab infot tagurpidi
+            val isReversed = REVERSED_METADATA_STATIONS.contains(currentStationName)
+
+            val part1 = parts[0].trim()
+            val part2 = parts[1].trim()
+
+            if (isReversed) {
+                // VAHETUS: Esimene osa on Pealkiri, Teine on Esitaja
+                artist = part2
+                val rawTitle = part1
+                // Kui pealkiri on tühi või sama mis esitaja, pane jaama nimi
+                title = if (rawTitle.equals(artist, ignoreCase = true) || rawTitle.isBlank()) currentStationName else rawTitle
+            } else {
+                // STANDARD: Esimene osa on Esitaja, Teine on Pealkiri
+                artist = part1
+                val rawTitle = part2
+                title = if (rawTitle.equals(artist, ignoreCase = true) || rawTitle.isBlank()) currentStationName else rawTitle
+            }
         } else {
+            // Kui sidekriipsu polnud üldse
             artist = cleaned
             title = currentStationName
         }

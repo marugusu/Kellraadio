@@ -22,7 +22,11 @@ object StationArtworkUtils {
         "yle radio 1" to "YLE1",
         "heart - 70s" to "70",
         "heart - 80s" to "80",
-        "heart - 90s" to "90"
+        "heart - 90s" to "90",
+        "retro disco" to "DISC",
+        "retro love" to "LOVE",
+        "ida" to "IDA"
+
     )
 
     private val NOISE_WORDS = listOf(
