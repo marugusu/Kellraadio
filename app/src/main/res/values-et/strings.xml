@@ -138,4 +138,5 @@
     <string name="info_year">AASTA</string>
     <string name="info_genre">ŽANR</string>
     <string name="info_not_found">Lisainfot ei leitud.</string>
+    <string name="info_available">Lisainfo saadaval</string>
 </resources>
