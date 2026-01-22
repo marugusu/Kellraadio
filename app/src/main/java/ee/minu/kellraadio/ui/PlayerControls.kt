@@ -3,10 +3,10 @@ package ee.minu.kellraadio.ui
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -58,18 +59,66 @@ fun PlayerControls(
     val extraColor = if (isPlaying) MaterialTheme.colorScheme.onSecondary else Color.Gray
 
     Column(modifier = modifier) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+
+        // --- ASENDUS ALGAB ---
+        // Vana "Card" on asendatud "Box"-iga, et saada tume taust + vesimärk
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize()
+                // Siin tekitame "Monoliit" efekti (Tume gradient)
+                .clip(RoundedCornerShape(12.dp)) // Sama raadius, mis nupudel allpool (või originaalis kaardil)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF252525), // Veidi heledam must (Surface)
+                            Color.Black        // Täiesti must
+                        )
+                    )
+                )
         ) {
+            // KIHT 1: Tausta Vesimärk (Initsiaalid)
+           // if (activeStationName.isNotEmpty()) {
+            //      Text(
+            //         text = StationArtworkUtils.getStationInitials(activeStationName),
+            //         fontSize = 180.sp,
+            //         fontWeight = FontWeight.Black,
+            //         color = Color.White.copy(alpha = 0.05f), // 5% nähtavust
+            //         maxLines = 1,
+            //         modifier = Modifier
+            //             .align(Alignment.BottomEnd)
+            //             .offset(x = 20.dp, y = 40.dp) // Nihutame nurka
+            //      )
+            //  }
+            // KIHT 1: Tausta Vesimärk (Initsiaalid)
+            if (activeStationName.isNotEmpty()) {
+                Text(
+                    text = StationArtworkUtils.getStationInitials(activeStationName),
+                    fontSize = 150.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White.copy(alpha = 0.05f),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Visible,
+                    modifier = Modifier
+                        .matchParentSize()
+                        // Ankur: Üleval Paremal
+                        .wrapContentSize(align = Alignment.TopEnd, unbounded = true)
+
+                        // X = 50.dp -> Lükkab paremale (et viimane täht oleks poolik)
+                        // Y = -20.dp -> Lükkab üles (et ülemine osa oleks serva taga)
+                        .offset(x = 50.dp, y = (-10).dp)
+                )
+            }
+
+
+            // KIHT 2: Sinu ORIGINAALNE sisu (Column)
+            // Padding on 14.dp, täpselt nagu sinu originaalfailis
             Column(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 1. PEAMINE INFO (Lugu, Esitaja, Lisa)
+                // 1. PEAMINE INFO (Täpselt originaalkujul)
                 if (parsedTitle.isNotBlank()) {
                     Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
@@ -85,14 +134,14 @@ fun PlayerControls(
                     Text(text = parsedExtra, style = MaterialTheme.typography.titleMedium, color = extraColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
 
-                // 2. STAATUSE RIDA (Vähendatud vahe: 2dp + 4dp = 6dp)
+                // 2. STAATUSE RIDA (Originaalpaigutus)
                 Spacer(Modifier.height(2.dp))
 
                 val stationPrefix = if (activeStationName.isNotEmpty()) "$activeStationName • " else ""
                 val statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
                 Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = Color.Gray)
 
-                // 3. ÄRATUSE JA TAIMERI RIDA (Vähendatud vahe: 2dp + 4dp = 6dp)
+                // 3. ÄRATUSE JA TAIMERI RIDA (Originaalpaigutus)
                 if (alarmInfo != null || sleepTimerMillis > 0) {
                     Spacer(Modifier.height(2.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -100,7 +149,7 @@ fun PlayerControls(
                             val cal = Calendar.getInstance().apply { timeInMillis = alarmInfo.first }
                             val hour = cal.get(Calendar.HOUR_OF_DAY)
                             val minute = cal.get(Calendar.MINUTE)
-                            val context = androidx.compose.ui.platform.LocalContext.current // Tavaliselt juba olemas
+                            val context = androidx.compose.ui.platform.LocalContext.current
                             val prettyTime = AlarmUtils.getAlarmText(context, hour, minute, alarmDays)
                             val infoStr = "$prettyTime (${alarmInfo.second})"
 
@@ -126,6 +175,8 @@ fun PlayerControls(
                 }
             }
         }
+        // --- ASENDUS LÕPP ---
+
         Spacer(Modifier.height(16.dp))
         val buttonShape = RoundedCornerShape(12.dp)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

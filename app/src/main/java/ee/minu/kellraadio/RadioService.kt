@@ -56,6 +56,8 @@ class RadioService : Service() {
     private lateinit var player: Player
     private var mediaSession: MediaSession? = null
     private var currentStationName: String = "Raadio"
+    private var currentStationBitmap: android.graphics.Bitmap? = null
+
     private var isChangingStation = false
     private var currentCategory: String = "" // UUS
     private var lastBitrateInfo: String = ""
@@ -161,6 +163,7 @@ class RadioService : Service() {
         serviceScope.launch(Dispatchers.Main) {
 
             currentStationName = name
+            currentStationBitmap = ee.minu.kellraadio.ui.StationArtworkUtils.generateDarkStationBitmap(name)
             currentTrackTitle = ""
             currentExtraInfo = ""
            // Nullime mälu, sest uus jaam peab kindlasti läbi minema
@@ -177,7 +180,7 @@ class RadioService : Service() {
             // Põhjus: onStartCommand (allpool) loob täiesti uue MediaItemi koos õigete algandmetega.
             // Siin "vana" itemi uuendamine vahetult enne selle kustutamist tekitab Bluetoothi kanalis konflikti ("Race Condition"),
             // mis võib auto vastuvõtja ühendamise hetkel lukku ajada.
-
+            sendMetadataUpdate(name, getString(R.string.live_broadcast))
             onStartCommand(Intent(this@RadioService, RadioService::class.java).apply {
                 putExtra("STREAM_URL", url)
                 putExtra("STATION_NAME", name)
@@ -303,6 +306,7 @@ class RadioService : Service() {
             .setTrackNumber(1)
             .setTotalTrackCount(1)
             .setExtras(extras)
+            .setArtworkData(getArtworkBytes(), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
             .build()
 
         player.playlistMetadata = newMetadata
@@ -595,6 +599,7 @@ class RadioService : Service() {
             currentStreamUrl = streamUrl
             currentStationName = stationName ?: "Raadio"
             isAlarmMode = triggeredBy == "ALARM"
+            currentStationBitmap = ee.minu.kellraadio.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
 
             // --- ÕIGE PARANDUS (BLUETOOTH FIX) ---
             // Määrame kohe alguses vaikeväärtused. See imiteerib olukorda,
@@ -640,6 +645,7 @@ class RadioService : Service() {
                 .setTotalTrackCount(1) // ALATI 1, et auto ei näitaks "1/999"
                 .setIsPlayable(true)
                 .setExtras(extras)
+                .setArtworkData(getArtworkBytes(), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                 .build()
 
             // --- KRIITILINE PARANDUS (ID: RAADIO) ---
@@ -719,7 +725,10 @@ class RadioService : Service() {
         val icon = if (isAlarmMode) android.R.drawable.ic_lock_idle_alarm else R.drawable.ic_radio_notification
 
         return NotificationCompat.Builder(this, "PLAYING_RADIO_CHANNEL_v21")
-            .setSmallIcon(icon).setContentTitle(title).setContentText(text)
+            .setSmallIcon(icon)
+            .setLargeIcon(currentStationBitmap)
+            .setContentTitle(title)
+            .setContentText(text)
             .setOngoing(true).setCategory(NotificationCompat.CATEGORY_ALARM).setPriority(priority)
             .setDefaults(if (isAlarmMode) Notification.DEFAULT_ALL else 0)
             .setContentIntent(mediaSession!!.sessionActivity)
@@ -828,6 +837,13 @@ class RadioService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "History viga: ${e.message}")
             }
+        }
+    }
+    private fun getArtworkBytes(): ByteArray? {
+        return currentStationBitmap?.let { bmp ->
+            val stream = java.io.ByteArrayOutputStream()
+            bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+            stream.toByteArray()
         }
     }
 
