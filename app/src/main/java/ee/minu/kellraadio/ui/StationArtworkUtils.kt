@@ -11,13 +11,35 @@ import kotlin.math.absoluteValue
 
 object StationArtworkUtils {
 
+    // 1. ERANDITE TABEL (Lisa siia, mida tahad jõuga muuta)
+    // Võti peab olema väiketähtedega!
+    private val SPECIAL_CASES = mapOf(
+        "raadio 2" to "R2",
+        "raadio 4" to "R4",
+        "sky plus" to "SKY+", // Soovi korral saab kasutada sümboleid
+        "klassikaraadio" to "KLAS",
+        "vikerraadio" to "VIKR",
+        "yle radio 1" to "YLE1"
+    )
+
     private val NOISE_WORDS = listOf(
         "raadio", "radio", "fm", "eesti", "tallinn", "onair", "channel","klara",
         "live", "suomi", "est", "fin", "the", "hits", "love", "saami", "duo","elmari","elmar"
     )
 
     fun getStationInitials(stationName: String): String {
-        var clean = stationName.trim()
+        val cleanName = stationName.trim()
+        val lowerName = cleanName.lowercase()
+
+        // --- KONTROLLIME ERANDEID ---
+        // Kui nimi on tabelis, tagasta kohe (ilma 4-tähe loogikata)
+        if (SPECIAL_CASES.containsKey(lowerName)) {
+            return SPECIAL_CASES[lowerName]!!.uppercase()
+        }
+
+        // ... Kui erandit polnud, jätkame tavalise algoritmiga ...
+
+        var clean = cleanName
             .replace("-", " ")
             .replace("'", "")
             .replace("?", "")
@@ -30,13 +52,11 @@ object StationArtworkUtils {
             }
         }
 
-        // 2. Numbrite ja Ajastute maagia
+        // 2. Numbrid
         val numberRegex = "(\\d+)".toRegex()
         val numberMatch = numberRegex.find(clean)
         if (numberMatch != null) {
             val num = numberMatch.value
-
-            // Leiame brändi nime enne numbrit
             val parts = clean.split(" ")
             var brandPrefix = ""
 
@@ -44,38 +64,19 @@ object StationArtworkUtils {
                 if (part.contains(num)) break
                 if (part.isNotEmpty()) {
                     brandPrefix = part
-                    // Kui leidsime "BBC" või "Star" (mitte müra), siis see ongi see
-                    if (!NOISE_WORDS.contains(part.lowercase())) {
-                        break
-                    }
+                    if (!NOISE_WORDS.contains(part.lowercase())) break
                 }
             }
-
-            // Tagavara: kui brändi ei leitud, võta esimene täht
             if (brandPrefix.isEmpty()) brandPrefix = clean.take(1)
 
             val result = when {
-                // UUS REEGEL: BBC Radio 4 -> BBC + 4 -> BBC4
-                // Kui bränd on täpselt 3 tähte ja number on 1 number, pane kokku.
-                brandPrefix.length == 3 && num.length == 1 -> {
-                    brandPrefix + num
-                }
-
-                // Star 80 -> ST + 80 -> ST80
-                num.length >= 2 -> {
-                    brandPrefix.take(2) + num
-                }
-
-                // Raadio 2 -> R + 2 -> R2
-                else -> {
-                    brandPrefix.take(1) + num
-                }
+                brandPrefix.length == 3 && num.length == 1 -> brandPrefix + num // BBC4
+                num.length >= 2 -> brandPrefix.take(2) + num // ST80
+                else -> brandPrefix.take(1) + num // R2 (algoritmiline fallback, kui erandit poleks)
             }
-
             return formatToFourChars(result.uppercase())
         }
 
-        // ... Ülejäänud loogika jääb samaks ...
         val parts = clean.split("\\s+".toRegex())
             .filter { !NOISE_WORDS.contains(it.lowercase()) }
             .filter { it.length > 1 || it == "X" }
@@ -84,27 +85,22 @@ object StationArtworkUtils {
         val firstWord = activeParts[0]
 
         val result = when {
-            // Kahesõnalised (Duo Rock -> DURO)
             activeParts.size >= 2 -> {
                 val w1 = activeParts[0]
                 val w2 = activeParts[1]
                 (w1.take(2) + w2.take(2))
             }
-            // Üks sõna
-            else -> {
-                firstWord.take(4)
-            }
+            else -> firstWord.take(4)
         }
 
         return formatToFourChars(result.uppercase())
     }
 
-    // Teeb kindlaks, et tulemus on täpselt 4 tähte pikk
     private fun formatToFourChars(input: String): String {
         return when (input.length) {
             4 -> input
-            3 -> input + input.last() // VIK -> VIKK (et täita ruum)
-            2 -> input + input        // R2 -> R2R2
+            3 -> input + input.last()
+            2 -> input + input // Algoritm teeb R2 -> R2R2 (aga erandid pääsevad sellest)
             1 -> input + input + input + input
             0 -> "RADI"
             else -> input.take(4)
@@ -131,7 +127,14 @@ object StationArtworkUtils {
         paint.typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         paint.textAlign = Paint.Align.CENTER
 
-        paint.textSize = size / 2.0f
+        // --- DÜNAAMILINE SUURUS ---
+        // Kuna nüüd võib tulla "R2" (2 tähte) või "VIKE" (4 tähte), peame fonti muutma
+        val textSizeFactor = when (initials.length) {
+            in 0..2 -> 1.5f // Väga suur (R2)
+            3 -> 1.8f       // Keskmine (SKY)
+            else -> 2.0f    // Tavaline (VIKE)
+        }
+        paint.textSize = size / textSizeFactor
 
         val bounds = Rect()
         paint.getTextBounds(initials, 0, initials.length, bounds)
