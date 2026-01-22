@@ -107,7 +107,7 @@ fun PlayerControls(
 
                         // X = 50.dp -> Lükkab paremale (et viimane täht oleks poolik)
                         // Y = -20.dp -> Lükkab üles (et ülemine osa oleks serva taga)
-                        .offset(x = 50.dp, y = (-10).dp)
+                        .offset(x = 30.dp, y = (-40).dp)
                 )
             }
 

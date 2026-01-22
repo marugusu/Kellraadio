@@ -19,12 +19,15 @@ object StationArtworkUtils {
         "sky plus" to "SKY+", // Soovi korral saab kasutada sümboleid
         "klassikaraadio" to "KLAS",
         "vikerraadio" to "VIKR",
-        "yle radio 1" to "YLE1"
+        "yle radio 1" to "YLE1",
+        "heart - 70s" to "70",
+        "heart - 80s" to "80",
+        "heart - 90s" to "90"
     )
 
     private val NOISE_WORDS = listOf(
-        "raadio", "radio", "fm", "eesti", "tallinn", "onair", "channel","klara",
-        "live", "suomi", "est", "fin", "the", "hits", "love", "saami", "duo","elmari","elmar"
+        "raadio", "radio", "fm", "eesti", "onair", "channel","klara",
+        "live", "est", "fin", "the", "hits", "love", "duo", "elmari", "elmar"
     )
 
     fun getStationInitials(stationName: String): String {
