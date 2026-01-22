@@ -130,6 +130,12 @@
     <string name="days_every_day">Igā päuv</string>
     <string name="days_weekdays">E-R</string>
     <string name="days_weekend">L-P</string>
-    <string name="alarm_once">1x</string>
+
+    <!-- Song Info Sheet -->
+    <string name="info_lyrics">Loul sõnād</string>
+    <string name="info_album">Album</string>
+    <string name="info_year">Āigast</string>
+    <string name="info_genre">Žanr</string>
+    <string name="info_not_found">Lizā infot äb lieudtõ.</string>
 
 </resources>

@@ -26,7 +26,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
+import androidx.compose.material.icons.outlined.Info
+import ee.minu.kellraadio.MusicInfoRepository
+import ee.minu.kellraadio.SongAdditionalInfo
 import ee.minu.kellraadio.HistoryItem
+import kotlinx.coroutines.launch
 import ee.minu.kellraadio.RadioStationRepository
 import ee.minu.kellraadio.R
 import java.text.SimpleDateFormat
@@ -47,8 +52,11 @@ fun HistoryScreen(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
+    val scope = rememberCoroutineScope()
     // OLEKUD
+    var loadingItemId by remember { mutableStateOf<Long?>(null) } // Milline rida laeb?
+    var selectedSongInfo by remember { mutableStateOf<SongAdditionalInfo?>(null) }
+    var selectedHistoryItem by remember { mutableStateOf<HistoryItem?>(null) }
     var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     // EEMALDATUD: showDeleteConfirm olek
@@ -176,14 +184,56 @@ fun HistoryScreen(
                         items(itemsInGroup, key = { it.id }) { item ->
                             HistoryRow(
                                 item = item,
+                                // --- UUED PARAMEETRID ---
+                                isLoading = (loadingItemId == item.id), // Kontrollime, kas see rida laeb
+
                                 onSearchClick = { openSearch(context, "${item.artist} ${item.title}") },
                                 onSpotifyClick = { openSpotify(context, "${item.artist} ${item.title}") },
-                                onPlayStationClick = { onPlayStationByName(item.stationName) }
+                                onPlayStationClick = { onPlayStationByName(item.stationName) },
+
+                                // UUS: Info nupu loogika
+                                onInfoClick = {
+                                    scope.launch {
+                                        loadingItemId = item.id // Paneme laadija tööle
+                                        val info = MusicInfoRepository.fetchInfo(item.artist, item.title)
+                                        loadingItemId = null // Laadija kinni
+
+                                        if (info != null) {
+                                            selectedSongInfo = info
+                                            selectedHistoryItem = item
+                                        } else {
+                                            Toast.makeText(context, context.getString(R.string.info_not_found), Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
                 }
             }
+        }
+    }
+
+    // --- UUS: Bottom Sheet kuvamine ---
+    if (selectedSongInfo != null && selectedHistoryItem != null) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                selectedSongInfo = null
+                selectedHistoryItem = null
+            },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            SongInfoSheet(
+                artist = selectedHistoryItem!!.artist,
+                title = selectedHistoryItem!!.title,
+                info = selectedSongInfo!!,
+                onDismiss = {
+                    selectedSongInfo = null
+                    selectedHistoryItem = null
+                }
+            )
         }
     }
 
@@ -244,7 +294,14 @@ fun HistoryScreen(
 }
 
 @Composable
-fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () -> Unit, onPlayStationClick: () -> Unit) {
+fun HistoryRow(
+    item: HistoryItem,
+    isLoading: Boolean, // UUS PARAMEETER
+    onSearchClick: () -> Unit,
+    onSpotifyClick: () -> Unit,
+    onPlayStationClick: () -> Unit,
+    onInfoClick: () -> Unit // UUS PARAMEETER
+) {
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val timeStr = timeFormat.format(Date(item.timestamp))
 
@@ -295,12 +352,30 @@ fun HistoryRow(item: HistoryItem, onSearchClick: () -> Unit, onSpotifyClick: () 
                 )
             },
             trailingContent = {
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // --- UUS: INFO NUPP ---
+                    if (isLoading) {
+                        // Kui laeb, näita väikest spinnerit nupu asemel
+                        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
+                    } else {
+                        IconButton(onClick = onInfoClick, modifier = Modifier.size(36.dp)) { // Vähendasin nuppu 48->36, et mahuks paremini
+                            Icon(
+                                imageVector = Icons.Outlined.Info, // Outlined on puhtam
+                                contentDescription = "Info",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
+                    // Olemasolevad nupud
                     IconButton(onClick = onSearchClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Search, "YouTube", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Search, "YouTube", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(22.dp))
                     }
                     IconButton(onClick = onSpotifyClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.MusicNote, "Spotify", tint = Color(0xFF1DB954).copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.MusicNote, "Spotify", tint = Color(0xFF1DB954).copy(alpha = 0.8f), modifier = Modifier.size(22.dp))
                     }
                 }
             }

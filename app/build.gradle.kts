@@ -64,6 +64,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.2.0")
     implementation("androidx.media3:media3-session:1.2.0")
     implementation("androidx.media3:media3-exoplayer-hls:1.2.0")
+    implementation(libs.androidx.compose.foundation)
 
     // Testimine (pole hetkel kriitiline, aga et vigu ei tuleks)
     testImplementation("junit:junit:4.13.2")
@@ -87,4 +88,5 @@ dependencies {
 
     // JSON SERIALIZATION (JSON tekstist objektide tegemine)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

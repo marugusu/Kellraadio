@@ -19,8 +19,8 @@ interface HistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: HistoryItem)
 
-    // Kustuta kõik peale viimase 100 kirje (hoiame ajaloo puhtana)
-    @Query("DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC LIMIT 1000)")
+    // Kustuta kõik peale viimase 10000 kirje (hoiame ajaloo puhtana)
+    @Query("DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC LIMIT 10000)")
     suspend fun cleanOldHistory()
 
     @Query("DELETE FROM history")

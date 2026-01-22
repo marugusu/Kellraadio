@@ -2,11 +2,11 @@ package ee.minu.kellraadio.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -25,8 +25,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
+
 import ee.minu.kellraadio.AlarmUtils
 import ee.minu.kellraadio.RadioStation
+import ee.minu.kellraadio.SongAdditionalInfo // UUS IMPORT
 import java.util.Calendar
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -44,6 +48,10 @@ fun PlayerControls(
     alarmDays: Set<Int>,
     sleepTimerMillis: Long,
     isFavorite: Boolean,
+    // --- UUED PARAMEETRID ---
+    songInfo: SongAdditionalInfo?,
+    onInfoClick: () -> Unit,
+    // ------------------------
     onPlayPause: () -> Unit,
     onPlayStation: (RadioStation) -> Unit,
     onSleepClick: () -> Unit,
@@ -60,37 +68,30 @@ fun PlayerControls(
 
     Column(modifier = modifier) {
 
-        // --- ASENDUS ALGAB ---
-        // Vana "Card" on asendatud "Box"-iga, et saada tume taust + vesimärk
+        // --- MONOLIIT ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize()
-                // Siin tekitame "Monoliit" efekti (Tume gradient)
-                .clip(RoundedCornerShape(12.dp)) // Sama raadius, mis nupudel allpool (või originaalis kaardil)
+                .clip(RoundedCornerShape(12.dp))
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF252525), // Veidi heledam must (Surface)
-                            Color.Black        // Täiesti must
+                            Color(0xFF252525),
+                            Color.Black
                         )
                     )
                 )
+                // --- MUUDATUS 1: Terve kast on klikitav ---
+                .clickable(
+                    enabled = songInfo != null, // Klikitav AINULT siis, kui info on olemas
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onInfoClick()
+                    }
+                )
         ) {
-            // KIHT 1: Tausta Vesimärk (Initsiaalid)
-           // if (activeStationName.isNotEmpty()) {
-            //      Text(
-            //         text = StationArtworkUtils.getStationInitials(activeStationName),
-            //         fontSize = 180.sp,
-            //         fontWeight = FontWeight.Black,
-            //         color = Color.White.copy(alpha = 0.05f), // 5% nähtavust
-            //         maxLines = 1,
-            //         modifier = Modifier
-            //             .align(Alignment.BottomEnd)
-            //             .offset(x = 20.dp, y = 40.dp) // Nihutame nurka
-            //      )
-            //  }
-            // KIHT 1: Tausta Vesimärk (Initsiaalid)
+            // KIHT 1: Tausta Vesimärk
             if (activeStationName.isNotEmpty()) {
                 Text(
                     text = StationArtworkUtils.getStationInitials(activeStationName),
@@ -102,23 +103,16 @@ fun PlayerControls(
                     overflow = TextOverflow.Visible,
                     modifier = Modifier
                         .matchParentSize()
-                        // Ankur: Üleval Paremal
                         .wrapContentSize(align = Alignment.TopEnd, unbounded = true)
-
-                        // X = 50.dp -> Lükkab paremale (et viimane täht oleks poolik)
-                        // Y = -20.dp -> Lükkab üles (et ülemine osa oleks serva taga)
                         .offset(x = 30.dp, y = (-40).dp)
                 )
             }
 
-
-            // KIHT 2: Sinu ORIGINAALNE sisu (Column)
-            // Padding on 14.dp, täpselt nagu sinu originaalfailis
+            // KIHT 2: Sisu (See jääb täpselt samaks)
             Column(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 1. PEAMINE INFO (Täpselt originaalkujul)
                 if (parsedTitle.isNotBlank()) {
                     Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
@@ -134,29 +128,23 @@ fun PlayerControls(
                     Text(text = parsedExtra, style = MaterialTheme.typography.titleMedium, color = extraColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
 
-                // 2. STAATUSE RIDA (Originaalpaigutus)
                 Spacer(Modifier.height(2.dp))
 
                 val stationPrefix = if (activeStationName.isNotEmpty()) "$activeStationName • " else ""
                 val statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
                 Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = Color.Gray)
 
-                // 3. ÄRATUSE JA TAIMERI RIDA (Originaalpaigutus)
                 if (alarmInfo != null || sleepTimerMillis > 0) {
                     Spacer(Modifier.height(2.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (alarmInfo != null) {
                             val cal = Calendar.getInstance().apply { timeInMillis = alarmInfo.first }
-                            val hour = cal.get(Calendar.HOUR_OF_DAY)
-                            val minute = cal.get(Calendar.MINUTE)
                             val context = androidx.compose.ui.platform.LocalContext.current
-                            val prettyTime = AlarmUtils.getAlarmText(context, hour, minute, alarmDays)
+                            val prettyTime = AlarmUtils.getAlarmText(context, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), alarmDays)
                             val infoStr = "$prettyTime (${alarmInfo.second})"
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.AlarmOn, null,
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.AlarmOn, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text(text = infoStr, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
                             }
@@ -174,8 +162,28 @@ fun PlayerControls(
                     }
                 }
             }
+
+            // --- KIHT 3: INFO MÄRK (UUS) ---
+            // See pole enam nupp (IconButton), vaid lihtsalt pilt (Box),
+            // sest terve suur kast on nüüd nupp.
+            if (songInfo != null) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp)
+                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                        .size(36.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val icon = when {
+                        !songInfo.lyrics.isNullOrEmpty() -> Icons.Default.MusicNote
+                        !songInfo.coverArtUrl.isNullOrEmpty() -> Icons.Default.Image
+                        else -> Icons.Default.Info
+                    }
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+            }
         }
-        // --- ASENDUS LÕPP ---
 
         Spacer(Modifier.height(16.dp))
         val buttonShape = RoundedCornerShape(12.dp)
@@ -194,7 +202,6 @@ fun PlayerControls(
                 enabled = isPlaying || isTimerSet,
                 modifier = buttonModifier,
                 shape = buttonShape,
-                // MUUDATUS: containerColor = secondary, contentColor = Black
                 colors = if (isTimerSet) IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = Color.Black) else IconButtonDefaults.filledTonalIconButtonColors()
             ) { Icon(Icons.Default.Bedtime, "Unetaimer", modifier = Modifier.size(28.dp)) }
             val isAlarmSet = alarmInfo != null

@@ -49,6 +49,9 @@ import ee.minu.kellraadio.ui.StationList
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ee.minu.kellraadio.ui.SearchViewModel
 import ee.minu.kellraadio.ui.SearchViewModelFactory
+import ee.minu.kellraadio.MusicInfoRepository
+import ee.minu.kellraadio.SongAdditionalInfo
+import ee.minu.kellraadio.ui.SongInfoSheet
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -160,6 +163,23 @@ fun RaadioEkraan() {
     var parsedTitle by rememberSaveable { mutableStateOf("") }
     var parsedArtist by rememberSaveable { mutableStateOf("") }
     var parsedExtra by rememberSaveable { mutableStateOf("") }
+    // --- UUS: Info ja laulusõnade olekud ---
+    var songInfo by remember { mutableStateOf<SongAdditionalInfo?>(null) }
+    var showSongInfoSheet by remember { mutableStateOf(false) }
+
+    // Automaatne päring, kui laul (artist/pealkiri) muutub
+    LaunchedEffect(parsedArtist, parsedTitle) {
+        if (parsedArtist.isNotBlank() && parsedTitle.isNotBlank()) {
+            // Nullime eelmise info, et vana laulu sõnu ei näitaks
+            songInfo = null
+            // Teeme päringu taustal
+            val info = MusicInfoRepository.fetchInfo(parsedArtist, parsedTitle)
+            songInfo = info
+        } else {
+            songInfo = null
+        }
+    }
+    // ----------------------------------------
     var isRefreshing by rememberSaveable { mutableStateOf(false) }
     var previousPlayingStationName by rememberSaveable { mutableStateOf<String?>(null) }
     var sleepTimerMillis by rememberSaveable { mutableLongStateOf(0L) }
@@ -174,7 +194,7 @@ fun RaadioEkraan() {
 
     var currentTab by rememberSaveable { mutableIntStateOf(0) }
 
-    val desiredOrder = listOf("ERR","Duo","Sky","Muu Eesti", "Välis")
+    val desiredOrder = listOf("Eesti","ERR","Duo","Sky","Muu Eesti", "Välis")
     var selectedCategory by rememberSaveable { mutableStateOf(prefs.getString("last_category", "ERR") ?: "ERR") }
 
     val categoriesData = remember(stations) {
@@ -361,6 +381,8 @@ fun RaadioEkraan() {
                     alarmDays = alarmDaysForUI,
                     sleepTimerMillis = sleepTimerMillis,
                     isFavorite = selectedStation?.isFavorite ?: false,
+                    songInfo = songInfo,
+                    onInfoClick = { showSongInfoSheet = true },
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
@@ -504,6 +526,8 @@ fun RaadioEkraan() {
                     alarmDays = alarmDaysForUI,
                     sleepTimerMillis = sleepTimerMillis,
                     isFavorite = selectedStation?.isFavorite ?: false,
+                    songInfo = songInfo,
+                    onInfoClick = { showSongInfoSheet = true },
                     onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
                     onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
                     onSleepClick = { showSleepDialog = true },
@@ -725,5 +749,21 @@ fun RaadioEkraan() {
                 }
             }
         )
+    }
+// --- UUS: Laulusõnade ja pildi vaade ---
+    if (showSongInfoSheet && songInfo != null) {
+        ModalBottomSheet(
+            onDismissRequest = { showSongInfoSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            SongInfoSheet(
+                artist = parsedArtist,
+                title = parsedTitle,
+                info = songInfo!!,
+                onDismiss = { showSongInfoSheet = false }
+            )
+        }
     }
 }

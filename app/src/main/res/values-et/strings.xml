@@ -132,4 +132,10 @@
     <string name="days_weekend">L-P</string>
     <string name="alarm_once">1x</string>
 
+    <!-- Song Info Sheet -->
+    <string name="info_lyrics">LAULUSÕNAD</string>
+    <string name="info_album">ALBUM</string>
+    <string name="info_year">AASTA</string>
+    <string name="info_genre">ŽANR</string>
+    <string name="info_not_found">Lisainfot ei leitud.</string>
 </resources>
