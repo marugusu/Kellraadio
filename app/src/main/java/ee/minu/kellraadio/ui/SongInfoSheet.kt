@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import ee.minu.kellraadio.R
 import ee.minu.kellraadio.SongAdditionalInfo
@@ -40,6 +41,14 @@ fun SongInfoSheet(
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
     val hasUrl = !info.coverArtUrl.isNullOrEmpty()
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(info.coverArtUrl)
+            .crossfade(true)
+            .build()
+    )
+    val isImageLoaded = painter.state is coil.compose.AsyncImagePainter.State.Success
+    val isBlurSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
 
     Box(
         modifier = Modifier
@@ -47,29 +56,29 @@ fun SongInfoSheet(
             .fillMaxHeight(0.90f)
     ) {
         // --- KIHT 1: TAUST ---
-        // Paneme alati gradiendi põhja. Kui pilt tuleb, paneme udu sinna peale.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(stationColor.copy(alpha = 0.3f), Color.Black)
-                    )
-                )
-        )
+        // Android 12 (S) ja uuemad toetavad riistvaralist blur-i.
+        // Vanematel telefonidel on parem näidata gradienti kui teravat pilti (mis segab teksti).
+        val isBlurSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
 
-        if (hasUrl) {
+        if (isImageLoaded && isBlurSupported) {
+            // UUS TELEFON: Näita udust pilti
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(info.coverArtUrl)
-                    .crossfade(true)
-                    .build(),
+                model = info.coverArtUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(radius = 30.dp)
+            )
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)))
+        } else {
+            // VANA TELEFON (või pilt puudub): Näita ilusat gradienti
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(radius = 30.dp),
-                alpha = 0.6f // Natuke läbipaistev, et sulanduks mustaga
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(stationColor.copy(alpha = 0.3f), Color.Black)
+                        )
+                    )
             )
         }
 
