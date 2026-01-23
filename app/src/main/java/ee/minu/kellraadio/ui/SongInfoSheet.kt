@@ -1,5 +1,6 @@
 package ee.minu.kellraadio.ui
 
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,11 +25,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import ee.minu.kellraadio.R
 import ee.minu.kellraadio.SongAdditionalInfo
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SongInfoSheet(
     artist: String,
@@ -40,15 +42,14 @@ fun SongInfoSheet(
     val scrollState = rememberScrollState()
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
-    val hasUrl = !info.coverArtUrl.isNullOrEmpty()
-    val painter = rememberAsyncImagePainter(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(info.coverArtUrl)
-            .crossfade(true)
-            .build()
-    )
-    val isImageLoaded = painter.state is coil.compose.AsyncImagePainter.State.Success
-    val isBlurSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+
+    // Jälgime pildi laadimise olekut
+    var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
+
+    // Kas pilt on edukalt laetud?
+    val isImageLoaded = imageState is AsyncImagePainter.State.Success
+    // Kas telefon on piisavalt uus (Android 12+), et teha bluri?
+    val isBlurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     Box(
         modifier = Modifier
@@ -56,21 +57,22 @@ fun SongInfoSheet(
             .fillMaxHeight(0.90f)
     ) {
         // --- KIHT 1: TAUST ---
-        // Android 12 (S) ja uuemad toetavad riistvaralist blur-i.
-        // Vanematel telefonidel on parem näidata gradienti kui teravat pilti (mis segab teksti).
-        val isBlurSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-
+        // Kui pilt on olemas JA telefon toetab, näita udu.
+        // Muul juhul näita gradienti.
         if (isImageLoaded && isBlurSupported) {
-            // UUS TELEFON: Näita udust pilti
             AsyncImage(
-                model = info.coverArtUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(info.coverArtUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().blur(radius = 30.dp)
             )
+            // Tume loor udu peal
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)))
         } else {
-            // VANA TELEFON (või pilt puudub): Näita ilusat gradienti
+            // Gradient taust (kui pilt laeb, on katki või vana telefon)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -90,19 +92,20 @@ fun SongInfoSheet(
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(32.dp)) // Rohkem ruumi üles
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. PILDIPESA (Stack)
-            // Siin on trikk: Me laome asjad üksteise peale.
+            // 1. ALBUMI KAANEPILT (VÕI LOGO)
             Box(
                 modifier = Modifier
                     .size(280.dp)
                     .shadow(elevation = 24.dp, shape = RoundedCornerShape(16.dp))
                     .clip(RoundedCornerShape(16.dp))
-                    .background(stationColor), // Taustaks jaama värv
+                    // Kui pilt on laetud, on taust tumehall (et pilt oleks puhas).
+                    // Kui pilt laeb või puudub, on taust jaama värvi (logo jaoks).
+                    .background(if (isImageLoaded) Color.DarkGray else stationColor),
                 contentAlignment = Alignment.Center
             ) {
-                // A) LOGO (Alati all)
+                // A) LOGO (Alati all, näha siis kui pilti pole)
                 Text(
                     text = stationInitials,
                     fontSize = 80.sp,
@@ -110,8 +113,11 @@ fun SongInfoSheet(
                     color = Color.White.copy(alpha = 0.3f)
                 )
 
-                // B) PILT (Kui on URL, joonistatakse see logo peale)
-                if (hasUrl) {
+                // B) PILT
+                // Paneme selle ALATI siia, et ta hakkaks laadima.
+                // Kui ta laeb ära, katab ta logo kinni ja uuendab 'imageState'-i,
+                // mis omakorda lülitab sisse tausta bluri.
+                if (!info.coverArtUrl.isNullOrEmpty()) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(info.coverArtUrl)
@@ -119,7 +125,9 @@ fun SongInfoSheet(
                             .build(),
                         contentDescription = "Album Art",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        // SIIN ON VÕTI: Uuendame olekut, kui midagi juhtub
+                        onState = { state -> imageState = state }
                     )
                 }
             }
@@ -182,6 +190,18 @@ fun SongInfoSheet(
                     lineHeight = 32.sp,
                     color = Color.White.copy(alpha = 0.9f),
                     textAlign = TextAlign.Center
+                )
+            } else if (info.coverArtUrl.isNullOrEmpty()) {
+                // Kui polnud URL-i (ehk me isegi ei proovinud laadida)
+                Text(
+                    text = stringResource(R.string.info_not_found),
+                    color = Color.Gray
+                )
+            } else if (imageState is AsyncImagePainter.State.Error) {
+                // Kui URL oli, aga laadimine ebaõnnestus
+                Text(
+                    text = stringResource(R.string.info_not_found),
+                    color = Color.Gray
                 )
             }
 
