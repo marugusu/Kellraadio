@@ -39,7 +39,6 @@ fun SongInfoTeaser(
     onClick: () -> Unit,
     shape: Shape = RectangleShape,
     modifier: Modifier = Modifier,
-    // UUS: Võimalus anda kaasa gradient (kui null, siis on must)
     backgroundBrush: Brush? = null
 ) {
     val infoParts = listOfNotNull(info.album, info.year, info.genre).filter { it.isNotEmpty() }
@@ -51,52 +50,48 @@ fun SongInfoTeaser(
 
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
-
-    // Määrame tausta: kas gradient või tavaline must
     val bgBrush = backgroundBrush ?: SolidColor(Color.Black)
 
-    // Kasutame Surface'i kuju ja sisu värvi jaoks, aga tausta teeme läbipaistvaks
     Surface(
-        modifier = modifier.height(64.dp),
-        color = Color.Transparent, // Tähtis! Et gradient paistaks
+        modifier = modifier
+            .height(64.dp)
+            .clickable(onClick = onClick),
+        color = Color.Transparent,
         contentColor = Color.White,
         shape = shape
     ) {
-        // Joonistame tausta ja sisu
         Row(
             modifier = Modifier
-                .background(bgBrush) // Siin rakendub gradient
-                .clickable(onClick = onClick)
+                .background(bgBrush)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. VÄIKE PILT VÕI LOGO
-            if (!info.coverArtUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(info.coverArtUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.DarkGray)
+            // 1. VÄIKE PILT VÕI LOGO (KIHILINE)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(stationColor), // ALATI jaama värv all
+                contentAlignment = Alignment.Center
+            ) {
+                // A) LOGO (Alati olemas)
+                Text(
+                    text = stationInitials,
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(stationColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stationInitials,
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontWeight = FontWeight.Black,
-                        fontSize = 14.sp
+
+                // B) PILT (Kui on olemas, tuleb logo peale)
+                if (!info.coverArtUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(info.coverArtUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }
