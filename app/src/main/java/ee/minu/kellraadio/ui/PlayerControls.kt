@@ -166,23 +166,23 @@ fun PlayerControls(
             // --- KIHT 3: INFO MÄRK (UUS) ---
             // See pole enam nupp (IconButton), vaid lihtsalt pilt (Box),
             // sest terve suur kast on nüüd nupp.
-            if (songInfo != null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp)
-                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                        .size(36.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val icon = when {
-                        !songInfo.lyrics.isNullOrEmpty() -> Icons.Default.MusicNote
-                        !songInfo.coverArtUrl.isNullOrEmpty() -> Icons.Default.Image
-                        else -> Icons.Default.Info
-                    }
-                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-            }
+//            if (songInfo != null) {
+//                Box(
+//                    modifier = Modifier
+//                        .align(Alignment.BottomEnd)
+//                        .padding(12.dp)
+//                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+//                        .size(36.dp),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    val icon = when {
+//                        !songInfo.lyrics.isNullOrEmpty() -> Icons.Default.MusicNote
+//                        !songInfo.coverArtUrl.isNullOrEmpty() -> Icons.Default.Image
+//                        else -> Icons.Default.Info
+//                    }
+//                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+//                }
+//            }
         }
 
         Spacer(Modifier.height(16.dp))

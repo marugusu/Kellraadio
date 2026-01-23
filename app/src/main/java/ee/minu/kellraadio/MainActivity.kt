@@ -456,77 +456,83 @@ fun RaadioEkraan() {
                 Spacer(modifier = Modifier.weight(1f))
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
-            Box(
-                modifier = Modifier.weight(playerWeight)
+
+            // --- VASAK POOL (PLAYER + INFO RIBA) ---
+            Column(
+                modifier = Modifier
+                    .weight(playerWeight)
+                    .fillMaxHeight()
+                    // Siin on välimised ääred
                     .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)
             ) {
-                PlayerControls(
-                    selectedStation = selectedStation,
-                    activeStationName = selectedStationName,
-                    isPlaying = isPlaying,
-                    parsedTitle = parsedTitle,
-                    parsedArtist = parsedArtist,
-                    parsedExtra = parsedExtra,
-                    playerStatus = playerStatus,
-                    bitrateInfo = bitrateInfo,
-                    alarmInfo = alarmInfoForUI,
-                    alarmDays = alarmDaysForUI,
-                    sleepTimerMillis = sleepTimerMillis,
-                    isFavorite = selectedStation?.isFavorite ?: false,
-                    songInfo = songInfo,
-                    onInfoClick = { showSongInfoSheet = true },
-                    onPlayPause = {
-                        val i = Intent(context, RadioService::class.java).apply {
-                            action = RadioService.ACTION_PAUSE
-                        }; context.startService(i)
-                    },
-                    onPlayStation = { station ->
-                        selectedStationId = station.id; selectedStationName =
-                        station.name; playRadio(station)
-                    },
-                    onSleepClick = { showSleepDialog = true },
-                    onAlarmClick = {
-                        if (currentTab == 3) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.error_station_not_found),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else if (alarms.isNotEmpty()) {
-                            currentTab = 1
-                        } else {
-                            if (selectedStationId != -1) {
-                                alarmToEdit = null
-                                showAlarmDialog = true
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.select_station),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    },
-                    onAlarmLongClick = {
-                        nextAlarmInfo?.second?.let {
-                            AlarmUtils.deleteAlarm(
-                                context,
-                                it
-                            )
-                        }
-                    },
-                    onToggleFavorite = {
-                        selectedStation?.let {
-                            scope.launch {
-                                stationRepository.toggleFavorite(
-                                    it
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                )
+                // 1. PLAYER (Monoliit + Nupud)
+                // Paneme sellele weight(1f), et ta lükkaks info riba alla,
+                // VÕI kui tahad, et nad oleks tihedalt koos, võta weight ära.
+                // Hetkel eemaldasin weighti, et nad oleksid üksteise all kindla vahega.
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PlayerControls(
+                        selectedStation = selectedStation,
+                        activeStationName = selectedStationName,
+                        isPlaying = isPlaying,
+                        parsedTitle = parsedTitle,
+                        parsedArtist = parsedArtist,
+                        parsedExtra = parsedExtra,
+                        playerStatus = playerStatus,
+                        bitrateInfo = bitrateInfo,
+                        alarmInfo = alarmInfoForUI,
+                        alarmDays = alarmDaysForUI,
+                        sleepTimerMillis = sleepTimerMillis,
+                        isFavorite = selectedStation?.isFavorite ?: false,
+                        songInfo = songInfo,
+                        onInfoClick = { showSongInfoSheet = true },
+                        onPlayPause = { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }; context.startService(i) },
+                        onPlayStation = { station -> selectedStationId = station.id; selectedStationName = station.name; playRadio(station) },
+                        onSleepClick = { showSleepDialog = true },
+                        onAlarmClick = {
+                            if (currentTab == 3) { Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show() }
+                            else if (alarms.isNotEmpty()) { currentTab = 1 }
+                            else { if (selectedStationId != -1) { alarmToEdit = null; showAlarmDialog = true } else { Toast.makeText(context, context.getString(R.string.select_station), Toast.LENGTH_SHORT).show() } }
+                        },
+                        onAlarmLongClick = { nextAlarmInfo?.second?.let { AlarmUtils.deleteAlarm(context, it) } },
+                        onToggleFavorite = { selectedStation?.let { scope.launch { stationRepository.toggleFavorite(it) } } },
+
+                        // Eemalda vertikaalne kerimine siit, kui see pole vajalik,
+                        // et layout ei läheks katki
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // 2. INFO RIBA (Eraldi plokk allpool)
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = songInfo != null && !showSongInfoSheet,
+                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                ) {
+                    songInfo?.let { info ->
+                        // EEMALDASIME SIIT Spacer-i ja panime vahe otse komponendi külge
+
+                        SongInfoTeaser(
+                            info = info,
+                            artist = parsedArtist,
+                            title = parsedTitle,
+                            onClick = { showSongInfoSheet = true },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+
+                            // --- SIIN ON PARANDUS ---
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp) // See tekitab kindla füüsilise vahe nuppudest
+                            // ------------------------
+                        )
+                    }
+                }
+
+                // Kui on vaja, et sisu oleks vertikaalselt keskel, võid siia lõppu lisada:
+                // Spacer(modifier = Modifier.weight(1f))
             }
+            // --- VASAK POOL LÕPP ---
             Box(modifier = Modifier.weight(1f - playerWeight).fillMaxHeight()) {
                 when (currentTab) {
                     0 -> StationList(

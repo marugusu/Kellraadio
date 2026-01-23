@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -20,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import ee.minu.kellraadio.R
@@ -29,99 +30,101 @@ import ee.minu.kellraadio.SongAdditionalInfo
 @Composable
 fun SongInfoTeaser(
     info: SongAdditionalInfo,
-    artist: String, // Lisame artisti ja pealkirja, et oleks mida näidata, kui albumit pole
+    artist: String,
     title: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    shape: Shape = RectangleShape,
+    // UUS: Võimalus määrata laiust ja paigutust väljastpoolt
+    modifier: Modifier = Modifier
 ) {
-    // Ehitame infostringi (Album • 2024 • Rock)
     val infoParts = listOfNotNull(info.album, info.year, info.genre).filter { it.isNotEmpty() }
     val displayText = if (infoParts.isNotEmpty()) {
         infoParts.joinToString(" • ")
     } else {
-        "$artist - $title" // Fallback
+        "$artist - $title"
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp) // Paras kõrgus, et oleks mugav vajutada
-            .background(Color.Black) // Täiesti must taust, sulandub menüüga
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        // MUUDATUS: Kasutame siin parameetrina saadud modifierit
+        // See lubab meil öelda "ole 100% lai" või "ole 95% lai"
+        modifier = modifier
+            .height(64.dp)
+            .clickable(onClick = onClick),
+        color = Color.Black,
+        shape = shape
     ) {
-        // 1. VÄIKE PILT VASAKUL
-        if (!info.coverArtUrl.isNullOrEmpty()) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(info.coverArtUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp)) // Veidi ümarad nurgad
-                    .background(Color.DarkGray)
-            )
-        } else {
-            // Kui pilti pole, näitame genereeritud logo või ikooni
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.MusicNote, null, tint = Color.Gray)
-            }
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // 2. TEKST KESKEL
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Peamine info (Album jne)
-            Text(
-                text = displayText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = FontWeight.Medium
-            )
+            // 1. VÄIKE PILT
+            if (!info.coverArtUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(info.coverArtUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.DarkGray)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.MusicNote, null, tint = Color.Gray)
+                }
+            }
 
-            // Väike vihje all
-            Text(
-                text = stringResource(R.string.info_available), // "Lisainfo saadaval"
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary, // Värviline, et tõmbaks tähelepanu
-                maxLines = 1
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // 2. TEKST
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = displayText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.info_available),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // 3. IKOON
+            val icon = if (!info.lyrics.isNullOrEmpty()) {
+                painterResource(R.drawable.ic_lyrics)
+            } else {
+                rememberVectorPainter(Icons.Default.Image)
+            }
+
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size(24.dp)
             )
         }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // 3. IKOON PAREMAL
-        val icon = if (!info.lyrics.isNullOrEmpty()) {
-            painterResource(R.drawable.ic_lyrics)
-        } else {
-            rememberVectorPainter(Icons.Default.Image)
-        }
-
-        Icon(
-            painter = icon,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(24.dp)
-        )
     }
 }
 
-// Abifunktsioon VectorPainterile (lisa faili lõppu või kasuta otse)
 @Composable
 fun rememberVectorPainter(image: androidx.compose.ui.graphics.vector.ImageVector) =
     androidx.compose.ui.graphics.vector.rememberVectorPainter(image)
