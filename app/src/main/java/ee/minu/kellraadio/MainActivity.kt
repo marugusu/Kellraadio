@@ -59,6 +59,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import ee.minu.kellraadio.ui.SongInfoTeaser
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.*
@@ -686,42 +688,124 @@ fun RaadioEkraan() {
         Scaffold(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             bottomBar = {
-                NavigationBar {
-                    // ... (Navigatsiooni nupud jäävad samaks) ...
-                    NavigationBarItem(selected = currentTab == 0, onClick = { currentTab = 0 }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) })
-                    NavigationBarItem(selected = currentTab == 1, onClick = { currentTab = 1 }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) })
-                    NavigationBarItem(selected = currentTab == 2, onClick = { currentTab = 2 }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) })
-                    NavigationBarItem(selected = currentTab == 3, onClick = { currentTab = 3 }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) })
-                    NavigationBarItem(selected = currentTab == 4, onClick = { currentTab = 4 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(navSettingsTitle) })
+                // Kasutame Columni, et laduda asjad üksteise peale
+                Column(
+                    modifier = Modifier.background(Color.Black) // Veendume, et taust on must
+                ) {
+                    // 1. TEASER RIBA (Animeeritud ilmumine)
+                    // Näita ainult Raadio vaates (0) ja kui info on olemas
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = currentTab == 0 && songInfo != null && !showSongInfoSheet,
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                    ) {
+                        songInfo?.let { info ->
+                            SongInfoTeaser(
+                                info = info,
+                                artist = parsedArtist,
+                                title = parsedTitle,
+                                onClick = { showSongInfoSheet = true }
+                            )
+                        }
+                    }
+
+                    // 2. EFFEKTNE VAHEJOON
+                    // See joon on nähtav alati, või ainult siis kui teaser on?
+                    // Teeme nii, et ta on alati, eraldab sisu menüüst.
+                    // Gradient joon: läbipaistev -> primaarvärv -> läbipaistev
+                    if (currentTab == 0 && songInfo != null && !showSongInfoSheet) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(
+                                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), // Hõõguv joon
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+                    } else {
+                        // Tavaline diskreetne eraldaja, kui teaserit pole
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = Color(0xFF222222) // Väga tume hall
+                        )
+                    }
+
+                    // 3. NAVIGATSIOONIRIBA (Täiesti must)
+                    NavigationBar(
+                        containerColor = Color.Black, // SUNNIME MUSTAKS
+                        contentColor = Color.White,
+                        tonalElevation = 0.dp // Eemaldame vaikimisi heleda kihi
+                    ) {
+                        // ... Nupud jäävad samaks, kopeeri siia oma vana NavigationBarItem kood ...
+                        // (Näide ühest nupust:)
+                        NavigationBarItem(
+                            selected = currentTab == 0,
+                            onClick = { currentTab = 0 },
+                            icon = { Icon(Icons.Default.Radio, null) },
+                            label = { Text(navRadioTitle) },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                unselectedIconColor = Color.Gray,
+                                unselectedTextColor = Color.Gray,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = Color.White
+                            )
+                        )
+                        // ... Korda teiste nuppude jaoks ...
+                        NavigationBarItem(selected = currentTab == 1, onClick = { currentTab = 1 }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray, selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTextColor = Color.White))
+                        NavigationBarItem(selected = currentTab == 2, onClick = { currentTab = 2 }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray, selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTextColor = Color.White))
+                        NavigationBarItem(selected = currentTab == 3, onClick = { currentTab = 3 }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray, selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTextColor = Color.White))
+                        NavigationBarItem(selected = currentTab == 4, onClick = { currentTab = 4 }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(navSettingsTitle) }, colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray, selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTextColor = Color.White))
+                    }
                 }
             },
             // --- UUS: DÜNAAMILINE FAB ---
-            floatingActionButton = {
-                if (currentTab == 0) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = songInfo != null && !showSongInfoSheet,
-                        // Muudame animatsiooni ka lihtsamaks (lihtsalt suureneb sisse)
-                        enter = androidx.compose.animation.scaleIn(),
-                        exit = androidx.compose.animation.scaleOut()
-                    ) {
-                        songInfo?.let { info ->
-                            // Kasutame tavalist ümmargust FloatingActionButton-it
-                            FloatingActionButton(
-                                onClick = { showSongInfoSheet = true },
-                                // Kasutame 'tertiary' värvi (tavaliselt soe toon), et eristuda
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                // shape = CircleShape // See on vaikimisi, aga võid lisada, kui tahad kindel olla
-                            ) {
-                                // Ikooni loogika
-                                val icon = if (!info.lyrics.isNullOrEmpty()) Icons.Default.MusicNote else Icons.Default.Image
-                                Icon(icon, contentDescription = stringResource(R.string.info_available))
-                            }
-                        }
-                    }
-                }
-            }
-            // ---------------------------
+//            floatingActionButton = {
+//                if (currentTab == 0) {
+//                    androidx.compose.animation.AnimatedVisibility(
+//                        visible = songInfo != null && !showSongInfoSheet,
+//                        // Muudame animatsiooni ka lihtsamaks (lihtsalt suureneb sisse)
+//                        enter = androidx.compose.animation.scaleIn(),
+//                        exit = androidx.compose.animation.scaleOut()
+//                    ) {
+//                        songInfo?.let { info ->
+//                            // Kasutame tavalist ümmargust FloatingActionButton-it
+//                            FloatingActionButton(
+//                                onClick = { showSongInfoSheet = true },
+//                                // Kasutame 'tertiary' värvi (tavaliselt soe toon), et eristuda
+//                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+//                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+//                                shape = CircleShape // See on vaikimisi, aga võid lisada, kui tahad kindel olla
+//                            ) {
+////                                if (!info.lyrics.isNullOrEmpty()) {
+////                                    // Kui on sõnad -> Kasuta sinu uut faili
+////                                    Icon(
+////                                        painter = androidx.compose.ui.res.painterResource(R.drawable.ic_lyrics),
+////                                        contentDescription = null
+////                                    )
+////                                } else {
+////                                    // Kui on ainult pilt -> Kasuta süsteemset pildi ikooni
+////                                    Icon(
+////                                        imageVector = Icons.Default.Image,
+////                                        contentDescription = null
+////                                    )
+////                                }
+//
+//                                // Ikooni loogika
+//                                val icon = if (!info.lyrics.isNullOrEmpty()) Icons.Default.MusicNote else Icons.Default.Image
+//                               Icon(icon, contentDescription = stringResource(R.string.info_available))
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            // ---------------------------
         ) { innerPadding ->
             // Sisu (Box ja Column) jääb samaks, aga EEMALDA siit seest see vana "Hõljuv Info-riba" Column
             Box(
