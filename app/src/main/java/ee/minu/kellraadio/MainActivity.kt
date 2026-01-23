@@ -572,12 +572,19 @@ fun RaadioEkraan() {
                             stationName = selectedStationName,
                             onClick = { showSongInfoSheet = true },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-
-                            // --- SIIN ON PARANDUS ---
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 16.dp) // See tekitab kindla füüsilise vahe nuppudest
-                            // ------------------------
+                                .padding(top = 16.dp),
+
+                            // --- UUS: GRADIENT ---
+                            // Kasutame sama loogikat mis playeris: Tumehallist Mustani
+                            backgroundBrush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF252525), // Üleval heledam
+                                    Color.Black        // All must
+                                )
+                            )
+                            // ---------------------
                         )
                     }
                 }

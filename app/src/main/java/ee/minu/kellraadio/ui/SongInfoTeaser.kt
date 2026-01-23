@@ -12,9 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -36,7 +38,9 @@ fun SongInfoTeaser(
     stationName: String,
     onClick: () -> Unit,
     shape: Shape = RectangleShape,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // UUS: Võimalus anda kaasa gradient (kui null, siis on must)
+    backgroundBrush: Brush? = null
 ) {
     val infoParts = listOfNotNull(info.album, info.year, info.genre).filter { it.isNotEmpty() }
     val displayText = if (infoParts.isNotEmpty()) {
@@ -45,47 +49,54 @@ fun SongInfoTeaser(
         "$artist - $title"
     }
 
-    // Genereerime logo andmed
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
 
+    // Määrame tausta: kas gradient või tavaline must
+    val bgBrush = backgroundBrush ?: SolidColor(Color.Black)
+
+    // Kasutame Surface'i kuju ja sisu värvi jaoks, aga tausta teeme läbipaistvaks
     Surface(
-        modifier = modifier
-            .height(64.dp)
-            .clickable(onClick = onClick),
-        color = Color.Black,
+        modifier = modifier.height(64.dp),
+        color = Color.Transparent, // Tähtis! Et gradient paistaks
+        contentColor = Color.White,
         shape = shape
     ) {
+        // Joonistame tausta ja sisu
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier
+                .background(bgBrush) // Siin rakendub gradient
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. VÄIKE PILT VÕI LOGO (KIHILINE)
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(stationColor), // ALATI jaama värv
-                contentAlignment = Alignment.Center
-            ) {
-                // A) LOGO (Alati all)
-                Text(
-                    text = stationInitials,
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 14.sp
+            // 1. VÄIKE PILT VÕI LOGO
+            if (!info.coverArtUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(info.coverArtUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.DarkGray)
                 )
-
-                // B) PILT (Kui on olemas, katab logo kinni)
-                if (!info.coverArtUrl.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(info.coverArtUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(stationColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stationInitials,
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 14.sp
                     )
                 }
             }
