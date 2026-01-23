@@ -929,136 +929,137 @@ fun RaadioEkraan() {
             }
         }
 
-        if (showSleepDialog) {
-            SleepTimerDialog(
-                initialMillis = sleepTimerMillis,
-                onDismiss = { showSleepDialog = false })
+
+
+
+    }
+    if (showSleepDialog) {
+        SleepTimerDialog(
+            initialMillis = sleepTimerMillis,
+            onDismiss = { showSleepDialog = false })
+    }
+    if (showAlarmDialog) {
+        val stationForDialog = if (alarmToEdit != null) {
+            stations.find { it.name == alarmToEdit!!.stationName }
+                ?: RadioStation(0, alarmToEdit!!.stationName, alarmToEdit!!.stationUrl)
+        } else {
+            selectedStation
         }
-        if (showAlarmDialog) {
-            val stationForDialog = if (alarmToEdit != null) {
-                stations.find { it.name == alarmToEdit!!.stationName }
-                    ?: RadioStation(0, alarmToEdit!!.stationName, alarmToEdit!!.stationUrl)
-            } else {
-                selectedStation
+
+        AlarmDialog(
+            selectedStation = stationForDialog,
+            initialHour = alarmToEdit?.hour,
+            initialMinute = alarmToEdit?.minute,
+            initialDays = alarmToEdit?.days ?: emptySet(),
+            onDismiss = { showAlarmDialog = false },
+            onDelete = if (alarmToEdit != null && alarmToEdit!!.id != 0) {
+                { alarmToEdit?.let { AlarmUtils.deleteAlarm(context, it) } }
+            } else null,
+            onAlarmSaved = { hour, minute, days ->
+                stationForDialog?.let { station ->
+                    val alarm = alarmToEdit?.copy(
+                        hour = hour, minute = minute, days = days,
+                        stationName = station.name, stationUrl = station.url, isEnabled = true
+                    ) ?: Alarm(
+                        hour = hour, minute = minute, days = days,
+                        stationName = station.name, stationUrl = station.url
+                    )
+                    AlarmUtils.saveOrUpdateAlarm(context, alarm)
+                }
             }
+        )
+    }
 
-            AlarmDialog(
-                selectedStation = stationForDialog,
-                initialHour = alarmToEdit?.hour,
-                initialMinute = alarmToEdit?.minute,
-                initialDays = alarmToEdit?.days ?: emptySet(),
-                onDismiss = { showAlarmDialog = false },
-                onDelete = if (alarmToEdit != null && alarmToEdit!!.id != 0) {
-                    { alarmToEdit?.let { AlarmUtils.deleteAlarm(context, it) } }
-                } else null,
-                onAlarmSaved = { hour, minute, days ->
-                    stationForDialog?.let { station ->
-                        val alarm = alarmToEdit?.copy(
-                            hour = hour, minute = minute, days = days,
-                            stationName = station.name, stationUrl = station.url, isEnabled = true
-                        ) ?: Alarm(
-                            hour = hour, minute = minute, days = days,
-                            stationName = station.name, stationUrl = station.url
-                        )
-                        AlarmUtils.saveOrUpdateAlarm(context, alarm)
-                    }
-                }
-            )
-        }
+    if (showActionSheet && stationForActionSheet != null) {
+        val liveStation =
+            stations.find { it.id == stationForActionSheet!!.id } ?: stationForActionSheet!!
+        StationActionSheet(
+            station = liveStation,
+            onDismiss = { showActionSheet = false },
+            onToggleFavorite = {
+                scope.launch { stationRepository.toggleFavorite(liveStation) }
+            },
+            onSetAlarm = {
+                alarmToEdit = Alarm(
+                    hour = 7, minute = 0, days = emptySet(),
+                    stationName = liveStation.name,
+                    stationUrl = liveStation.url
+                )
+                showAlarmDialog = true
+                currentTab = 1
+            },
+            onEdit = { stationToUpdate = liveStation },
+            onDelete = { showDeleteConfirmDialog = liveStation }
+        )
+    }
 
-        if (showActionSheet && stationForActionSheet != null) {
-            val liveStation =
-                stations.find { it.id == stationForActionSheet!!.id } ?: stationForActionSheet!!
-            StationActionSheet(
-                station = liveStation,
-                onDismiss = { showActionSheet = false },
-                onToggleFavorite = {
-                    scope.launch { stationRepository.toggleFavorite(liveStation) }
-                },
-                onSetAlarm = {
-                    alarmToEdit = Alarm(
-                        hour = 7, minute = 0, days = emptySet(),
-                        stationName = liveStation.name,
-                        stationUrl = liveStation.url
+    if (showDeleteConfirmDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = null },
+            title = { Text(stringResource(R.string.delete_station_confirm_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.delete_station_confirm_text,
+                        showDeleteConfirmDialog?.name ?: ""
                     )
-                    showAlarmDialog = true
-                    currentTab = 1
-                },
-                onEdit = { stationToUpdate = liveStation },
-                onDelete = { showDeleteConfirmDialog = liveStation }
-            )
-        }
-
-        if (showDeleteConfirmDialog != null) {
-            AlertDialog(
-                onDismissRequest = { showDeleteConfirmDialog = null },
-                title = { Text(stringResource(R.string.delete_station_confirm_title)) },
-                text = {
-                    Text(
-                        stringResource(
-                            R.string.delete_station_confirm_text,
-                            showDeleteConfirmDialog?.name ?: ""
-                        )
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            val stationToDelete = showDeleteConfirmDialog
-                            if (stationToDelete != null) {
-                                scope.launch {
-                                    stationRepository.deleteStation(stationToDelete)
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.alarm_toast_deleted),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val stationToDelete = showDeleteConfirmDialog
+                        if (stationToDelete != null) {
+                            scope.launch {
+                                stationRepository.deleteStation(stationToDelete)
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.alarm_toast_deleted),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
-                            showDeleteConfirmDialog = null
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text(stringResource(R.string.action_delete)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
+                        }
                         showDeleteConfirmDialog = null
-                    }) { Text(stringResource(R.string.action_cancel)) }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.action_delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmDialog = null
+                }) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
+    }
+
+    if (stationToUpdate != null) {
+        EditStationDialog(
+            stationName = stationToUpdate!!.name,
+            stationUrl = stationToUpdate!!.url,
+            onDismiss = { stationToUpdate = null },
+            onTest = { name, url ->
+                val i = Intent(context, RadioService::class.java).apply {
+                    putExtra("STREAM_URL", url)
+                    putExtra(
+                        "STATION_NAME",
+                        "$name (${context.getString(R.string.action_test)})"
+                    )
+                    putExtra("TRIGGERED_BY", "USER")
                 }
-            )
-        }
-
-        if (stationToUpdate != null) {
-            EditStationDialog(
-                stationName = stationToUpdate!!.name,
-                stationUrl = stationToUpdate!!.url,
-                onDismiss = { stationToUpdate = null },
-                onTest = { name, url ->
-                    val i = Intent(context, RadioService::class.java).apply {
-                        putExtra("STREAM_URL", url)
-                        putExtra(
-                            "STATION_NAME",
-                            "$name (${context.getString(R.string.action_test)})"
-                        )
-                        putExtra("TRIGGERED_BY", "USER")
-                    }
-                    context.startForegroundService(i)
-                },
-                onSave = { newName, newUrl ->
-                    scope.launch {
-                        stationRepository.updateUserStation(stationToUpdate!!, newName, newUrl)
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.toast_updated),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        stationToUpdate = null
-                    }
+                context.startForegroundService(i)
+            },
+            onSave = { newName, newUrl ->
+                scope.launch {
+                    stationRepository.updateUserStation(stationToUpdate!!, newName, newUrl)
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.toast_updated),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    stationToUpdate = null
                 }
-            )
-        }
-
-
+            }
+        )
     }
     // --- UUS: Laulusõnade ja pildi vaade ---
     if (showSongInfoSheet && songInfo != null) {
