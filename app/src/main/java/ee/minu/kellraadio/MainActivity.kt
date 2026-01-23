@@ -77,10 +77,19 @@ class MainActivity : AppCompatActivity() {
                 secondary = Color(0xFF03DAC6),
                 tertiary = Color(0xFFFE7879),
                 onSecondary = Color(0xFFCB7E1F),
-                background = Color(0xFF121212),
-                surface = Color(0xFF1E1E1E),
+
+                // 1. TAUST: Jääb täiesti mustaks (nagu soovisid)
+                background = Color.Black,
+
+                // 2. PINNAD (Menüüd jms): Väga tume hall (peaaegu must)
+                surface = Color(0xFF121212),
+
+                // 3. KAARDID (Kanalid, Player): Tumehall
+                // See oli enne liiga tume (#121212), tõstame heledamaks (#252525),
+                // et ruudud oleksid mustal taustal selgelt näha.
+                surfaceVariant = Color(0xFF252525),
+
                 onSurface = Color(0xFFE0E0E0),
-                surfaceVariant = Color(0xFF2C2C2C),
                 onSurfaceVariant = Color(0xFFB0B0B0)
             )
 
@@ -423,33 +432,78 @@ fun RaadioEkraan() {
 
     if (isLandscape) {
         Row(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-            NavigationRail {
+            NavigationRail(
+                containerColor = Color.Black, // MUUDATUS: Must taust
+                contentColor = Color.White
+            ) {
                 Spacer(modifier = Modifier.weight(1f))
+
                 NavigationRailItem(
                     selected = currentTab == 0,
                     onClick = { currentTab = 0 },
                     icon = { Icon(Icons.Default.Radio, null) },
-                    label = { Text(navRadioTitle) })
+                    label = { Text(navRadioTitle) },
+                    colors = NavigationRailItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = Color.White
+                    )
+                )
                 NavigationRailItem(
                     selected = currentTab == 1,
                     onClick = { currentTab = 1 },
                     icon = { Icon(Icons.Default.Alarm, null) },
-                    label = { Text(navAlarmsTitle) })
+                    label = { Text(navAlarmsTitle) },
+                    colors = NavigationRailItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = Color.White
+                    )
+                )
                 NavigationRailItem(
                     selected = currentTab == 2,
                     onClick = { currentTab = 2 },
                     icon = { Icon(Icons.Default.History, null) },
-                    label = { Text(navHistoryTitle) })
+                    label = { Text(navHistoryTitle) },
+                    colors = NavigationRailItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = Color.White
+                    )
+                )
                 NavigationRailItem(
                     selected = currentTab == 3,
                     onClick = { currentTab = 3 },
                     icon = { Icon(Icons.Default.AddCircleOutline, null) },
-                    label = { Text(navAddTitle) })
+                    label = { Text(navAddTitle) },
+                    colors = NavigationRailItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = Color.White
+                    )
+                )
                 NavigationRailItem(
                     selected = currentTab == 4,
                     onClick = { currentTab = 4 },
                     icon = { Icon(Icons.Default.Settings, null) },
-                    label = { Text(navSettingsTitle) })
+                    label = { Text(navSettingsTitle) },
+                    colors = NavigationRailItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = Color.White
+                    )
+                )
+
                 Spacer(modifier = Modifier.weight(1f))
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
@@ -461,6 +515,7 @@ fun RaadioEkraan() {
                     .fillMaxHeight()
                     // Siin on välimised ääred
                     .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)
+
             ) {
                 // 1. PLAYER (Monoliit + Nupud)
                 // Paneme sellele weight(1f), et ta lükkaks info riba alla,
