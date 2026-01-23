@@ -228,6 +228,7 @@ fun HistoryScreen(
             SongInfoSheet(
                 artist = selectedHistoryItem!!.artist,
                 title = selectedHistoryItem!!.title,
+                stationName = selectedHistoryItem!!.stationName,
                 info = selectedSongInfo!!,
                 onDismiss = {
                     selectedSongInfo = null

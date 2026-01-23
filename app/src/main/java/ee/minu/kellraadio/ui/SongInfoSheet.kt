@@ -1,14 +1,14 @@
 package ee.minu.kellraadio.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -23,31 +23,42 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.Icons
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import ee.minu.kellraadio.R
 import ee.minu.kellraadio.SongAdditionalInfo
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SongInfoSheet(
     artist: String,
     title: String,
+    stationName: String,
     info: SongAdditionalInfo,
-    onDismiss: () -> Unit // Jätame alles, ehkki hetkel ei kasuta (hea tava)
+    onDismiss: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val stationColor = StationArtworkUtils.getStationColor(stationName)
+    val stationInitials = StationArtworkUtils.getStationInitials(stationName)
+    val hasUrl = !info.coverArtUrl.isNullOrEmpty()
 
-    // Juurkonteiner (Box), et saaksime panna taustapildi ja sisu üksteise peale
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.90f) // Natuke kõrgem
+            .fillMaxHeight(0.90f)
     ) {
-        // --- KIHT 1: ATMOSFÄÄRILINE TAUST ---
-        if (!info.coverArtUrl.isNullOrEmpty()) {
+        // --- KIHT 1: TAUST ---
+        // Paneme alati gradiendi põhja. Kui pilt tuleb, paneme udu sinna peale.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(stationColor.copy(alpha = 0.3f), Color.Black)
+                    )
+                )
+        )
+
+        if (hasUrl) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(info.coverArtUrl)
@@ -57,24 +68,8 @@ fun SongInfoSheet(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(radius = 30.dp) // Tugev udu (töötab Android 12+, vanematel lihtsalt tume)
-            )
-            // Tume kiht udu peal, et tekst oleks loetav
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.7f))
-            )
-        } else {
-            // Kui pilti pole, siis ilus tume gradient
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color(0xFF2B2B2B), Color.Black)
-                        )
-                    )
+                    .blur(radius = 30.dp),
+                alpha = 0.6f // Natuke läbipaistev, et sulanduks mustaga
             )
         }
 
@@ -86,35 +81,49 @@ fun SongInfoSheet(
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Jätame ainult natuke ruumi üles, sest ModalBottomSheet joonistab ise oma "sanga"
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp)) // Rohkem ruumi üles
 
-            // 1. ALBUMI KAANEPILT (Varjuga)
-            if (!info.coverArtUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(info.coverArtUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Album Art",
-                    modifier = Modifier
-                        .size(280.dp)
-                        .shadow(elevation = 24.dp, shape = RoundedCornerShape(16.dp)) // Vari
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.DarkGray),
-                    contentScale = ContentScale.Crop
+            // 1. PILDIPESA (Stack)
+            // Siin on trikk: Me laome asjad üksteise peale.
+            Box(
+                modifier = Modifier
+                    .size(280.dp)
+                    .shadow(elevation = 24.dp, shape = RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(stationColor), // Taustaks jaama värv
+                contentAlignment = Alignment.Center
+            ) {
+                // A) LOGO (Alati all)
+                Text(
+                    text = stationInitials,
+                    fontSize = 80.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White.copy(alpha = 0.3f)
                 )
-                Spacer(modifier = Modifier.height(32.dp))
+
+                // B) PILT (Kui on URL, joonistatakse see logo peale)
+                if (hasUrl) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(info.coverArtUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Album Art",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
 
-            // 2. INFO (Suur pealkiri)
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // 2. INFO
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.secondary
-
             )
             Text(
                 text = artist,
@@ -125,26 +134,21 @@ fun SongInfoSheet(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
-            // --- LISAINFO MÄRGID (Chips) ---
+            // LISAINFO MÄRGID
             if (info.album != null || info.year != null || info.genre != null) {
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // FlowRow paigutab märgid ritta, ja kui ruumi vähe, siis uuele reale
                 FlowRow(
                     horizontalArrangement = Arrangement.Center,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (!info.year.isNullOrEmpty()) {
-                        InfoChip(text = info.year)
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
+                    if (!info.year.isNullOrEmpty()) InfoChip(text = info.year)
                     if (!info.genre.isNullOrEmpty()) {
-                        InfoChip(text = info.genre)
                         Spacer(modifier = Modifier.width(8.dp))
+                        InfoChip(text = info.genre)
                     }
                     if (!info.album.isNullOrEmpty()) {
-                        // Album võib olla pikk, paneme eraldi reale või lõppu
+                        Spacer(modifier = Modifier.width(8.dp))
                         InfoChip(text = info.album, icon = true)
                     }
                 }
@@ -170,11 +174,6 @@ fun SongInfoSheet(
                     color = Color.White.copy(alpha = 0.9f),
                     textAlign = TextAlign.Center
                 )
-            } else if (info.coverArtUrl.isNullOrEmpty()) {
-                Text(
-                    text = stringResource(R.string.info_not_found),
-                    color = Color.Gray
-                )
             }
 
             Spacer(modifier = Modifier.height(64.dp))
@@ -182,12 +181,11 @@ fun SongInfoSheet(
     }
 }
 
-// Stiilne "Märk" (Chip) info jaoks
 @Composable
 fun InfoChip(text: String, icon: Boolean = false) {
     Surface(
-        color = Color.White.copy(alpha = 0.1f), // Pool-läbipaistev taust
-        shape = RoundedCornerShape(50),         // Täiesti ümar
+        color = Color.White.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(50),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
         Row(
@@ -195,21 +193,10 @@ fun InfoChip(text: String, icon: Boolean = false) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (icon) {
-                // Siia võiks panna albumi ikooni, kui tahad
-                Icon(
-                    imageVector = Icons.Default.Album,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(16.dp)
-                )
+                Icon(imageVector = Icons.Default.Album, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
-                fontWeight = FontWeight.Medium
-            )
+            Text(text = text, style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Medium)
         }
     }
 }

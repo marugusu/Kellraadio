@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import ee.minu.kellraadio.R
@@ -32,9 +33,9 @@ fun SongInfoTeaser(
     info: SongAdditionalInfo,
     artist: String,
     title: String,
+    stationName: String,
     onClick: () -> Unit,
     shape: Shape = RectangleShape,
-    // UUS: Võimalus määrata laiust ja paigutust väljastpoolt
     modifier: Modifier = Modifier
 ) {
     val infoParts = listOfNotNull(info.album, info.year, info.genre).filter { it.isNotEmpty() }
@@ -44,9 +45,11 @@ fun SongInfoTeaser(
         "$artist - $title"
     }
 
+    // Genereerime logo andmed
+    val stationColor = StationArtworkUtils.getStationColor(stationName)
+    val stationInitials = StationArtworkUtils.getStationInitials(stationName)
+
     Surface(
-        // MUUDATUS: Kasutame siin parameetrina saadud modifierit
-        // See lubab meil öelda "ole 100% lai" või "ole 95% lai"
         modifier = modifier
             .height(64.dp)
             .clickable(onClick = onClick),
@@ -57,29 +60,33 @@ fun SongInfoTeaser(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. VÄIKE PILT
-            if (!info.coverArtUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(info.coverArtUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.DarkGray)
+            // 1. VÄIKE PILT VÕI LOGO (KIHILINE)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(stationColor), // ALATI jaama värv
+                contentAlignment = Alignment.Center
+            ) {
+                // A) LOGO (Alati all)
+                Text(
+                    text = stationInitials,
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.MusicNote, null, tint = Color.Gray)
+
+                // B) PILT (Kui on olemas, katab logo kinni)
+                if (!info.coverArtUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(info.coverArtUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
 

@@ -62,6 +62,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import ee.minu.kellraadio.ui.SongInfoTeaser
+import ee.minu.kellraadio.ui.PlayerViewModel
+
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.*
 
@@ -191,23 +193,18 @@ fun RaadioEkraan() {
     var parsedTitle by rememberSaveable { mutableStateOf("") }
     var parsedArtist by rememberSaveable { mutableStateOf("") }
     var parsedExtra by rememberSaveable { mutableStateOf("") }
-    // --- UUS: Info ja laulusõnade olekud ---
-    var songInfo by remember { mutableStateOf<SongAdditionalInfo?>(null) }
-    var showSongInfoSheet by remember { mutableStateOf(false) }
 
-    // Automaatne päring, kui laul (artist/pealkiri) muutub
+    var showSongInfoSheet by remember { mutableStateOf(false) }
+    val playerViewModel: PlayerViewModel = viewModel()
+
+// Kuulame infot (StateFlow)
+    val songInfo by playerViewModel.songInfo.collectAsState()
+
+// Anname ViewModelile teada, kui laul muutub.
+// See on ikka LaunchedEffect, aga nüüd ta ainult annab käsu, mitte ei tee rasket tööd.
     LaunchedEffect(parsedArtist, parsedTitle) {
-        if (parsedArtist.isNotBlank() && parsedTitle.isNotBlank()) {
-            // Nullime eelmise info, et vana laulu sõnu ei näitaks
-            songInfo = null
-            // Teeme päringu taustal
-            val info = MusicInfoRepository.fetchInfo(parsedArtist, parsedTitle)
-            songInfo = info
-        } else {
-            songInfo = null
-        }
+        playerViewModel.fetchSongInfo(parsedArtist, parsedTitle)
     }
-    // ----------------------------------------
     var isRefreshing by rememberSaveable { mutableStateOf(false) }
     var previousPlayingStationName by rememberSaveable { mutableStateOf<String?>(null) }
     var sleepTimerMillis by rememberSaveable { mutableLongStateOf(0L) }
@@ -517,6 +514,7 @@ fun RaadioEkraan() {
                             info = info,
                             artist = parsedArtist,
                             title = parsedTitle,
+                            stationName = selectedStationName,
                             onClick = { showSongInfoSheet = true },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
 
@@ -710,6 +708,7 @@ fun RaadioEkraan() {
                                 info = info,
                                 artist = parsedArtist,
                                 title = parsedTitle,
+                                stationName = selectedStationName,
                                 onClick = { showSongInfoSheet = true }
                             )
                         }
@@ -1010,6 +1009,7 @@ fun RaadioEkraan() {
             SongInfoSheet(
                 artist = parsedArtist,
                 title = parsedTitle,
+                stationName = selectedStationName,
                 info = songInfo!!,
                 onDismiss = { showSongInfoSheet = false }
             )
