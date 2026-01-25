@@ -98,45 +98,32 @@ interface MusicBrainzApi {
 // --- 4. REPOSITOORIUM (LOOGIKA) ---
 
 object MusicInfoRepository {
-    private const val TAG = "MusicInfoRepo" // Logi TAG
-
-    // Sõnad, mille puhul me EI hakka lisainfot otsima.
-    // See katab kõik toetatud keeled (ET, EN, LIV, KO) + levinud variandid.
-    private val IGNORE_TERMS = listOf(
-        "Otseeeter",      // Eesti
-        "Live Stream",    // Inglise (Sinu strings.xml)
-        "Live Broadcast", // Inglise (Levinud alternatiiv)
-        "Otse",           // Liivi
-        "생방송",          // Korea
-        "Saatepaus",      // ERR tihti kasutab
-        "Uudised",        // ERR
-        "Reklaam"         // Üldine
-    )
+    private const val TAG = "MusicInfoRepo"
 
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
     private val contentType = "application/json".toMediaType()
 
     private val lrcApi = Retrofit.Builder()
-        .baseUrl("https://lrclib.net/")
+        .baseUrl(AppConfig.Api.LRCLIB_BASE_URL) // KASUTAME KONFIGURATSIOONI
         .addConverterFactory(json.asConverterFactory(contentType))
         .build()
         .create(LrcLibApi::class.java)
 
     private val itunesApi = Retrofit.Builder()
-        .baseUrl("https://itunes.apple.com/")
+        .baseUrl(AppConfig.Api.ITUNES_BASE_URL) // KASUTAME KONFIGURATSIOONI
         .addConverterFactory(json.asConverterFactory(contentType))
         .build()
         .create(ItunesApi::class.java)
 
     private val mbApi = Retrofit.Builder()
-        .baseUrl("https://musicbrainz.org/ws/2/")
+        .baseUrl(AppConfig.Api.MUSICBRAINZ_BASE_URL) // KASUTAME KONFIGURATSIOONI
         .addConverterFactory(json.asConverterFactory(contentType))
         .build()
         .create(MusicBrainzApi::class.java)
 
     suspend fun fetchInfo(artist: String, title: String): SongAdditionalInfo? {
-        // MUUDATUS: Kontrollime NII pealkirja KUI KA esitajat
-        val shouldIgnore = IGNORE_TERMS.any { term ->
+        // KASUTAME UUT NIMEKIRJA AppConfig FAILIST
+        val shouldIgnore = AppConfig.Metadata.IGNORE_TERMS.any { term ->
             title.contains(term, ignoreCase = true) || artist.contains(term, ignoreCase = true)
         }
 

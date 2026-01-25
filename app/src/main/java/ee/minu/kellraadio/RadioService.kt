@@ -53,11 +53,6 @@ import java.util.concurrent.CopyOnWriteArraySet
 
 @Suppress("DEPRECATION")
 class RadioService : Service() {
-    private val REVERSED_METADATA_STATIONS = listOf(
-        "Star FM 80's",
-        "Star FM 90's"
-        // Lisa siia need jaamad, mis valesti näitavad
-    )
     private lateinit var player: Player
     private var mediaSession: MediaSession? = null
     private var currentStationName: String = "Raadio"
@@ -803,7 +798,7 @@ class RadioService : Service() {
 
         if (parts.size >= 2) {
             // Kontrollime, kas see jaam saadab infot tagurpidi
-            val isReversed = REVERSED_METADATA_STATIONS.contains(currentStationName)
+            val isReversed = AppConfig.Metadata.REVERSED_STATIONS.contains(currentStationName)
 
             val part1 = parts[0].trim()
             val part2 = parts[1].trim()

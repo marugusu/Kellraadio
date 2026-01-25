@@ -55,7 +55,7 @@ interface RadioBrowserApiService {
     suspend fun getTags(): List<RadioFilterItem>
 
     companion object {
-        private const val BASE_URL = "https://de1.api.radio-browser.info/"
+        private const val BASE_URL = AppConfig.Api.RADIO_BROWSER_BASE_URL
         private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
         fun create(): RadioBrowserApiService {

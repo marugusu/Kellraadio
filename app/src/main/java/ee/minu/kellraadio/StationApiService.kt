@@ -14,7 +14,7 @@ interface StationApiService {
     suspend fun getStations(@Query("t") timestamp: Long): List<RadioStation>
 
     companion object {
-        private const val BASE_URL = "https://gist.githubusercontent.com/marugusu/e886795e2e2ae5df7b9573bd3f84333b/raw/"
+        private const val BASE_URL = AppConfig.Api.STATIONS_LIST_BASE_URL
 
         private val json = Json {
             ignoreUnknownKeys = true

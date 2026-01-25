@@ -6,47 +6,26 @@ import android.graphics.Paint
 import android.graphics.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import java.util.Locale
+import ee.minu.kellraadio.AppConfig // Impordime uue konfigi
 import kotlin.math.absoluteValue
 
 object StationArtworkUtils {
 
-    // 1. ERANDITE TABEL (Lisa siia, mida tahad jõuga muuta)
-    // Võti peab olema väiketähtedega!
-    private val SPECIAL_CASES = mapOf(
-        "raadio 2" to "R2",
-        "raadio 4" to "R4",
-        "sky plus" to "SKY+", // Soovi korral saab kasutada sümboleid
-        "klassikaraadio" to "KLAS",
-        "vikerraadio" to "VIKR",
-        "yle radio 1" to "YLE1",
-        "heart - 70s" to "70",
-        "heart - 80s" to "80",
-        "heart - 90s" to "90",
-        "retro disco" to "DISC",
-        "retro love" to "LOVE",
-        "ida" to "IDA"
-
-    )
-
-    private val NOISE_WORDS = listOf(
-        "raadio", "radio", "fm", "eesti", "onair", "channel","klara",
-        "live", "est", "fin", "the", "hits", "love", "duo", "elmari", "elmar"
-    )
+    // EEMALDASIME SIIT SPECIAL_CASES ja NOISE_WORDS, sest need on nüüd AppConfig failis
 
     fun getStationInitials(stationName: String): String {
         val cleanName = stationName.trim()
         val lowerName = cleanName.lowercase()
 
-        // --- KONTROLLIME ERANDEID ---
-        // Kui nimi on tabelis, tagasta kohe (ilma 4-tähe loogikata)
-        if (SPECIAL_CASES.containsKey(lowerName)) {
-            return SPECIAL_CASES[lowerName]!!.uppercase()
+        // --- 1. KONTROLLIME ERANDEID (KASUTAME NÜÜD APPCONFIG) ---
+        // Kui nimi on tabelis, tagasta kohe
+        if (AppConfig.UI.STATION_INITIALS_EXCEPTIONS.containsKey(lowerName)) {
+            return AppConfig.UI.STATION_INITIALS_EXCEPTIONS[lowerName]!!.uppercase()
         }
 
         // ... Kui erandit polnud, jätkame tavalise algoritmiga ...
 
-        var clean = cleanName
+        val clean = cleanName
             .replace("-", " ")
             .replace("'", "")
             .replace("?", "")
@@ -71,7 +50,8 @@ object StationArtworkUtils {
                 if (part.contains(num)) break
                 if (part.isNotEmpty()) {
                     brandPrefix = part
-                    if (!NOISE_WORDS.contains(part.lowercase())) break
+                    // MUUDATUS: Kasutame AppConfig.UI.NOISE_WORDS
+                    if (!AppConfig.UI.NOISE_WORDS.contains(part.lowercase())) break
                 }
             }
             if (brandPrefix.isEmpty()) brandPrefix = clean.take(1)
@@ -84,8 +64,9 @@ object StationArtworkUtils {
             return formatToFourChars(result.uppercase())
         }
 
+        // MUUDATUS: Kasutame AppConfig.UI.NOISE_WORDS
         val parts = clean.split("\\s+".toRegex())
-            .filter { !NOISE_WORDS.contains(it.lowercase()) }
+            .filter { !AppConfig.UI.NOISE_WORDS.contains(it.lowercase()) }
             .filter { it.length > 1 || it == "X" }
 
         val activeParts = if (parts.isEmpty()) clean.split(" ") else parts
