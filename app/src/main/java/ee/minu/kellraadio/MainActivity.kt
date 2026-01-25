@@ -920,9 +920,76 @@ fun RaadioEkraan() {
                             onStationLongClick = { station -> stationForActionSheet = station; showActionSheet = true }
                         )
                         1 -> AlarmsScreen(alarms, onAddAlarm = { alarmToEdit = null; showAlarmDialog = true }, onToggleAlarm = { alarm -> AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }, onEditAlarm = { alarm -> alarmToEdit = alarm; showAlarmDialog = true })
-                        2 -> HistoryScreen(repository = stationRepository, onPlayStationByName = { stationName -> /* ... */ })
-                        3 -> SearchScreen(repository = stationRepository, allStations = stations, activeUrl = playingStationUrl, onPlayTest = { name, url, isSaved -> /* ... */ }, onStationAdded = { selectedCategory = "My"; prefs.edit().putString("last_category", "My").apply() }, viewModel = searchViewModel)
-                        4 -> SettingsScreen(isRefreshing = isRefreshing, colsPortrait = colsPortrait, colsLandscape = colsLandscape, showFlags = showFlags, onToggleShowFlags = { showFlags = it; prefs.edit().putBoolean("show_flags", it).apply() }, onColsPortraitChange = onColsPortraitChange, onColsLandscapeChange = onColsLandscapeChange, onRefresh = { /* ... */ }, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show() } })
+                        2 -> HistoryScreen(
+                            repository = stationRepository,
+                            onPlayStationByName = { stationName ->
+                                val stationToPlay = stations.find { it.name == stationName }
+                                if (stationToPlay != null) {
+                                    selectedStationId = stationToPlay.id
+                                    selectedStationName = stationToPlay.name
+                                    syncedStationName = stationToPlay.name
+                                    prefs.edit().putInt("last_selected_id", stationToPlay.id).apply()
+                                    if (selectedCategory != "Favorites" && selectedCategory != stationToPlay.category) {
+                                        selectedCategory = stationToPlay.category
+                                        prefs.edit().putString("last_category", stationToPlay.category).apply()
+                                    }
+                                    playRadio(stationToPlay)
+                                    currentTab = 0
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.error_station_not_found),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        )
+                        3 -> SearchScreen(
+                            repository = stationRepository,
+                            allStations = stations,
+                            activeUrl = playingStationUrl,
+                            onPlayTest = { name, url, isSaved ->
+                                if (url == playingStationUrl && isPlaying) {
+                                    val i = Intent(context, RadioService::class.java).apply {
+                                        action = RadioService.ACTION_STOP
+                                    }
+                                    context.startService(i)
+                                    playingStationUrl = ""
+                                } else {
+                                    playingStationUrl = url
+                                    val displayName =
+                                        if (isSaved) name else "$name (${context.getString(R.string.action_test)})"
+                                    val i = Intent(context, RadioService::class.java).apply {
+                                        putExtra("STREAM_URL", url)
+                                        putExtra("STATION_NAME", displayName)
+                                        putExtra("TRIGGERED_BY", "USER")
+                                    }
+                                    context.startForegroundService(i)
+                                }
+                            },
+                            onStationAdded = {
+                                selectedCategory = "My"
+                                prefs.edit().putString("last_category", "My").apply()
+                            },
+                            viewModel = searchViewModel
+                        )
+                        4 -> SettingsScreen(isRefreshing = isRefreshing, colsPortrait = colsPortrait, colsLandscape = colsLandscape, showFlags = showFlags, onToggleShowFlags = { showFlags = it; prefs.edit().putBoolean("show_flags", it).apply() }, onColsPortraitChange = onColsPortraitChange, onColsLandscapeChange = onColsLandscapeChange, onRefresh = {
+                            scope.launch {
+                                isRefreshing = true
+                                try {
+                                    stationRepository.refreshStations()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.toast_updated),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } catch (e: Exception) {
+                                    // Võib lisada logimise, kui vaja
+                                } finally {
+                                    isRefreshing = false
+                                }
+                            }
+                        }, onClearHistory = { scope.launch { stationRepository.clearHistory() } }, onAddTestData = { scope.launch { stationRepository.insertTestHistory(); Toast.makeText(context, context.getString(R.string.toast_updated), Toast.LENGTH_SHORT).show() } })
                     }
                 }
                 // SIIT EEMALDASIN SELLE VANA AnimatedVisibility BLOKI

@@ -100,6 +100,19 @@ interface MusicBrainzApi {
 object MusicInfoRepository {
     private const val TAG = "MusicInfoRepo" // Logi TAG
 
+    // Sõnad, mille puhul me EI hakka lisainfot otsima.
+    // See katab kõik toetatud keeled (ET, EN, LIV, KO) + levinud variandid.
+    private val IGNORE_TERMS = listOf(
+        "Otseeeter",      // Eesti
+        "Live Stream",    // Inglise (Sinu strings.xml)
+        "Live Broadcast", // Inglise (Levinud alternatiiv)
+        "Otse",           // Liivi
+        "생방송",          // Korea
+        "Saatepaus",      // ERR tihti kasutab
+        "Uudised",        // ERR
+        "Reklaam"         // Üldine
+    )
+
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
     private val contentType = "application/json".toMediaType()
 
@@ -122,7 +135,14 @@ object MusicInfoRepository {
         .create(MusicBrainzApi::class.java)
 
     suspend fun fetchInfo(artist: String, title: String): SongAdditionalInfo? {
-        if (artist.isBlank() || title.isBlank() || title.contains("Otseeeter")) return null
+        // MUUDATUS: Kontrollime NII pealkirja KUI KA esitajat
+        val shouldIgnore = IGNORE_TERMS.any { term ->
+            title.contains(term, ignoreCase = true) || artist.contains(term, ignoreCase = true)
+        }
+
+        if (artist.isBlank() || title.isBlank() || shouldIgnore) {
+            return null
+        }
 
         Log.d(TAG, "🔍 ALUSTAN OTSINGUT: '$artist' - '$title'")
 
