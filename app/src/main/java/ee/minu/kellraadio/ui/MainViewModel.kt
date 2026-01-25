@@ -66,7 +66,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Toast.makeText(context, getString(R.string.error_station_not_found), Toast.LENGTH_LONG).show()
                 }
                 RadioService.ACTION_PLAYER_STOPPED -> {
-                    _uiState.update { it.copy(isPlaying = false, playerStatus = getString(R.string.status_stopped), bitrate = "", parsedTitle = "", parsedArtist = "", parsedExtra = "") }
+                    _uiState.update { it.copy(
+                        isPlaying = false,
+                        playerStatus = getString(R.string.status_stopped),
+                        bitrate = ""
+                    )}
                 }
                 RadioService.ACTION_TIMER_TICK -> {
                     val remaining = intent.getLongExtra("REMAINING_MILLIS", 0L)
