@@ -455,21 +455,19 @@ fun ContentScreens(
         3 -> SearchScreen(
             repository = viewModel.stationRepository,
             allStations = state.stations,
-            // 1. Kasutame nüüd State'ist tulevat URL-i
             activeUrl = state.activeStreamUrl,
-
             onPlayTest = { name, url, isSaved ->
-                // Kui see sama URL juba mängib, siis paneme STOP
                 if (url == state.activeStreamUrl && state.isPlaying) {
                     val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
                     context.startService(i)
                 } else {
-                    // Muidu käivitame uue funktsiooni kaudu
                     val displayName = if (isSaved) name else "$name (${context.getString(R.string.action_test)})"
                     viewModel.playTestStation(displayName, url)
                 }
             },
-            onStationAdded = { viewModel.onCategorySelected("My") },
+            onSaveStation = { name, url, country ->
+                viewModel.saveUserStation(name, url, country)
+            },
             viewModel = searchViewModel
         )
 

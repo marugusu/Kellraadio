@@ -457,6 +457,12 @@ class RadioService : Service() {
         }
 
         if (streamUrl != null) {
+            if (currentStreamUrl == streamUrl && player.isPlaying) {
+                Log.i(TAG, "See jaam juba mängib, ei restardi: $stationName")
+                currentStationName = stationName ?: currentStationName
+                updateNotification()
+                return START_STICKY
+            }
             isChangingStation = true
             lastBitrateInfo = ""
             sendBitrateUpdate()

@@ -26,7 +26,7 @@ class RadioStationRepository(
     }
 
     // Kasutaja jaama salvestamine (UUS)
-    suspend fun saveUserStation(name: String, url: String, countryCode: String = "") {
+    suspend fun saveUserStation(name: String, url: String, countryCode: String = ""): Int {
         val maxId = stationDao.getMaxId() ?: 9999
         val newId = if (maxId < 10000) 10000 else maxId + 1
 
@@ -34,13 +34,15 @@ class RadioStationRepository(
             id = newId,
             name = name,
             url = url,
-            category = "My", // MUUDATUS: Inglise keeles
+            category = "My",
             priority = 10000 + (newId - 10000),
             isUserStation = true,
             uuid = UUID.randomUUID().toString(),
-            countryCode = countryCode
+            countryCode = countryCode,
+            isFavorite = false
         )
         stationDao.insert(newStation)
+        return newId
     }
 
     // Kasutaja jaama muutmine (UUS)

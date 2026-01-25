@@ -114,11 +114,10 @@ fun PlayerControls(
                     Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
 
-                // --- SIIN ON PARANDUS ---
                 val displayName = if (parsedArtist.isNotBlank()) parsedArtist
                 else if (parsedTitle.isNotBlank()) stringResource(R.string.live_broadcast)
                 else if (activeStationName.isNotEmpty()) activeStationName
-                else stringResource(R.string.select_station)
+                else selectedStation?.name ?: stringResource(R.string.select_station)
 
                 Text(text = displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = artistColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
 

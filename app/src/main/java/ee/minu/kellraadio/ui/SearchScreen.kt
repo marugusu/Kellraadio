@@ -40,7 +40,7 @@ fun SearchScreen(
     allStations: List<ee.minu.kellraadio.RadioStation>,
     activeUrl: String,
     onPlayTest: (String, String, Boolean) -> Unit,
-    onStationAdded: () -> Unit,
+    onSaveStation: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(repository))
 ) {
@@ -214,12 +214,7 @@ fun SearchScreen(
                             isSaved = isAlreadySaved,
                             onPlay = { onPlayTest(station.name, station.urlResolved, isAlreadySaved) },
                             onAdd = {
-                                scope.launch {
-                                    repository.saveUserStation(station.name, station.urlResolved, station.countryCode)
-                                    // TÕLGITUD TOAST
-                                    Toast.makeText(context, context.getString(R.string.station_added, station.name), Toast.LENGTH_SHORT).show()
-                                    onStationAdded()
-                                }
+                                onSaveStation(station.name, station.urlResolved, station.countryCode)
                             }
                         )
                     }
@@ -256,13 +251,9 @@ fun SearchScreen(
             onDismiss = { viewModel.closeManualAddDialog() },
             onTest = { name, url -> onPlayTest(if(name.isNotBlank()) name else "Tundmatu", url, false) },
             onSave = { name, url ->
-                scope.launch {
-                    repository.saveUserStation(name, url)
-                    // TÕLGITUD TOAST
-                    Toast.makeText(context, context.getString(R.string.station_added, name), Toast.LENGTH_SHORT).show()
-                    viewModel.closeManualAddDialog()
-                    onStationAdded()
-                }
+                // MUUDATUS: Kutsume välja uue callbacki
+                onSaveStation(name, url, "")
+                viewModel.closeManualAddDialog()
             }
         )
     }

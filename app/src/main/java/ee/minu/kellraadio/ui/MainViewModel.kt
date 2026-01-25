@@ -243,6 +243,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun saveUserStation(name: String, url: String, countryCode: String = "") {
+        viewModelScope.launch {
+            // 1. Salvestame andmebaasi ja saame uue ID
+            val newId = stationRepository.saveUserStation(name, url, countryCode)
+
+            // 2. Anname kasutajale teada
+            Toast.makeText(context, context.getString(R.string.station_added, name), Toast.LENGTH_SHORT).show()
+
+            // 3. Vahetame kategooriat ("My Stations")
+            onCategorySelected("My")
+
+            // 4. "TARK" OSA: Kas me kuulame praegu sedasama jaama?
+            // Kui URL on sama ja raadio mängib, siis see pole enam test!
+            if (_uiState.value.activeStreamUrl == url && _uiState.value.isPlaying) {
+                // Uuendame UI olekut: seame õige ID (täht läheb kollaseks) ja nime
+                _uiState.update { it.copy(
+                    selectedStationId = newId,
+                    activeStationName = name // Eemaldame "(Test)" liite visuaalselt
+                )}
+
+                // Uuendame mälus valikut
+                prefs.edit().putInt("last_selected_id", newId).putString("last_selected_name", name).apply()
+
+                // Saadame Service'ile signaali, et ta uuendaks teavitust (võtaks "(Test)" nime tagant ära)
+                val i = Intent(RadioService.ACTION_STATION_CHANGED).apply {
+                    putExtra("STATION_NAME", name)
+                }
+                LocalBroadcastManager.getInstance(context).sendBroadcast(i)
+            }
+        }
+    }
+
     fun refreshStations() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
