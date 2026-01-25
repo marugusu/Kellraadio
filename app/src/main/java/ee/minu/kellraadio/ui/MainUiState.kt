@@ -10,6 +10,7 @@ data class MainUiState(
     val playerStatus: String = "",
     val bitrate: String = "",
     val activeStationName: String = "",
+    val activeStreamUrl: String = "",
 
     // --- METAANDMED ---
     val parsedArtist: String = "",

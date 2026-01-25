@@ -69,7 +69,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.update { it.copy(
                         isPlaying = false,
                         playerStatus = getString(R.string.status_stopped),
-                        bitrate = ""
+                        bitrate = "",
+                        activeStreamUrl = ""
                     )}
                 }
                 RadioService.ACTION_TIMER_TICK -> {
@@ -305,6 +306,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 onCategorySelected(station.category)
             }
         }
+    }
+
+    fun playTestStation(name: String, url: String) {
+        // 1. Uuendame olekut kohe
+        _uiState.update { it.copy(
+            activeStationName = name, // Näita nime kohe
+            activeStreamUrl = url,    // Et SearchScreen Stop nupp töötaks
+            selectedStationId = -1,   // TÄHTIS: See pole andmebaasi jaam -> Lemmiku täht tühjaks
+            isPlaying = true
+        )}
+
+        // 2. Käivitame teenuse
+        val i = Intent(context, RadioService::class.java).apply {
+            putExtra("STREAM_URL", url)
+            putExtra("STATION_NAME", name)
+            putExtra("TRIGGERED_BY", "USER")
+        }
+        context.startForegroundService(i)
     }
 
     override fun onCleared() {
