@@ -111,6 +111,8 @@
     <string name="action_delete_station">Kistūtõ stacij</string>
     <string name="delete_station_confirm_title">Kistūtõ stacij?</string>
     <string name="delete_station_confirm_text">Voi tōd kistūtõ stacij \'%1$s\'?</string>
+    <string name="station_toast_deleted">Stacij kistūtõd!</string>
+
 
     <!-- Categories -->
     <string name="cat_favorites">Armstõd</string> <!-- Lemmikud -->
@@ -130,6 +132,7 @@
     <string name="days_every_day">Igā päuv</string>
     <string name="days_weekdays">E-R</string>
     <string name="days_weekend">L-P</string>
+    <string name="alarm_once">ikš kõrd</string>
 
     <!-- Song Info Sheet -->
     <string name="info_lyrics">Loul sõnād</string>

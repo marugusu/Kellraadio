@@ -116,6 +116,8 @@
     <string name="action_delete_station">Delete station</string>
     <string name="delete_station_confirm_title">Delete station?</string>
     <string name="delete_station_confirm_text">Are you sure you want to permanently delete station \'%1$s\'?</string>
+    <string name="station_toast_deleted">Station deleted!</string>
+
 
     <!-- Days of week (Short) -->
     <string name="day_mon">M</string>

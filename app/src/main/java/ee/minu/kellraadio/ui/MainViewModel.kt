@@ -236,7 +236,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (station != null) {
             viewModelScope.launch {
                 stationRepository.deleteStation(station)
-                Toast.makeText(context, getString(R.string.alarm_toast_deleted), Toast.LENGTH_SHORT).show()
+                // MUUDATUS: Kasutame nüüd spetsiaalset jaama kustutamise teadet
+                Toast.makeText(context, getString(R.string.station_toast_deleted), Toast.LENGTH_SHORT).show()
                 cancelDeleteStation()
                 closeStationActionSheet()
             }

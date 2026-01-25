@@ -116,6 +116,8 @@
     <string name="action_delete_station">Kustuta jaam</string>
     <string name="delete_station_confirm_title">Kustuta jaam?</string>
     <string name="delete_station_confirm_text">Kas soovid jäädavalt kustutada jaama \'%1$s\'?</string>
+    <string name="station_toast_deleted">Jaam kustutatud!</string>
+
 
     <!-- Days of week (Short) -->
     <string name="day_mon">E</string>
@@ -130,7 +132,7 @@
     <string name="days_every_day">Iga päev</string>
     <string name="days_weekdays">E-R</string>
     <string name="days_weekend">L-P</string>
-    <string name="alarm_once">1x</string>
+    <string name="alarm_once">üks kord</string>
 
     <!-- Song Info Sheet -->
     <string name="info_lyrics">LAULUSÕNAD</string>
