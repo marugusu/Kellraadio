@@ -54,12 +54,14 @@ object AppConfig {
             "klassikaraadio" to "KLAS",
             "vikerraadio" to "VIKR",
             "yle radio 1" to "YLE1",
-            "heart 70s" to "70s",
-            "heart 80s" to "80s",
-            "heart 90s" to "90s",
+            "heart 70s" to "70",
+            "heart 80s" to "80",
+            "heart 90s" to "90",
             "retro disco" to "DISC",
             "retro love" to "LOVE",
-            "ida" to "IDA"
+            "ida" to "IDA",
+            "star fm 80s" to "80",
+            "star fm 90s" to "90"
         )
 
         // Sõnad, mida me lühendite tegemisel ignoreerime

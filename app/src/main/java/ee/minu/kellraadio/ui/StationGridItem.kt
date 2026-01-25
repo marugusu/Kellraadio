@@ -163,7 +163,7 @@ fun StationGridItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(top = 8.dp, bottom = 0.dp, start = 8.dp, end = 8.dp)
+                    .padding(top = 8.dp, bottom = 0.dp, start = 4.dp, end = 4.dp)
             )
             if (station.isFavorite && showFavoriteIcon) {
                 Icon(
