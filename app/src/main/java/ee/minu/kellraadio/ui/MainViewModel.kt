@@ -1,0 +1,314 @@
+package ee.minu.kellraadio.ui
+
+import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.util.Log
+import android.widget.Toast
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import ee.minu.kellraadio.Alarm
+import ee.minu.kellraadio.AlarmUtils
+import ee.minu.kellraadio.AppDatabase
+import ee.minu.kellraadio.R
+import ee.minu.kellraadio.RadioBrowserApiService
+import ee.minu.kellraadio.RadioService
+import ee.minu.kellraadio.RadioStation
+import ee.minu.kellraadio.RadioStationRepository
+import ee.minu.kellraadio.StationApiService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val context = application.applicationContext
+    private val prefs = context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE)
+
+    // --- REPOSITOORIUMID ---
+    private val database = AppDatabase.getDatabase(context)
+    val stationRepository = RadioStationRepository(
+        StationApiService.create(),
+        RadioBrowserApiService.create(),
+        database.radioStationDao(),
+        database.historyDao()
+    )
+    private val alarmDao = database.alarmDao()
+
+    // --- UI OLEK ---
+    private val _uiState = MutableStateFlow(MainUiState())
+    val uiState = _uiState.asStateFlow()
+
+    // --- BROADCAST RECEIVER (Raadio sündmused) ---
+    private val radioReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                RadioService.ACTION_STATION_CHANGED -> {
+                    val name = intent.getStringExtra("STATION_NAME") ?: ""
+                    _uiState.update { it.copy(isPlaying = true, playerStatus = getString(R.string.status_playing), activeStationName = name) }
+                }
+                RadioService.ACTION_METADATA_UPDATED -> {
+                    val title = intent.getStringExtra("PARSED_TITLE") ?: ""
+                    val artist = intent.getStringExtra("PARSED_ARTIST") ?: ""
+                    val extra = intent.getStringExtra("PARSED_EXTRA") ?: ""
+                    _uiState.update { it.copy(isPlaying = true, playerStatus = getString(R.string.status_playing), parsedTitle = title, parsedArtist = artist, parsedExtra = extra) }
+                }
+                RadioService.ACTION_BITRATE_UPDATED -> {
+                    val bitrate = intent.getStringExtra("BITRATE_INFO") ?: ""
+                    _uiState.update { it.copy(bitrate = bitrate) }
+                }
+                RadioService.ACTION_PLAYER_ERROR -> {
+                    _uiState.update { it.copy(isPlaying = false, playerStatus = getString(R.string.status_error), bitrate = "") }
+                    Toast.makeText(context, getString(R.string.error_station_not_found), Toast.LENGTH_LONG).show()
+                }
+                RadioService.ACTION_PLAYER_STOPPED -> {
+                    _uiState.update { it.copy(isPlaying = false, playerStatus = getString(R.string.status_stopped), bitrate = "", parsedTitle = "", parsedArtist = "", parsedExtra = "") }
+                }
+                RadioService.ACTION_TIMER_TICK -> {
+                    val remaining = intent.getLongExtra("REMAINING_MILLIS", 0L)
+                    _uiState.update { it.copy(sleepTimerRemaining = remaining) }
+                }
+                RadioService.ACTION_STATION_SELECTED_BY_SERVICE -> {
+                    val stationId = intent.getIntExtra("STATION_ID", -1)
+                    if (stationId != -1) updateSelectedStationLocal(stationId)
+                }
+            }
+        }
+    }
+
+    init {
+        // Registreeri kuulaja
+        val filter = IntentFilter().apply {
+            addAction(RadioService.ACTION_STATION_SELECTED_BY_SERVICE)
+            addAction(RadioService.ACTION_STATION_CHANGED)
+            addAction(RadioService.ACTION_METADATA_UPDATED)
+            addAction(RadioService.ACTION_BITRATE_UPDATED)
+            addAction(RadioService.ACTION_PLAYER_ERROR)
+            addAction(RadioService.ACTION_PLAYER_STOPPED)
+            addAction(RadioService.ACTION_TIMER_TICK)
+        }
+        LocalBroadcastManager.getInstance(context).registerReceiver(radioReceiver, filter)
+
+        loadPreferences()
+
+        // Flow vaatlejad
+        viewModelScope.launch {
+            stationRepository.allStations.collect { stations -> _uiState.update { it.copy(stations = stations) } }
+        }
+        viewModelScope.launch {
+            alarmDao.getAllAlarms().collect { alarms -> _uiState.update { it.copy(alarms = alarms) } }
+        }
+
+        LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
+        refreshStations()
+    }
+
+    private fun loadPreferences() {
+        _uiState.update { it.copy(
+            selectedCategory = prefs.getString("last_category", "ERR") ?: "ERR",
+            selectedStationId = prefs.getInt("last_selected_id", -1),
+            colsPortrait = prefs.getInt("cols_portrait", 3),
+            colsLandscape = prefs.getInt("cols_landscape", 3),
+            showFlags = prefs.getBoolean("show_flags", true)
+        )}
+    }
+
+    // --- KASUTAJA TEGEVUSED (EVENTS) ---
+
+    fun onTabSelected(index: Int) {
+        _uiState.update { it.copy(currentTab = index) }
+    }
+
+    fun onCategorySelected(category: String) {
+        _uiState.update { it.copy(selectedCategory = category) }
+        prefs.edit().putString("last_category", category).apply()
+    }
+
+    fun onStationClicked(station: RadioStation) {
+        updateSelectedStationLocal(station.id)
+        startRadioService(station)
+    }
+
+    fun onPlayPauseClicked() {
+        if (_uiState.value.isPlaying) {
+            val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
+            context.startService(i)
+        } else {
+            // Kui on valitud jaam, mängi seda.
+            val station = _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
+            if (station != null) {
+                startRadioService(station)
+            } else {
+                Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun onHistoryStationClicked(stationName: String) {
+        val station = _uiState.value.stations.find { it.name == stationName }
+        if (station != null) {
+            updateSelectedStationLocal(station.id)
+            // Kui vajadusel kategooriat muuta:
+            if (_uiState.value.selectedCategory != "Favorites" && _uiState.value.selectedCategory != station.category) {
+                onCategorySelected(station.category)
+            }
+            startRadioService(station)
+            onTabSelected(0) // Mine raadio vaatesse
+        } else {
+            Toast.makeText(context, getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun onToggleFavorite() {
+        val station = _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
+        station?.let {
+            viewModelScope.launch { stationRepository.toggleFavorite(it) }
+        }
+    }
+
+    // --- DIALOOGIDE HALDUS ---
+
+    fun openSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = true) } }
+    fun closeSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = false) } }
+
+    fun openAlarmDialog(alarm: Alarm? = null) {
+        if (alarm == null && _uiState.value.selectedStationId == -1) {
+            Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
+            return
+        }
+        _uiState.update { it.copy(showAlarmDialog = true, alarmToEdit = alarm) }
+    }
+    fun closeAlarmDialog() { _uiState.update { it.copy(showAlarmDialog = false, alarmToEdit = null) } }
+
+    fun openStationActionSheet(station: RadioStation) { _uiState.update { it.copy(showActionSheetForStation = station) } }
+    fun closeStationActionSheet() { _uiState.update { it.copy(showActionSheetForStation = null) } }
+
+    fun openSongInfo() { _uiState.update { it.copy(showSongInfoSheet = true) } }
+    fun closeSongInfo() { _uiState.update { it.copy(showSongInfoSheet = false) } }
+
+    fun confirmDeleteStation(station: RadioStation) { _uiState.update { it.copy(stationToDelete = station) } }
+    fun cancelDeleteStation() { _uiState.update { it.copy(stationToDelete = null) } }
+
+    // --- ÄRILINE LOOGIKA ---
+
+    fun saveAlarm(hour: Int, minute: Int, days: Set<Int>) {
+        val alarmToEdit = _uiState.value.alarmToEdit
+        val station = if (alarmToEdit != null) {
+            // Kui muudame, siis jaam on juba alarmis kirjas, aga võime ka praegust aktiivset kasutada, kui tahame
+            // Siin hoiame lihtsuse mõttes alarmi enda jaama nime, või kui on uus, siis valitud jaama
+            _uiState.value.stations.find { it.name == alarmToEdit.stationName }
+        } else {
+            _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
+        } ?: return // Ei tohiks juhtuda
+
+        val alarm = alarmToEdit?.copy(
+            hour = hour, minute = minute, days = days,
+            stationName = station.name, stationUrl = station.url, isEnabled = true
+        ) ?: Alarm(
+            hour = hour, minute = minute, days = days,
+            stationName = station.name, stationUrl = station.url
+        )
+
+        AlarmUtils.saveOrUpdateAlarm(context, alarm)
+        closeAlarmDialog()
+    }
+
+    fun toggleAlarm(alarm: Alarm) {
+        AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false)
+    }
+
+    fun deleteAlarm(alarm: Alarm) {
+        AlarmUtils.deleteAlarm(context, alarm)
+        closeAlarmDialog()
+    }
+
+    fun deleteUserStation() {
+        val station = _uiState.value.stationToDelete
+        if (station != null) {
+            viewModelScope.launch {
+                stationRepository.deleteStation(station)
+                Toast.makeText(context, getString(R.string.alarm_toast_deleted), Toast.LENGTH_SHORT).show()
+                cancelDeleteStation()
+                closeStationActionSheet()
+            }
+        }
+    }
+
+    fun refreshStations() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            try {
+                stationRepository.refreshStations()
+                Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
+
+    fun setColsPortrait(cols: Int) {
+        _uiState.update { it.copy(colsPortrait = cols) }
+        prefs.edit().putInt("cols_portrait", cols).apply()
+    }
+
+    fun setColsLandscape(cols: Int) {
+        _uiState.update { it.copy(colsLandscape = cols) }
+        prefs.edit().putInt("cols_landscape", cols).apply()
+    }
+
+    fun toggleFlags(show: Boolean) {
+        _uiState.update { it.copy(showFlags = show) }
+        prefs.edit().putBoolean("show_flags", show).apply()
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch { stationRepository.clearHistory() }
+    }
+
+    fun addTestData() {
+        viewModelScope.launch {
+            stationRepository.insertTestHistory()
+            Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // --- ABIFUNKTSIOONID ---
+
+    private fun startRadioService(station: RadioStation) {
+        val i = Intent(context, RadioService::class.java).apply {
+            putExtra("STREAM_URL", station.url)
+            putExtra("STATION_NAME", station.name)
+            putExtra("TRIGGERED_BY", "USER")
+            putExtra("CATEGORY_NAME", _uiState.value.selectedCategory)
+        }
+        context.startForegroundService(i)
+    }
+
+    private fun updateSelectedStationLocal(stationId: Int) {
+        _uiState.update { it.copy(selectedStationId = stationId) }
+        prefs.edit().putInt("last_selected_id", stationId).apply()
+
+        // Automaatne kategooria vahetus (sünkroniseerimine)
+        val station = _uiState.value.stations.find { it.id == stationId }
+        if (station != null) {
+            val currentCat = _uiState.value.selectedCategory
+            if (currentCat != "Favorites" && currentCat != "All" && currentCat != station.category) {
+                onCategorySelected(station.category)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        LocalBroadcastManager.getInstance(context).unregisterReceiver(radioReceiver)
+    }
+
+    private fun getString(resId: Int): String {
+        return getApplication<Application>().getString(resId)
+    }
+}

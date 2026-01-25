@@ -2,11 +2,12 @@ package ee.minu.kellraadio.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -21,16 +22,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.clickable
-
 import ee.minu.kellraadio.AlarmUtils
+import ee.minu.kellraadio.R
 import ee.minu.kellraadio.RadioStation
-import ee.minu.kellraadio.SongAdditionalInfo // UUS IMPORT
+import ee.minu.kellraadio.SongAdditionalInfo
 import java.util.Calendar
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -48,10 +48,8 @@ fun PlayerControls(
     alarmDays: Set<Int>,
     sleepTimerMillis: Long,
     isFavorite: Boolean,
-    // --- UUED PARAMEETRID ---
     songInfo: SongAdditionalInfo?,
     onInfoClick: () -> Unit,
-    // ------------------------
     onPlayPause: () -> Unit,
     onPlayStation: (RadioStation) -> Unit,
     onSleepClick: () -> Unit,
@@ -82,9 +80,8 @@ fun PlayerControls(
                         )
                     )
                 )
-                // --- MUUDATUS 1: Terve kast on klikitav ---
                 .clickable(
-                    enabled = songInfo != null, // Klikitav AINULT siis, kui info on olemas
+                    enabled = songInfo != null,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onInfoClick()
@@ -108,7 +105,7 @@ fun PlayerControls(
                 )
             }
 
-            // KIHT 2: Sisu (See jääb täpselt samaks)
+            // KIHT 2: Sisu
             Column(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -117,10 +114,11 @@ fun PlayerControls(
                     Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                 }
 
+                // --- SIIN ON PARANDUS ---
                 val displayName = if (parsedArtist.isNotBlank()) parsedArtist
-                else if (parsedTitle.isNotBlank()) "Otseeeter"
+                else if (parsedTitle.isNotBlank()) stringResource(R.string.live_broadcast)
                 else if (activeStationName.isNotEmpty()) activeStationName
-                else "Vali jaam"
+                else stringResource(R.string.select_station)
 
                 Text(text = displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = artistColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
 
@@ -162,27 +160,6 @@ fun PlayerControls(
                     }
                 }
             }
-
-            // --- KIHT 3: INFO MÄRK (UUS) ---
-            // See pole enam nupp (IconButton), vaid lihtsalt pilt (Box),
-            // sest terve suur kast on nüüd nupp.
-//            if (songInfo != null) {
-//                Box(
-//                    modifier = Modifier
-//                        .align(Alignment.BottomEnd)
-//                        .padding(12.dp)
-//                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-//                        .size(36.dp),
-//                    contentAlignment = Alignment.Center
-//                ) {
-//                    val icon = when {
-//                        !songInfo.lyrics.isNullOrEmpty() -> Icons.Default.MusicNote
-//                        !songInfo.coverArtUrl.isNullOrEmpty() -> Icons.Default.Image
-//                        else -> Icons.Default.Info
-//                    }
-//                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
-//                }
-//            }
         }
 
         Spacer(Modifier.height(16.dp))
