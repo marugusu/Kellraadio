@@ -135,6 +135,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onStationClicked(station: RadioStation) {
         updateSelectedStationLocal(station.id)
+        _uiState.update { it.copy(
+            activeStationName = station.name, // Uuendame nime ja logo kohe
+            isPlaying = true,                 // Näitame, et protsess käib
+            playerStatus = getString(R.string.status_buffering) // "Laen..."
+        )}
+
         startRadioService(station)
     }
 
@@ -157,12 +163,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val station = _uiState.value.stations.find { it.name == stationName }
         if (station != null) {
             updateSelectedStationLocal(station.id)
-            // Kui vajadusel kategooriat muuta:
             if (_uiState.value.selectedCategory != "Favorites" && _uiState.value.selectedCategory != station.category) {
                 onCategorySelected(station.category)
             }
+            _uiState.update { it.copy(
+                activeStationName = station.name,
+                isPlaying = true,
+                playerStatus = getString(R.string.status_buffering)
+            )}
             startRadioService(station)
-            onTabSelected(0) // Mine raadio vaatesse
+            onTabSelected(0)
         } else {
             Toast.makeText(context, getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show()
         }
