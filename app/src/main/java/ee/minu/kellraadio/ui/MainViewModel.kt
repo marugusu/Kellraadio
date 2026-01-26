@@ -49,7 +49,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             when (intent.action) {
                 RadioService.ACTION_STATION_CHANGED -> {
                     val name = intent.getStringExtra("STATION_NAME") ?: ""
-                    _uiState.update { it.copy(isPlaying = true, playerStatus = getString(R.string.status_playing), activeStationName = name) }
+                    // Sünkroniseerime UI jaama nime järgi ---
+                    var newId = _uiState.value.selectedStationId
+                    var newCat = _uiState.value.selectedCategory
+                    // Otsime jaama praegusest nimekirjast nime järgi
+                    val foundStation = _uiState.value.stations.find { it.name == name }
+                    if (foundStation != null) {
+                        newId = foundStation.id
+                        // Kui praegune kategooria pole "Favorites" ega "All" ja on vale, siis vahetame
+                        if (newCat != "Favorites" && newCat != "All" && newCat != foundStation.category) {
+                            newCat = foundStation.category
+                            prefs.edit().putString("last_category", newCat).apply()
+                        }
+                        // Salvestame valiku mällu
+                        prefs.edit().putInt("last_selected_id", newId).apply()
+                    }
+                    _uiState.update { it.copy(
+                        isPlaying = true,
+                        playerStatus = getString(R.string.status_playing),
+                        activeStationName = name,
+                        // Uuendame ka valikut ja kategooriat
+                        selectedStationId = newId,
+                        selectedCategory = newCat
+                    )}
                 }
                 RadioService.ACTION_METADATA_UPDATED -> {
                     val title = intent.getStringExtra("PARSED_TITLE") ?: ""
