@@ -39,7 +39,7 @@ class RadioNotificationManager(private val context: Context) {
             )
             val alarmChannel = NotificationChannel(
                 CHANNEL_ID_ALARM,
-                "Äratuse märguanne", // Võib olla ka string resource, aga see on kanali nimi süsteemis
+                "Äratuse märguanne",
                 NotificationManager.IMPORTANCE_HIGH
             )
             notificationManager.createNotificationChannels(listOf(radioChannel, alarmChannel))
@@ -52,17 +52,46 @@ class RadioNotificationManager(private val context: Context) {
         trackTitle: String,
         trackArtist: String,
         bitmap: Bitmap?,
-        isAlarmMode: Boolean
+        isAlarmMode: Boolean,
+        isPlaying: Boolean
     ): Notification {
 
-        // Peatamise nupp (PendingIntent)
-        val stopPendingIntent = PendingIntent.getService(
-            context, 2,
-            Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP },
-            PendingIntent.FLAG_IMMUTABLE
-        )
+        // 1. Luua Intentid nuppude jaoks
+        val stopIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
+        val pauseIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
+        val playIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }
+        val nextIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_SKIP_NEXT }
+        val prevIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_SKIP_PREVIOUS }
 
-        // Tekstide loogika (Täpselt sama, mis sul enne oli)
+        // 2. Teha neist PendingIntentid
+        val stopPending = PendingIntent.getService(context, 10, stopIntent, PendingIntent.FLAG_IMMUTABLE)
+        val pausePending = PendingIntent.getService(context, 11, pauseIntent, PendingIntent.FLAG_IMMUTABLE)
+        val playPending = PendingIntent.getService(context, 12, playIntent, PendingIntent.FLAG_IMMUTABLE)
+        val nextPending = PendingIntent.getService(context, 13, nextIntent, PendingIntent.FLAG_IMMUTABLE)
+        val prevPending = PendingIntent.getService(context, 14, prevIntent, PendingIntent.FLAG_IMMUTABLE)
+
+        // 3. Keskmise nupu loogika (Play vs Pause)
+        val middleActionIcon: Int
+        val middleActionTitle: String
+        val middleActionIntent: PendingIntent
+
+        if (isAlarmMode) {
+            // Äratuse ajal on alati STOP
+            middleActionIcon = R.drawable.ic_stop
+            middleActionTitle = context.getString(R.string.action_stop)
+            middleActionIntent = stopPending
+        } else if (isPlaying) {
+            // Kui mängib -> PAUS (Kasutame süsteemset ikooni, sest ic_pause puudub projektis)
+            middleActionIcon = R.drawable.ic_pause
+            middleActionTitle = context.getString(R.string.action_pause)
+            middleActionIntent = pausePending
+        } else {
+            // Kui ei mängi -> MÄNGI
+            middleActionIcon = R.drawable.ic_play_arrow
+            middleActionTitle = context.getString(R.string.action_play)
+            middleActionIntent = playPending
+        }
+
         val title = if (isAlarmMode) context.getString(R.string.notification_alarm)
         else (if (trackTitle.isNotBlank()) trackTitle else stationName)
 
@@ -77,18 +106,17 @@ class RadioNotificationManager(private val context: Context) {
             .setLargeIcon(bitmap)
             .setContentTitle(title)
             .setContentText(text)
-            .setOngoing(true)
+            .setOngoing(isPlaying || isAlarmMode)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(priority)
             .setDefaults(if (isAlarmMode) Notification.DEFAULT_ALL else 0)
             .setContentIntent(mediaSession.sessionActivity)
-            // See rida ühendab teavituse MediaSessioniga (nupud lukuekraanil jne)
             .setStyle(MediaStyleNotificationHelper.MediaStyle(mediaSession).setShowActionsInCompactView(0, 1, 2))
 
-            // Nupud
-            .addAction(R.drawable.ic_skip_previous, "Previous", null)
-            .addAction(R.drawable.ic_stop, context.getString(R.string.action_stop), stopPendingIntent)
-            .addAction(R.drawable.ic_skip_next, "Next", null)
+            // 4. Nupud koos Intentidega
+            .addAction(R.drawable.ic_skip_previous, "Previous", prevPending)
+            .addAction(middleActionIcon, middleActionTitle, middleActionIntent)
+            .addAction(R.drawable.ic_skip_next, "Next", nextPending)
 
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()

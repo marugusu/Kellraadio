@@ -124,8 +124,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // Flow vaatlejad
         viewModelScope.launch {
-            stationRepository.allStations.collect { stations -> _uiState.update { it.copy(stations = stations) } }
+            stationRepository.allStations.collect { stations ->
+                _uiState.update { it.copy(stations = stations) }
+
+                // --- UUS "TARK" KONTROLL ---
+                val lastUpdate = prefs.getLong("last_update_time", 0L)
+                val oneDayMillis = 24 * 60 * 60 * 1000L
+                val isExpired = (System.currentTimeMillis() - lastUpdate) > oneDayMillis
+
+                // Uuenda, kui baas on tühi VÕI kui aeg on aegunud (ja hetkel ei lae)
+                if ((stations.isEmpty() || isExpired) && !_uiState.value.isRefreshing) {
+                    // Kutsume välja ilma Toastita versiooni (et kasutajat mitte häirida avamisel)
+                    // Aga kuna meil on üks funktsioon, kasutame seda.
+                    // Toast ilmub, aga see on OK ("Uuendatud!").
+                    refreshStations()
+                }
+            }
         }
+
         viewModelScope.launch {
             alarmDao.getAllAlarms().collect { alarms -> _uiState.update { it.copy(alarms = alarms) } }
         }
@@ -313,6 +329,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(isRefreshing = true) }
             try {
                 stationRepository.refreshStations()
+                prefs.edit().putLong("last_update_time", System.currentTimeMillis()).apply()
                 Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
             } finally {

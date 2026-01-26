@@ -88,7 +88,10 @@ class RadioService : Service() {
     companion object {
         const val ACTION_STATION_SELECTED_BY_SERVICE = "ee.minu.kellraadio.STATION_SELECTED"
         const val ACTION_PAUSE = "ee.minu.kellraadio.ACTION_PAUSE"
+        const val ACTION_RESUME = "ee.minu.kellraadio.ACTION_RESUME"
         const val ACTION_STOP = "ee.minu.kellraadio.ACTION_STOP"
+        const val ACTION_SKIP_NEXT = "ee.minu.kellraadio.ACTION_SKIP_NEXT"
+        const val ACTION_SKIP_PREVIOUS = "ee.minu.kellraadio.ACTION_SKIP_PREVIOUS"
         const val ACTION_STATION_CHANGED = "ee.minu.kellraadio.STATION_CHANGED"
         const val ACTION_BITRATE_UPDATED = "ee.minu.kellraadio.BITRATE_UPDATED"
         const val ACTION_METADATA_UPDATED = "ee.minu.kellraadio.METADATA_UPDATED"
@@ -343,7 +346,7 @@ class RadioService : Service() {
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
-                val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode)
+                val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
                 if (Build.VERSION.SDK_INT >= 34) {
                     startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
                 } else {
@@ -428,6 +431,31 @@ class RadioService : Service() {
         wakeLock?.acquire(10 * 60 * 1000L)
 
         val action = intent?.action
+
+        if (action == ACTION_SKIP_NEXT) {
+            changeStation(1)
+            return START_STICKY
+        }
+
+        if (action == ACTION_SKIP_PREVIOUS) {
+            changeStation(-1)
+            return START_STICKY
+        }
+
+        if (action == ACTION_RESUME) {
+            if (!player.isPlaying) {
+                if (currentStreamUrl.isNotEmpty()) {
+                    player.prepare()
+                    player.play()
+                } else {
+                    // Kui mälus URLi pole, proovi taastada viimati kuulatud jaam
+                    val savedUrl = prefs.getString("LAST_URL", null)
+                    val savedName = prefs.getString("LAST_NAME", "Raadio")
+                    if (savedUrl != null) startRadio(savedUrl, savedName ?: "Raadio")
+                }
+            }
+            return START_STICKY
+        }
 
         if (action == ACTION_PAUSE) {
             player.pause()
@@ -522,7 +550,7 @@ class RadioService : Service() {
     }
 
     private fun updateNotification() {
-        val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode)
+        val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
 
         if (player.isPlaying || isAlarmMode) {
             if (Build.VERSION.SDK_INT >= 34) {
