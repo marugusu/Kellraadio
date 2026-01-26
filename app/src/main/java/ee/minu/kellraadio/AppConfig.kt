@@ -69,5 +69,17 @@ object AppConfig {
             "raadio", "radio", "fm", "eesti", "onair", "channel", "klara",
             "live", "est", "fin", "the", "hits", "love", "duo", "elmari", "elmar"
         )
+
+        object Layout {
+            // Kui ekraani kõrgus on sellest suurem, näitame suurt infopaneeli (mitte nuppu)
+            const val HEIGHT_THRESHOLD_LARGE_LANDSCAPE_DP = 480
+
+            // Kui ekraan on sellest laiem, teeme vasaku veeru kitsamaks (et pilt poleks hiiglaslik)
+            const val WIDTH_THRESHOLD_WIDE_SCREEN_DP = 600
+
+            // Vasaku veeru (Player) laiuse osakaal
+            const val PLAYER_WEIGHT_NORMAL = 0.5f
+            const val PLAYER_WEIGHT_WIDE = 0.4f
+        }
     }
 }

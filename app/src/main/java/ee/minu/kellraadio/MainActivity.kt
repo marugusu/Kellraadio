@@ -28,6 +28,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -74,7 +76,10 @@ fun RaadioEkraan(
     val config = LocalConfiguration.current
     val isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val screenWidth = config.screenWidthDp
-    val playerWeight = if (screenWidth < 1000) 0.5f else 0.4f
+    val playerWeight = if (screenWidth < AppConfig.UI.Layout.WIDTH_THRESHOLD_WIDE_SCREEN_DP)
+        AppConfig.UI.Layout.PLAYER_WEIGHT_NORMAL
+    else
+        AppConfig.UI.Layout.PLAYER_WEIGHT_WIDE
 
     // --- 1. JÄLGIME OLEKUT (STATE) ---
     val state by mainViewModel.uiState.collectAsState()
@@ -165,6 +170,8 @@ fun RaadioEkraan(
     val navSettingsTitle = stringResource(R.string.nav_settings)
 
     if (isLandscape) {
+        val isLargeScreenHeight = config.screenHeightDp >= AppConfig.UI.Layout.HEIGHT_THRESHOLD_LARGE_LANDSCAPE_DP
+
         Row(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             NavigationRail(containerColor = Color.Black, contentColor = Color.White) {
                 // 1. Defineerime värvid (täpselt nagu portraitis)
@@ -256,22 +263,49 @@ fun RaadioEkraan(
                     )
                 }
 
-                AnimatedVisibility(
-                    visible = songInfo != null && !state.showSongInfoSheet,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    songInfo?.let { info ->
-                        SongInfoTeaser(
-                            info = info,
-                            artist = state.parsedArtist,
-                            title = state.parsedTitle,
-                            stationName = state.activeStationName,
-                            onClick = mainViewModel::openSongInfo,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                            backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black))
-                        )
+                if (songInfo != null) {
+                    if (isLargeScreenHeight) {
+                        // TAHVEL/TV: Näita suurt infot kohe siin all
+                        // Teeme tausta natuke ilusaks (gradient), nagu Teaseril
+                        val stationColor = ee.minu.kellraadio.ui.StationArtworkUtils.getStationColor(state.activeStationName)
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(top = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)
+                                    )
+                                )
+                        ) {
+                            SongInfoContent(
+                                artist = state.parsedArtist,
+                                title = state.parsedTitle,
+                                stationName = state.activeStationName,
+                                info = songInfo!!
+                            )
+                        }
+                    } else {
+                        // TELEFON LANDSCAPE: Näita vana head Teaserit (nuppu)
+                        AnimatedVisibility(
+                            visible = !state.showSongInfoSheet,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            SongInfoTeaser(
+                                info = songInfo!!,
+                                artist = state.parsedArtist,
+                                title = state.parsedTitle,
+                                stationName = state.activeStationName,
+                                onClick = mainViewModel::openSongInfo,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black))
+                            )
+                        }
                     }
                 }
             }

@@ -39,16 +39,11 @@ fun SongInfoSheet(
     info: SongAdditionalInfo,
     onDismiss: () -> Unit
 ) {
-    val scrollState = rememberScrollState()
     val stationColor = StationArtworkUtils.getStationColor(stationName)
-    val stationInitials = StationArtworkUtils.getStationInitials(stationName)
 
-    // Jälgime pildi laadimise olekut
+    // Jälgime pildi laadimise olekut (tausta udu jaoks)
     var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
-
-    // Kas pilt on edukalt laetud?
     val isImageLoaded = imageState is AsyncImagePainter.State.Success
-    // Kas telefon on piisavalt uus (Android 12+), et teha bluri?
     val isBlurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     Box(
@@ -56,9 +51,7 @@ fun SongInfoSheet(
             .fillMaxWidth()
             .fillMaxHeight(0.90f)
     ) {
-        // --- KIHT 1: TAUST ---
-        // Kui pilt on olemas JA telefon toetab, näita udu.
-        // Muul juhul näita gradienti.
+        // --- KIHT 1: TAUST (Ainult Sheeti puhul) ---
         if (isImageLoaded && isBlurSupported) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -69,10 +62,8 @@ fun SongInfoSheet(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().blur(radius = 30.dp)
             )
-            // Tume loor udu peal
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)))
         } else {
-            // Gradient taust (kui pilt laeb, on katki või vana telefon)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -85,128 +76,150 @@ fun SongInfoSheet(
         }
 
         // --- KIHT 2: SISU ---
-        Column(
+        // Kutsume välja eraldatud sisu
+        SongInfoContent(
+            artist = artist,
+            title = title,
+            stationName = stationName,
+            info = info,
+            onImageStateChange = { state -> imageState = state }
+        )
+    }
+}
+
+/**
+ * Eraldatud sisu komponent.
+ * Seda saame kasutada nii Sheetis kui ka otse MainActivitys (tahvli vaates).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SongInfoContent(
+    artist: String,
+    title: String,
+    stationName: String,
+    info: SongAdditionalInfo,
+    modifier: Modifier = Modifier,
+    onImageStateChange: ((AsyncImagePainter.State) -> Unit)? = null
+) {
+    val scrollState = rememberScrollState()
+    val stationColor = StationArtworkUtils.getStationColor(stationName)
+    val stationInitials = StationArtworkUtils.getStationInitials(stationName)
+
+    // See olek on vajalik lokaalselt, et teada kas näidata logo või pilti,
+    // kui seda kasutatakse väljaspool Sheeti
+    var localImageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
+    val isImageLoaded = localImageState is AsyncImagePainter.State.Success
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .verticalScroll(scrollState),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 1. ALBUMI KAANEPILT (VÕI LOGO)
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .size(280.dp)
+                .shadow(elevation = 24.dp, shape = RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isImageLoaded) Color.DarkGray else stationColor),
+            contentAlignment = Alignment.Center
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 1. ALBUMI KAANEPILT (VÕI LOGO)
-            Box(
-                modifier = Modifier
-                    .size(280.dp)
-                    .shadow(elevation = 24.dp, shape = RoundedCornerShape(16.dp))
-                    .clip(RoundedCornerShape(16.dp))
-                    // Kui pilt on laetud, on taust tumehall (et pilt oleks puhas).
-                    // Kui pilt laeb või puudub, on taust jaama värvi (logo jaoks).
-                    .background(if (isImageLoaded) Color.DarkGray else stationColor),
-                contentAlignment = Alignment.Center
-            ) {
-                // A) LOGO (Alati all, näha siis kui pilti pole)
-                Text(
-                    text = stationInitials,
-                    fontSize = 80.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White.copy(alpha = 0.3f)
-                )
-
-                // B) PILT
-                // Paneme selle ALATI siia, et ta hakkaks laadima.
-                // Kui ta laeb ära, katab ta logo kinni ja uuendab 'imageState'-i,
-                // mis omakorda lülitab sisse tausta bluri.
-                if (!info.coverArtUrl.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(info.coverArtUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Album Art",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        // SIIN ON VÕTI: Uuendame olekut, kui midagi juhtub
-                        onState = { state -> imageState = state }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // 2. INFO
+            // A) LOGO
             Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.secondary
-            )
-            Text(
-                text = artist,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 8.dp)
+                text = stationInitials,
+                fontSize = 80.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White.copy(alpha = 0.3f)
             )
 
-            // LISAINFO MÄRGID
-            if (info.album != null || info.year != null || info.genre != null) {
-                Spacer(modifier = Modifier.height(24.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (!info.year.isNullOrEmpty()) InfoChip(text = info.year)
-                    if (!info.genre.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        InfoChip(text = info.genre)
+            // B) PILT
+            if (!info.coverArtUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(info.coverArtUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Album Art",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    onState = { state ->
+                        localImageState = state
+                        onImageStateChange?.invoke(state) // Saada info ülespoole (Sheeti jaoks)
                     }
-                    if (!info.album.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        InfoChip(text = info.album, icon = true)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // 3. LAULUSÕNAD
-            if (!info.lyrics.isNullOrEmpty()) {
-                Text(
-                    text = stringResource(R.string.info_lyrics),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.5f),
-                    letterSpacing = 2.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    text = info.lyrics,
-                    style = MaterialTheme.typography.bodyLarge,
-                    lineHeight = 32.sp,
-                    color = Color.White.copy(alpha = 0.9f),
-                    textAlign = TextAlign.Center
-                )
-            } else if (info.coverArtUrl.isNullOrEmpty()) {
-                // Kui polnud URL-i (ehk me isegi ei proovinud laadida)
-                Text(
-                    text = stringResource(R.string.info_not_found),
-                    color = Color.Gray
-                )
-            } else if (imageState is AsyncImagePainter.State.Error) {
-                // Kui URL oli, aga laadimine ebaõnnestus
-                Text(
-                    text = stringResource(R.string.info_not_found),
-                    color = Color.Gray
                 )
             }
-
-            Spacer(modifier = Modifier.height(64.dp))
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 2. INFO
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.secondary
+        )
+        Text(
+            text = artist,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+
+        if (info.album != null || info.year != null || info.genre != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (!info.year.isNullOrEmpty()) InfoChip(text = info.year)
+                if (!info.genre.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    InfoChip(text = info.genre)
+                }
+                if (!info.album.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    InfoChip(text = info.album, icon = true)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        // 3. LAULUSÕNAD
+        if (!info.lyrics.isNullOrEmpty()) {
+            Text(
+                text = stringResource(R.string.info_lyrics),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.5f),
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = info.lyrics,
+                style = MaterialTheme.typography.bodyLarge,
+                lineHeight = 32.sp,
+                color = Color.White.copy(alpha = 0.9f),
+                textAlign = TextAlign.Center
+            )
+        } else if (info.coverArtUrl.isNullOrEmpty() || localImageState is AsyncImagePainter.State.Error) {
+            Text(
+                text = stringResource(R.string.info_not_found),
+                color = Color.Gray
+            )
+        }
+
+        Spacer(modifier = Modifier.height(64.dp))
     }
 }
 
