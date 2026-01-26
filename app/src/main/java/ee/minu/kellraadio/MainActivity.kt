@@ -281,7 +281,7 @@ fun RaadioEkraan(
                                     )
                                 )
                         ) {
-                            SongInfoContent(
+                            SongInfoContentLandscape(
                                 artist = state.parsedArtist,
                                 title = state.parsedTitle,
                                 stationName = state.activeStationName,

@@ -3,6 +3,7 @@ package ee.minu.kellraadio.ui
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -220,6 +221,103 @@ fun SongInfoContent(
         }
 
         Spacer(modifier = Modifier.height(64.dp))
+    }
+}
+
+/**
+ * UUS: Spetsiaalne disain laiale ekraanile (TV / Tahvel).
+ * Siin on Pilt vasakul ja Tekst paremal.
+*/
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SongInfoContentLandscape(
+    artist: String,
+    title: String,
+    stationName: String,
+    info: SongAdditionalInfo,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    val stationColor = StationArtworkUtils.getStationColor(stationName)
+    val stationInitials = StationArtworkUtils.getStationInitials(stationName)
+
+    // PEAMINE KONTEINER (Ülemine ja alumine osa üksteise all)
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(0.dp)
+    ) {
+        // --- 1. ÜLEMINE OSA (Pilt ja Info kõrvuti) ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                //.weight(0.45f) // Võtab umbes 45% kõrgusest
+                .background(Color.Black)
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            // A) PILT (Vasakul)
+            Box(
+                modifier = Modifier
+                    .weight(0.5f)
+                    //.aspectRatio(1f) // Ruut
+                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stationInitials,
+                    fontSize = 60.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White.copy(alpha = 0.3f)
+                )
+
+                if (!info.coverArtUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(info.coverArtUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Album Art",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // B) INFO (Paremal)
+            Column(
+                modifier = Modifier
+                    .weight(0.5f)
+                    .background(Color.Black)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (info.album != null || info.year != null || info.genre != null) {
+                    //Spacer(modifier = Modifier.height(16.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (!info.year.isNullOrEmpty()) InfoChip(text = info.year)
+                        if (!info.genre.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            InfoChip(text = info.genre)
+                        }
+                        if (!info.album.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            InfoChip(text = info.album, icon = true)
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }
 
