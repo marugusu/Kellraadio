@@ -245,7 +245,13 @@ fun RaadioEkraan(
                             else mainViewModel.openAlarmDialog(null)
                         },
                         onAlarmLongClick = { nextAlarmInfo?.second?.let { mainViewModel.openAlarmDialog(it) } },
-                        onToggleFavorite = mainViewModel::onToggleFavorite,
+                        onToggleFavorite = {
+                            // Võtame praegu valitud jaama ja saadame selle funktsiooni
+                            val currentStation = state.stations.find { it.id == state.selectedStationId }
+                            if (currentStation != null) {
+                                mainViewModel.onToggleFavorite(currentStation)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -383,7 +389,13 @@ fun RaadioEkraan(
                             else mainViewModel.openAlarmDialog(null)
                         },
                         onAlarmLongClick = { nextAlarmInfo?.second?.let { mainViewModel.openAlarmDialog(it) } },
-                        onToggleFavorite = mainViewModel::onToggleFavorite,
+                        onToggleFavorite = {
+                            // Leiame hetkel aktiivse jaama ja saadame selle lemmikuks märkimiseks
+                            val currentStation = state.stations.find { it.id == state.selectedStationId }
+                            if (currentStation != null) {
+                                mainViewModel.onToggleFavorite(currentStation)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp)
                     )
 
@@ -439,8 +451,7 @@ fun RaadioEkraan(
             station = liveStation,
             onDismiss = mainViewModel::closeStationActionSheet,
             onToggleFavorite = {
-                mainViewModel.onStationClicked(liveStation)
-                mainViewModel.onToggleFavorite()
+                mainViewModel.onToggleFavorite(liveStation)
                 mainViewModel.closeStationActionSheet()
             },
             onSetAlarm = {

@@ -216,10 +216,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onToggleFavorite() {
-        val station = _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
-        station?.let {
-            viewModelScope.launch { stationRepository.toggleFavorite(it) }
+    fun onToggleFavorite(station: RadioStation) {
+        viewModelScope.launch {
+            stationRepository.toggleFavorite(station)
         }
     }
 
