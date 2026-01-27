@@ -140,5 +140,5 @@
     <string name="info_year">YEAR</string>
     <string name="info_genre">GENRE</string>
     <string name="info_not_found">No additional info found.</string>
-    values/strings.xml: <string name="info_available">Info available</string>
+    <string name="info_available">Info available</string>
 </resources>

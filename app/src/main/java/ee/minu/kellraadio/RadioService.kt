@@ -86,6 +86,7 @@ class RadioService : Service() {
     private var wakeLock: android.os.PowerManager.WakeLock? = null
 
     companion object {
+        const val ACTION_UPDATE_STATION_NAME = "ee.minu.kellraadio.UPDATE_NAME"
         const val ACTION_STATION_SELECTED_BY_SERVICE = "ee.minu.kellraadio.STATION_SELECTED"
         const val ACTION_PAUSE = "ee.minu.kellraadio.ACTION_PAUSE"
         const val ACTION_RESUME = "ee.minu.kellraadio.ACTION_RESUME"
@@ -431,6 +432,19 @@ class RadioService : Service() {
         wakeLock?.acquire(10 * 60 * 1000L)
 
         val action = intent?.action
+
+        if (action == ACTION_UPDATE_STATION_NAME) {
+            val newName = intent.getStringExtra("STATION_NAME")
+            if (!newName.isNullOrEmpty() && newName != currentStationName) {
+                Log.d(TAG, "Teenuse nime uuendamine: '$currentStationName' -> '$newName'")
+                currentStationName = newName
+                currentStationBitmap = ee.minu.kellraadio.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+                updateNotification()
+                // Uuendame ka auto ekraani ja muid seadmeid
+                updateExternalDevices(currentTitle, currentArtist)
+            }
+            return START_STICKY
+        }
 
         if (action == ACTION_SKIP_NEXT) {
             changeStation(1)

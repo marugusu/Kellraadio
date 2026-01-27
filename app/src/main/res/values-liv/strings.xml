@@ -140,5 +140,6 @@
     <string name="info_year">Āigast</string>
     <string name="info_genre">Žanr</string>
     <string name="info_not_found">Lizā infot äb lieudtõ.</string>
+    <string name="info_available">Lizā info</string>
 
 </resources>

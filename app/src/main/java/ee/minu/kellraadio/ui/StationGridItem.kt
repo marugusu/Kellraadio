@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color.Companion.White
+import androidx.compose.ui.graphics.Color.Companion.Gray
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ee.minu.kellraadio.RadioStation
@@ -156,8 +158,10 @@ fun StationGridItem(
             }
             Text(
                 text = station.name,
-                style = MaterialTheme.typography.bodyMedium,
+                //style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected || isFocused) White else Gray,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

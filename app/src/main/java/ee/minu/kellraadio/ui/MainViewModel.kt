@@ -172,14 +172,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onStationClicked(station: RadioStation) {
-        updateSelectedStationLocal(station.id)
-        _uiState.update { it.copy(
-            activeStationName = station.name, // Uuendame nime ja logo kohe
-            isPlaying = true,                 // Näitame, et protsess käib
-            playerStatus = getString(R.string.status_buffering) // "Laen..."
-        )}
+        // --- PARANDUS: ÄRA USALDA SISENDOBJEKTI ANDMEID, VAID AINULT SELLE ID-d ---
+        // 1. Leia kõige värskem jaama info UI olekust, kasutades klikitud jaama ID-d.
+        val freshStation = _uiState.value.stations.find { it.id == station.id }
 
-        startRadioService(station)
+        // 2. Kui mingil põhjusel jaama ei leita (ei tohiks juhtuda), kasuta fallbackina vana objekti.
+        val stationToPlay = freshStation ?: station
+
+        // 3. Jätka loogikaga, aga kasuta nüüd GARANTEERITULT värsket "stationToPlay" objekti.
+        updateSelectedStationLocal(stationToPlay.id)
+        _uiState.update { it.copy(
+            activeStationName = stationToPlay.name, // Kasutame värsket nime
+            isPlaying = true,
+            playerStatus = getString(R.string.status_buffering)
+        )}
+        startRadioService(stationToPlay) // Saadame teenusele värske objekti
     }
 
     fun onPlayPauseClicked() {
@@ -376,7 +383,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val stationToUpdate = _uiState.value.stationToEdit
         if (stationToUpdate != null) {
             viewModelScope.launch {
+                // 1. Uuenda andmebaas
                 stationRepository.updateUserStation(stationToUpdate, newName, newUrl)
+
+                // 2. Kontrolli, kas muudetud jaam on hetkel aktiivne
+                if (stationToUpdate.id == _uiState.value.selectedStationId) {
+                    // 2a. Uuenda UI-s kohe nähtav nimi
+                    _uiState.update { it.copy(activeStationName = newName) }
+
+                    // 2b. PARANDUS: Saada otse teenusele käsk nime uuendamiseks
+                    val serviceIntent = Intent(context, RadioService::class.java).apply {
+                        action = RadioService.ACTION_UPDATE_STATION_NAME
+                        putExtra("STATION_NAME", newName)
+                    }
+                    context.startService(serviceIntent)
+                }
+
+                // 3. Sulge dialoog
                 closeEditStationDialog()
             }
         }
