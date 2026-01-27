@@ -40,5 +40,6 @@ data class MainUiState(
     val alarmToEdit: Alarm? = null, // Kui null, siis lisame uue. Kui olemas, siis muudame.
     val showActionSheetForStation: RadioStation? = null, // Millise jaama menüü on lahti?
     val showSongInfoSheet: Boolean = false,
-    val stationToDelete: RadioStation? = null // Kustutamise kinnitusaken
+    val stationToDelete: RadioStation? = null, // Kustutamise kinnitusaken
+    val stationToEdit: RadioStation? = null
 )

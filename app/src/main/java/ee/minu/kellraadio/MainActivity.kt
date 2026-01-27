@@ -492,7 +492,7 @@ fun RaadioEkraan(
                 mainViewModel.openAlarmDialog(Alarm(hour = 7, minute = 0, days = emptySet(), stationName = liveStation.name, stationUrl = liveStation.url))
             },
             onEdit = {
-                mainViewModel.closeStationActionSheet()
+                mainViewModel.openEditStationDialog(liveStation)
             },
             onDelete = { mainViewModel.confirmDeleteStation(liveStation) }
         )
@@ -513,6 +513,21 @@ fun RaadioEkraan(
             },
             dismissButton = {
                 TextButton(onClick = mainViewModel::cancelDeleteStation) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
+    }
+
+    val stationToEdit = state.stationToEdit
+    if (stationToEdit != null) {
+        EditStationDialog(
+            stationName = stationToEdit.name,
+            stationUrl = stationToEdit.url,
+            onDismiss = mainViewModel::closeEditStationDialog,
+            onTest = { name, url ->
+                mainViewModel.playTestStation("$name (${context.getString(R.string.action_test)})", url)
+            },
+            onSave = { newName, newUrl ->
+                mainViewModel.updateUserStation(newName, newUrl)
             }
         )
     }
@@ -544,9 +559,6 @@ fun ContentScreens(
     context: Context
 ) {
     val searchViewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(viewModel.stationRepository))
-
-    // Lokaalne olek on OK, sest see on vaid ajutine UI dialoog
-    var stationToUpdate by remember { mutableStateOf<RadioStation?>(null) }
 
     // PARANDUS 2: Coroutine Scope siia
     val scope = rememberCoroutineScope()
@@ -614,30 +626,41 @@ fun ContentScreens(
             onAddTestData = viewModel::addTestData
         )
     }
-
-    if (stationToUpdate != null) {
-        EditStationDialog(
-            stationName = stationToUpdate!!.name,
-            stationUrl = stationToUpdate!!.url,
-            onDismiss = { stationToUpdate = null },
-            onTest = { name, url ->
-                val i = Intent(context, RadioService::class.java).apply {
-                    putExtra("STREAM_URL", url)
-                    putExtra("STATION_NAME", "$name (${context.getString(R.string.action_test)})")
-                    putExtra("TRIGGERED_BY", "USER")
+}
+@Composable
+fun EditStationDialog(stationName: String, stationUrl: String, onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String) -> Unit) {
+    var name by remember { mutableStateOf(stationName) }
+    var url by remember { mutableStateOf(stationUrl) }
+    // TÕLGITUD
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.action_edit_station)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.station_name)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text(stringResource(R.string.stream_url)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(name, url) }) { Text(stringResource(R.string.action_save)) } },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) {
+                    Text(stringResource(R.string.action_test))
                 }
-                context.startForegroundService(i)
-            },
-            onSave = { newName, newUrl ->
-                // PARANDUS 2: Kasutame scope.launch ja lokaalset muutujat
-                val station = stationToUpdate
-                if (station != null) {
-                    scope.launch {
-                        viewModel.stationRepository.updateUserStation(station, newName, newUrl)
-                        stationToUpdate = null
-                    }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
-        )
-    }
+        }
+    )
 }

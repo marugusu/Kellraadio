@@ -245,6 +245,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun confirmDeleteStation(station: RadioStation) { _uiState.update { it.copy(stationToDelete = station) } }
     fun cancelDeleteStation() { _uiState.update { it.copy(stationToDelete = null) } }
 
+    fun openEditStationDialog(station: RadioStation) {
+        // Sulgeme esmalt menüü, et vältida visuaalseid konflikte
+        closeStationActionSheet()
+        _uiState.update { it.copy(stationToEdit = station) }
+    }
+    fun closeEditStationDialog() { _uiState.update { it.copy(stationToEdit = null) } }
+
+
+
     // --- ÄRILINE LOOGIKA ---
 
     fun saveAlarm(hour: Int, minute: Int, days: Set<Int>) {
@@ -360,6 +369,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             stationRepository.insertTestHistory()
             Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun updateUserStation(newName: String, newUrl: String) {
+        val stationToUpdate = _uiState.value.stationToEdit
+        if (stationToUpdate != null) {
+            viewModelScope.launch {
+                stationRepository.updateUserStation(stationToUpdate, newName, newUrl)
+                closeEditStationDialog()
+            }
         }
     }
 
