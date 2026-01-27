@@ -23,8 +23,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clipToBounds
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
@@ -231,8 +233,8 @@ fun SongInfoContent(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SongInfoContentLandscape(
-    artist: String,
-    title: String,
+    artist: String,          // jäetud sisse, kui hiljem vaja
+    title: String,           // jäetud sisse, kui hiljem vaja
     stationName: String,
     info: SongAdditionalInfo,
     modifier: Modifier = Modifier
@@ -241,36 +243,36 @@ fun SongInfoContentLandscape(
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
 
-    // PEAMINE KONTEINER (Ülemine ja alumine osa üksteise all)
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(0.dp)
     ) {
-        // --- 1. ÜLEMINE OSA (Pilt ja Info kõrvuti) ---
+        // --- 1. ÜLEMINE OSA (pilt vasakus servas, info paremal)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                //.weight(0.45f) // Võtab umbes 45% kõrgusest
                 .background(Color.Black)
-                .padding(bottom = 16.dp),
-            verticalAlignment = Alignment.Top
+                .padding(0.dp),               // natuke rohkem ruumi servadest
+                //.padding(start = 0.dp, top = 16.dp, end = 16.dp, bottom = 16.dp)
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // A) PILT (Vasakul)
+            // A) PILT – vasakus servas, suur, ümarate nurkadega, proportsioonidega
             Box(
                 modifier = Modifier
                     .weight(0.5f)
-                    //.aspectRatio(1f) // Ruut
-                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(12.dp))
-                    .clip(RoundedCornerShape(12.dp))
+                    .aspectRatio(1f)               // ruut, et ei veniks
+                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stationInitials,
-                    fontSize = 60.sp,
+                    fontSize = 70.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White.copy(alpha = 0.3f)
+                    color = Color.White.copy(alpha = 0.25f)
                 )
 
                 if (!info.coverArtUrl.isNullOrEmpty()) {
@@ -280,25 +282,21 @@ fun SongInfoContentLandscape(
                             .crossfade(true)
                             .build(),
                         contentDescription = "Album Art",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Fit   // kogu pilt näha, ei venita ega lõika ära
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // B) INFO (Paremal)
+            // B) PAREM POOL – chips ja muu info (nagu algselt)
             Column(
                 modifier = Modifier
                     .weight(0.5f)
-                    .background(Color.Black)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (info.album != null || info.year != null || info.genre != null) {
-                    //Spacer(modifier = Modifier.height(16.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.Center,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -318,6 +316,8 @@ fun SongInfoContentLandscape(
             }
         }
 
+        // Siia jäta alles kõik muu, mis sul allpool oli (nt player nupud, ajalugu jne)
+        // ...
     }
 }
 
