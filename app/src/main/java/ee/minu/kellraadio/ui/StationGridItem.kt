@@ -20,8 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color.Companion.Gray
-import androidx.compose.ui.graphics.Color.Companion.White
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
@@ -29,8 +27,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.graphics.Color.Companion.White
-import androidx.compose.ui.graphics.Color.Companion.Gray
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ee.minu.kellraadio.RadioStation
@@ -60,7 +56,7 @@ fun StationGridItem(
     var pressJob by remember { mutableStateOf<Job?>(null) }
 
     // VÄRVID
-    val containerColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.primaryContainer else if (isFocused) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
+    val containerColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.primaryContainer else if (isFocused) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant
     val contentColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     val borderStroke = if (isFocused || isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
 
@@ -163,7 +159,7 @@ fun StationGridItem(
                 //style = MaterialTheme.typography.bodySmall,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected || isFocused) White else Gray,
+                color = if (isSelected || isFocused) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
