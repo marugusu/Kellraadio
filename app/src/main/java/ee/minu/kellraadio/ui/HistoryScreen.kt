@@ -324,7 +324,7 @@ fun HistoryRow(
                     Text(
                         text = timeStr,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
@@ -340,16 +340,18 @@ fun HistoryRow(
             headlineContent = {
                 Text(
                     text = item.title,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             supportingContent = {
                 Text(
                     text = item.artist,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             trailingContent = {
