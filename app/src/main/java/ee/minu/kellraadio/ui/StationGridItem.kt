@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color.Companion.Gray
+import androidx.compose.ui.graphics.Color.Companion.White
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
@@ -158,6 +160,7 @@ fun StationGridItem(
                 text = station.name,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected || isFocused) White else Gray,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
