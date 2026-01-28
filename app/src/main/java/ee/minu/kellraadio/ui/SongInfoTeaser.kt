@@ -71,13 +71,15 @@ fun SongInfoTeaser(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(stationColor), // ALATI jaama värv all
+                   // .background(MaterialTheme.colorScheme.surface),
+                .background(stationColor), // ALATI jaama värv all
                 contentAlignment = Alignment.Center
             ) {
                 // A) LOGO (Alati olemas)
                 Text(
                     text = stationInitials,
                     color = Color.White.copy(alpha = 0.5f),
+                   // color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Black,
                     fontSize = 14.sp
                 )
@@ -106,7 +108,7 @@ fun SongInfoTeaser(
                 Text(
                     text = displayText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Medium
