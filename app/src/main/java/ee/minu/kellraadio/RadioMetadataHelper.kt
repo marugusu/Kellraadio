@@ -21,7 +21,7 @@ class RadioMetadataHelper(private val context: Context) {
     fun parse(rawMetadata: String, stationName: String): ParsedMetadata {
         val cleaned = rawMetadata.trim()
 
-        // 1. Tühja info kontroll -> Asendame "Live Stream" tekstiga
+        // 1. Tühja info käsitlemine
         if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -") {
             return ParsedMetadata(
                 artist = context.getString(R.string.live_broadcast),
@@ -30,36 +30,54 @@ class RadioMetadataHelper(private val context: Context) {
             )
         }
 
-        val parts = cleaned.split(" - ", limit = 3)
+        // Eemaldame trailing sulgudes osa, kui see on olemas
+        val titleWithExtraRegex = Regex("""^(.*?)\s*(\([^()]+?\))\s*$""")
+
+        val match = titleWithExtraRegex.matchEntire(cleaned)
+
+        val mainPart = match?.groupValues?.get(1)?.trim() ?: cleaned
+        var extra = match?.groupValues?.get(2)?.trim() ?: ""
+
+        // Jagame põhiosa artist-titleks
+        val parts = mainPart.split(" - ", limit = 3)
         var artist: String
         var title: String
-        val extra = if (parts.size >= 3) parts[2].trim() else ""
 
         if (parts.size >= 2) {
-            // Kontrollime AppConfig failist, kas see jaam saadab infot tagurpidi
             val isReversed = AppConfig.Metadata.REVERSED_STATIONS.contains(stationName)
 
             val part1 = parts[0].trim()
             val part2 = parts[1].trim()
 
             if (isReversed) {
-                // VAHETUS: Esimene osa on Pealkiri, Teine on Esitaja
                 artist = part2
                 val rawTitle = part1
                 title = if (rawTitle.equals(artist, ignoreCase = true) || rawTitle.isBlank()) stationName else rawTitle
             } else {
-                // STANDARD: Esimene osa on Esitaja, Teine on Pealkiri
                 artist = part1
                 val rawTitle = part2
                 title = if (rawTitle.equals(artist, ignoreCase = true) || rawTitle.isBlank()) stationName else rawTitle
             }
+
+            // Kui oli kolmas osa (harva, aga võimalik), lisame extra hulka
+            if (parts.size == 3) {
+                extra = parts[2].trim().let {
+                    if (extra.isNotBlank()) "$extra • $it" else it
+                }
+            }
         } else {
-            // Kui sidekriipsu polnud üldse
+            // Ainult üks tükk → artist = tekst, title = jaama nimi
             artist = cleaned
             title = stationName
         }
 
-        return ParsedMetadata(artist, title, extra)
+        // Väike puhastus extra jaoks (kui soovid)
+        extra = extra
+            .removePrefix("(")
+            .removeSuffix(")")
+            .trim()
+
+        return ParsedMetadata(artist.trim(), title.trim(), extra.trim())
     }
 
     /**
