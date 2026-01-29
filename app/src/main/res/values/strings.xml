@@ -120,13 +120,13 @@
 
 
     <!-- Days of week (Short) -->
-    <string name="day_mon">M</string>
-    <string name="day_tue">T</string>
-    <string name="day_wed">W</string>
-    <string name="day_thu">T</string>
-    <string name="day_fri">F</string>
-    <string name="day_sat">S</string>
-    <string name="day_sun">S</string>
+    <string name="day_mon">Mon</string>
+    <string name="day_tue">Tue</string>
+    <string name="day_wed">Wed</string>
+    <string name="day_thu">Thu</string>
+    <string name="day_fri">Fri</string>
+    <string name="day_sat">Sat</string>
+    <string name="day_sun">Sun</string>
 
     <!-- Week ranges -->
     <string name="days_every_day">Every day</string>

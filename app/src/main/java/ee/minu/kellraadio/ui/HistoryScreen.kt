@@ -409,18 +409,18 @@ private fun getDateHeader(context: Context, timestamp: Long): String {
         val monthIndex = time.get(Calendar.MONTH) // 0 = Jaanuar, 11 = Detsember
 
         val livMonths = listOf(
-            "Vīenalikū", // Jaanuar
-            "Kīoņkū",    // Veebruar
+            "Vīenakū",   // Jaanuar
+            "Kīonkū",    // Veebruar
             "Kūokõnkū",  // Märts
             "Sullõkū",   // Aprill
-            "Lēdkū",     // Mai
+            "Lēdõkū",    // Mai
             "Jāņkū",     // Juuni
-            "Hainkū",    // Juuli
+            "Hāinkū",    // Juuli
             "Eijõkū",    // August
-            "Sigžkū",    // September
+            "Sīgžkū",    // September
             "Vīmkū",     // Oktoober
             "Külmkū",    // November
-            "Tāļvkū"     // Detsember
+            "Tālõvkū"    // Detsember
         )
 
         // Tagastame formaadi: "19. Vīenalikū 2026"
