@@ -19,63 +19,64 @@ class RadioMetadataHelper(private val context: Context) {
      * Siin asub ka loogika "Reversed" jaamade (Star FM) ja tühjade stringide jaoks.
      */
     fun parse(rawMetadata: String, stationName: String): ParsedMetadata {
-        val cleaned = rawMetadata.trim()
+        val cleaned = rawMetadata.trim().replace("\n", " - ")  // reavahetused -> " - "
 
-        // 1. Tühja info käsitlemine
         if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -") {
-            return ParsedMetadata(
-                artist = context.getString(R.string.live_broadcast),
-                title = stationName,
-                extra = ""
-            )
+            return ParsedMetadata(context.getString(R.string.live_broadcast), stationName, "")
         }
 
-        // Eemaldame trailing sulgudes osa, kui see on olemas
-        val titleWithExtraRegex = Regex("""^(.*?)\s*(\([^()]+?\))\s*$""")
+        val parts = cleaned.split(" - ", limit = 4)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
 
-        val match = titleWithExtraRegex.matchEntire(cleaned)
+        if (parts.size < 2) {
+            return ParsedMetadata(parts.getOrNull(0) ?: cleaned, stationName, "")
+        }
 
-        val mainPart = match?.groupValues?.get(1)?.trim() ?: cleaned
-        var extra = match?.groupValues?.get(2)?.trim() ?: ""
+        // STANDARD: esimene = artist, teine = title
+        var artist = parts[0]
+        var title = parts[1]
 
-        // Jagame põhiosa artist-titleks
-        val parts = mainPart.split(" - ", limit = 3)
-        var artist: String
-        var title: String
+        var extra = ""
+        if (parts.size >= 3) {
+            val potentialExtra = parts[2]
 
-        if (parts.size >= 2) {
-            val isReversed = AppConfig.Metadata.REVERSED_STATIONS.contains(stationName)
+            // Kui on "Esitaja (instrument)"
+            val instrRegex = Regex("""^(.*?)\s*\(([^()]+)\)\s*$""")
+            val match = instrRegex.matchEntire(potentialExtra)
 
-            val part1 = parts[0].trim()
-            val part2 = parts[1].trim()
-
-            if (isReversed) {
-                artist = part2
-                val rawTitle = part1
-                title = if (rawTitle.equals(artist, ignoreCase = true) || rawTitle.isBlank()) stationName else rawTitle
-            } else {
-                artist = part1
-                val rawTitle = part2
-                title = if (rawTitle.equals(artist, ignoreCase = true) || rawTitle.isBlank()) stationName else rawTitle
-            }
-
-            // Kui oli kolmas osa (harva, aga võimalik), lisame extra hulka
-            if (parts.size == 3) {
-                extra = parts[2].trim().let {
-                    if (extra.isNotBlank()) "$extra • $it" else it
+            if (match != null) {
+                extra = match.groupValues[2].trim()               // instrument
+                val performer = match.groupValues[1].trim()
+                if (performer.isNotBlank()) {
+                    extra = "$performer • $extra"
                 }
+            } else {
+                extra = potentialExtra
             }
-        } else {
-            // Ainult üks tükk → artist = tekst, title = jaama nimi
-            artist = cleaned
-            title = stationName
         }
 
-        // Väike puhastus extra jaoks (kui soovid)
-        extra = extra
-            .removePrefix("(")
-            .removeSuffix(")")
-            .trim()
+        // Neljas osa (kui on) → extra lõppu
+        if (parts.size >= 4) {
+            val add = parts[3].trim()
+            extra = if (extra.isNotBlank()) "$extra • $add" else add
+        }
+
+        // Pealkirjast eemalda trailing (album/film info)
+        val titleExtraRegex = Regex("""^(.*?)\s*\(([^()"]+(?:"[^"]*"[^()"]*)*)\)\s*$""")
+        val titleMatch = titleExtraRegex.matchEntire(title)
+        if (titleMatch != null) {
+            title = titleMatch.groupValues[1].trim()
+            val titleExtra = titleMatch.groupValues[2].trim()
+            extra = if (extra.isNotBlank()) "$titleExtra • $extra" else titleExtra
+        }
+
+        // reversed jaamade jaoks (kui vaja) – lisa tagasi sinu vana loogika
+        val isReversed = AppConfig.Metadata.REVERSED_STATIONS.contains(stationName)
+        if (isReversed) {
+            artist = parts[1]
+            title = parts[0]
+        }
 
         return ParsedMetadata(artist.trim(), title.trim(), extra.trim())
     }
