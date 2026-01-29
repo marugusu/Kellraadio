@@ -37,23 +37,20 @@ class RadioMetadataHelper(private val context: Context) {
 
         for (part in rawParts) {
             if (buffer.isNotEmpty()) {
-                // Kui meil on poolik sulg ees, liidame järgmise tüki otsa
                 buffer += " - $part"
-                // Kontrollime, kas sulud on nüüd tasakaalus
                 if (buffer.count { it == '(' } <= buffer.count { it == ')' }) {
                     parts.add(buffer)
                     buffer = ""
                 }
             } else {
-                // Kontrollime, kas selles tükis on lahtine sulg ilma kinniseta
                 if (part.contains('(') && part.count { it == '(' } > part.count { it == ')' }) {
-                    buffer = part // Alustame puhverdamist
+                    buffer = part
                 } else {
-                    parts.add(part) // Tavaline tükk, lisa kohe
+                    parts.add(part)
                 }
             }
         }
-        if (buffer.isNotEmpty()) parts.add(buffer) // Juhuks kui string oli vigane
+        if (buffer.isNotEmpty()) parts.add(buffer)
 
         if (parts.size < 2) {
             return ParsedMetadata(parts.getOrNull(0) ?: cleaned, stationName, "")
@@ -62,55 +59,56 @@ class RadioMetadataHelper(private val context: Context) {
         // 4. STRATEEGIA VALIK (Soundtrack vs Tavaline)
         var artist = parts[0]
         var title = ""
-        val extrasList = mutableListOf<String>() // Kogume kõik lisad siia listi
+        val extrasList = mutableListOf<String>()
 
         // Filmimuusika kontroll: 3 osa ja keskmises on aastaarv ", 2021"
         val yearRegex = Regex(""",\s*(19|20)\d{2}""")
         val isSoundtrackFormat = parts.size == 3 && yearRegex.containsMatchIn(parts[1])
 
         if (isSoundtrackFormat) {
-            // [0] Artist
-            // [1] Album/Info -> läheb extrasse
-            // [2] Title
-            extrasList.add(parts[1])
+            extrasList.add(parts[1]) // Album läheb extrasse
             title = parts[2]
         } else {
-            // Tavaline: [0] Artist, [1] Title, [2..n] Extra
+            // Tavaline
             title = parts[1]
             if (parts.size >= 3) {
-                // Kõik ülejäänud osad lisame listi
                 extrasList.add(parts.subList(2, parts.size).joinToString(" • "))
             }
         }
 
-        // 5. PEALKIRJA PUHASTUS TSÜKLIGA (Jonas Brothers fix)
-        // Koorime lõpust maha kõik sulgudes plokid ükshaaval
-        // Regex: leiab viimase sulgudes oleva osa, arvestab ka pesastatud sulge
+        // 5. PEALKIRJA PUHASTUS
+
+        // a) UUS LISA: Kontrollime " * Aasta" mustrit (nt "Fast Car * 1988")
+        // Otsime tärni, mille ees ja järel on tühik, ning võtame kõik, mis järgneb.
+        val starRegex = Regex("""\s+\*\s+(.*)$""")
+        val starMatch = starRegex.find(title)
+        if (starMatch != null) {
+            val content = starMatch.groupValues[1].trim()
+            // Lisame listi (lõppu või algusesse, siin pole vahet, sest see on tavaliselt ainus lisa)
+            extrasList.add(0, content)
+            // Eemaldame selle osa pealkirjast
+            title = title.substring(0, starMatch.range.first).trim()
+        }
+
+        // b) Kontrollime sulgudes lisasid tsükliga (Jonas Brothers fix)
         val titleEndRegex = Regex("""\s*\(([^()]+(?:\([^()]*\)[^()]*)*)\)\s*$""")
 
         while (true) {
             val match = titleEndRegex.find(title) ?: break
             val content = match.groupValues[1].trim()
-
-            // Lisame listi algusesse (index 0), et järjekord oleks loogiline
-            // Nt "Lugu (A) (B)" -> leiame B, siis A. Tulemus peab olema "A • B".
-            extrasList.add(0, content)
-
-            // Eemaldame leiu pealkirjast
+            extrasList.add(0, content) // Lisame ettepoole, et "Remix * 1988" järjekord oleks ilus
             title = title.substring(0, match.range.first).trim()
         }
 
         // 6. EXTRA LÕPLIK VORMISTUS
-        // a) Ühendame kõik leitud tükid
         var extra = extrasList.filter { it.isNotBlank() }.joinToString(" • ")
 
-        // b) "Esitaja (Pill)" vormistus -> "Esitaja • Pill"
-        // Asendame kõik sulud bulletiga (v.a. soundtracki albumi infos, kus aasta on oluline)
+        // Asendame "Esitaja (Pill)" -> "Esitaja • Pill"
         if (extra.isNotBlank() && !isSoundtrackFormat) {
             extra = extra.replace(Regex("""\s*\(([^()]+)\)"""), " • $1")
         }
 
-        // 7. REVERSED STATIONS (Star FM)
+        // 7. REVERSED STATIONS
         if (AppConfig.Metadata.REVERSED_STATIONS.contains(stationName) && !isSoundtrackFormat) {
             val temp = artist
             artist = title
