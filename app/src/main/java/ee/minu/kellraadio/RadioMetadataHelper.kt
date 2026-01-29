@@ -19,63 +19,102 @@ class RadioMetadataHelper(private val context: Context) {
      * Siin asub ka loogika "Reversed" jaamade (Star FM) ja tühjade stringide jaoks.
      */
     fun parse(rawMetadata: String, stationName: String): ParsedMetadata {
-        val cleaned = rawMetadata.trim().replace("\n", " - ")  // reavahetused -> " - "
+        // 1. Eemalda tehniline prügi (nt {+info: ...}) ja reavahetused
+        var cleaned = rawMetadata.replace(Regex("""\s*\{.*\}\s*$"""), "")
+            .trim()
+            .replace("\n", " - ")
 
         if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -") {
             return ParsedMetadata(context.getString(R.string.live_broadcast), stationName, "")
         }
 
-        val parts = cleaned.split(" - ", limit = 4)
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
+        // 2. Esialgne tükeldamine
+        val rawParts = cleaned.split(" - ").map { it.trim() }.filter { it.isNotBlank() }
+
+        // 3. "SMART MERGE": Parandame kohad, kus " - " oli sulgude sees (klassikaline muusika)
+        val parts = mutableListOf<String>()
+        var buffer = ""
+
+        for (part in rawParts) {
+            if (buffer.isNotEmpty()) {
+                // Kui meil on poolik sulg ees, liidame järgmise tüki otsa
+                buffer += " - $part"
+                // Kontrollime, kas sulud on nüüd tasakaalus
+                if (buffer.count { it == '(' } <= buffer.count { it == ')' }) {
+                    parts.add(buffer)
+                    buffer = ""
+                }
+            } else {
+                // Kontrollime, kas selles tükis on lahtine sulg ilma kinniseta
+                if (part.contains('(') && part.count { it == '(' } > part.count { it == ')' }) {
+                    buffer = part // Alustame puhverdamist
+                } else {
+                    parts.add(part) // Tavaline tükk, lisa kohe
+                }
+            }
+        }
+        if (buffer.isNotEmpty()) parts.add(buffer) // Juhuks kui string oli vigane
 
         if (parts.size < 2) {
             return ParsedMetadata(parts.getOrNull(0) ?: cleaned, stationName, "")
         }
 
-        // STANDARD: esimene = artist, teine = title
+        // 4. STRATEEGIA VALIK (Soundtrack vs Tavaline)
         var artist = parts[0]
-        var title = parts[1]
+        var title = ""
+        val extrasList = mutableListOf<String>() // Kogume kõik lisad siia listi
 
-        var extra = ""
-        if (parts.size >= 3) {
-            val potentialExtra = parts[2]
+        // Filmimuusika kontroll: 3 osa ja keskmises on aastaarv ", 2021"
+        val yearRegex = Regex(""",\s*(19|20)\d{2}""")
+        val isSoundtrackFormat = parts.size == 3 && yearRegex.containsMatchIn(parts[1])
 
-            // Kui on "Esitaja (instrument)"
-            val instrRegex = Regex("""^(.*?)\s*\(([^()]+)\)\s*$""")
-            val match = instrRegex.matchEntire(potentialExtra)
-
-            if (match != null) {
-                extra = match.groupValues[2].trim()               // instrument
-                val performer = match.groupValues[1].trim()
-                if (performer.isNotBlank()) {
-                    extra = "$performer • $extra"
-                }
-            } else {
-                extra = potentialExtra
+        if (isSoundtrackFormat) {
+            // [0] Artist
+            // [1] Album/Info -> läheb extrasse
+            // [2] Title
+            extrasList.add(parts[1])
+            title = parts[2]
+        } else {
+            // Tavaline: [0] Artist, [1] Title, [2..n] Extra
+            title = parts[1]
+            if (parts.size >= 3) {
+                // Kõik ülejäänud osad lisame listi
+                extrasList.add(parts.subList(2, parts.size).joinToString(" • "))
             }
         }
 
-        // Neljas osa (kui on) → extra lõppu
-        if (parts.size >= 4) {
-            val add = parts[3].trim()
-            extra = if (extra.isNotBlank()) "$extra • $add" else add
+        // 5. PEALKIRJA PUHASTUS TSÜKLIGA (Jonas Brothers fix)
+        // Koorime lõpust maha kõik sulgudes plokid ükshaaval
+        // Regex: leiab viimase sulgudes oleva osa, arvestab ka pesastatud sulge
+        val titleEndRegex = Regex("""\s*\(([^()]+(?:\([^()]*\)[^()]*)*)\)\s*$""")
+
+        while (true) {
+            val match = titleEndRegex.find(title) ?: break
+            val content = match.groupValues[1].trim()
+
+            // Lisame listi algusesse (index 0), et järjekord oleks loogiline
+            // Nt "Lugu (A) (B)" -> leiame B, siis A. Tulemus peab olema "A • B".
+            extrasList.add(0, content)
+
+            // Eemaldame leiu pealkirjast
+            title = title.substring(0, match.range.first).trim()
         }
 
-        // Pealkirjast eemalda trailing (album/film info)
-        val titleExtraRegex = Regex("""^(.*?)\s*\(([^()"]+(?:"[^"]*"[^()"]*)*)\)\s*$""")
-        val titleMatch = titleExtraRegex.matchEntire(title)
-        if (titleMatch != null) {
-            title = titleMatch.groupValues[1].trim()
-            val titleExtra = titleMatch.groupValues[2].trim()
-            extra = if (extra.isNotBlank()) "$titleExtra • $extra" else titleExtra
+        // 6. EXTRA LÕPLIK VORMISTUS
+        // a) Ühendame kõik leitud tükid
+        var extra = extrasList.filter { it.isNotBlank() }.joinToString(" • ")
+
+        // b) "Esitaja (Pill)" vormistus -> "Esitaja • Pill"
+        // Asendame kõik sulud bulletiga (v.a. soundtracki albumi infos, kus aasta on oluline)
+        if (extra.isNotBlank() && !isSoundtrackFormat) {
+            extra = extra.replace(Regex("""\s*\(([^()]+)\)"""), " • $1")
         }
 
-        // reversed jaamade jaoks (kui vaja) – lisa tagasi sinu vana loogika
-        val isReversed = AppConfig.Metadata.REVERSED_STATIONS.contains(stationName)
-        if (isReversed) {
-            artist = parts[1]
-            title = parts[0]
+        // 7. REVERSED STATIONS (Star FM)
+        if (AppConfig.Metadata.REVERSED_STATIONS.contains(stationName) && !isSoundtrackFormat) {
+            val temp = artist
+            artist = title
+            title = temp
         }
 
         return ParsedMetadata(artist.trim(), title.trim(), extra.trim())

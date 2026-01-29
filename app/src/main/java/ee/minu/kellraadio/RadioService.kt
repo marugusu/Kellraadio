@@ -216,7 +216,7 @@ class RadioService : Service() {
         currentTitle = parsed.title
         currentExtra = parsed.extra
 
-        Log.d(TAG, "[METADATA_FINAL] -> Artist: '$currentArtist' | Title: '$currentTitle'")
+        Log.d(TAG, "[METADATA_FINAL] -> Artist: '$currentArtist' | Title: '$currentTitle' | Extra: '$currentExtra'")
 
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
@@ -502,6 +502,13 @@ class RadioService : Service() {
             if (currentStreamUrl == streamUrl && player.isPlaying) {
                 Log.i(TAG, "See jaam juba mängib, ei restardi: $stationName")
                 currentStationName = stationName ?: currentStationName
+
+                if (triggeredBy == "ALARM") {
+                    isAlarmMode = true // Märgime, et nüüd on äratuse režiim
+                    val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
+                    notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
+                }
+
                 updateNotification()
                 return START_STICKY
             }
