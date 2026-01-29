@@ -105,6 +105,7 @@ fun StationList(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val offsetDivisor = if (isLandscape) 6 else 3
     val scrollOffsetPx = with(density) { -(configuration.screenWidthDp / offsetDivisor).dp.toPx() }.toInt()
+    //val scrollOffsetPx = with(density) { -620.dp.toPx() }.toInt()   // või -80..-160 dp, katseta
 
     LaunchedEffect(selectedCategory) {
         val index = categories.indexOf(selectedCategory)
@@ -180,7 +181,24 @@ fun StationList(
                     Text(context.getString(R.string.search_no_results), color = Color.Gray)
                 }
             } else {
+                // --- PARANDUS ALGAB ---
+                // 1. Loome gridile "mälu", et saaksime seda juhtida
+                val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+
+                // 2. See maagiline osa jälgib valitud jaama ja kerib vaate õigesse kohta
+                LaunchedEffect(selectedStationId, filteredStations) {
+                    val index = filteredStations.indexOfFirst { it.id == selectedStationId }
+                    if (index >= 0) {
+                        gridState.animateScrollToItem(
+                            index = index,
+                            scrollOffset = -220
+                        )
+                    }
+                }
+
                 LazyVerticalGrid(
+                    state = gridState, // 3. Anname "mälu" gridile kasutamiseks
+                    // --- PARANDUS LÕPPEB ---
                     columns = GridCells.Fixed(if (isLandscape) columnCountLandscape else columnCountPortrait),
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(bottom = 16.dp),
@@ -200,7 +218,7 @@ fun StationList(
                     }
                 }
             }
-        } else {
+        }else {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -222,7 +240,20 @@ fun StationList(
                         Text(context.getString(R.string.search_no_results), color = Color.Gray)
                     }
                 } else {
+                    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+
+                    LaunchedEffect(selectedStationId, stationsForPage) {
+                        val index = stationsForPage.indexOfFirst { it.id == selectedStationId }
+                        if (index >= 0) {
+                            gridState.animateScrollToItem(
+                                index = index,
+                                scrollOffset = -220
+                            )
+                        }
+                    }
+
                     LazyVerticalGrid(
+                        state = gridState,
                         columns = GridCells.Fixed(if (isLandscape) columnCountLandscape else columnCountPortrait),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 16.dp),

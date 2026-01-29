@@ -24,7 +24,7 @@ class RadioMetadataHelper(private val context: Context) {
             .trim()
             .replace("\n", " - ")
 
-        if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -") {
+        if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -" || cleaned == "_") {
             return ParsedMetadata(context.getString(R.string.live_broadcast), stationName, "")
         }
 
