@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import kotlinx.coroutines.flow.first
+
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
@@ -122,23 +124,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         loadPreferences()
 
-        // Flow vaatlejad
+        // 1. JÄLGIJA: Uuendab UI-d, kui andmebaas muutub (aga ei käivita enam värskendust)
         viewModelScope.launch {
             stationRepository.allStations.collect { stations ->
                 _uiState.update { it.copy(stations = stations) }
-
-                // --- UUS "TARK" KONTROLL ---
-                val lastUpdate = prefs.getLong("last_update_time", 0L)
-                val oneDayMillis = 24 * 60 * 60 * 1000L
-                val isExpired = (System.currentTimeMillis() - lastUpdate) > oneDayMillis
-
-                // Uuenda, kui baas on tühi VÕI kui aeg on aegunud (ja hetkel ei lae)
-                if ((stations.isEmpty() || isExpired) && !_uiState.value.isRefreshing) {
-                    // Kutsume välja ilma Toastita versiooni (et kasutajat mitte häirida avamisel)
-                    // Aga kuna meil on üks funktsioon, kasutame seda.
-                    // Toast ilmub, aga see on OK ("Uuendatud!").
-                    refreshStations()
-                }
             }
         }
 
@@ -147,7 +136,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
-        refreshStations()
+
+        // 2. ÜHEKORDNE KONTROLL KÄIVITAMISEL
+        viewModelScope.launch {
+            // Ootame ära esimese andmebaasi vastuse (see on kiire)
+            val stations = stationRepository.allStations.first()
+
+            val lastUpdate = prefs.getLong("last_update_time", 0L)
+            val oneDayMillis = 24 * 60 * 60 * 1000L
+            val isExpired = (System.currentTimeMillis() - lastUpdate) > oneDayMillis
+
+            // Kui andmebaas on tühi VÕI aegunud -> Värskenda
+            if (stations.isEmpty() || isExpired) {
+                refreshStations()
+            }
+
+        }
     }
 
     private fun loadPreferences() {
