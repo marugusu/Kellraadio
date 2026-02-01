@@ -1,5 +1,7 @@
+@file:SuppressLint("RestrictedApi")
 package ee.minu.kellraadio.widget
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -42,6 +44,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.glance.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import ee.minu.kellraadio.MainActivity
 import ee.minu.kellraadio.R
 import ee.minu.kellraadio.RadioService
@@ -68,6 +72,7 @@ class HomeWidget : GlanceAppWidget() {
         val combinedStatus = prefs[Prefs.status] ?: ""
         val parts = combinedStatus.split(" • ")
         val statusText = if (parts.isNotEmpty()) parts.last() else ""
+        val bitrate = prefs[Prefs.bitrate] ?: ""
         val extraText = if (parts.size > 1) parts.dropLast(1).joinToString(" • ") else ""
 
         // UUS: Loeme äratuse infot
@@ -75,7 +80,8 @@ class HomeWidget : GlanceAppWidget() {
 
         val isPlaying = prefs[Prefs.isPlaying] ?: false
         val size = LocalSize.current
-        val isNarrow = size.width < 260.dp
+        //val isNarrow = size.width < 260.dp
+        val isNarrow = true
 
         Box(
             modifier = GlanceModifier
@@ -93,11 +99,19 @@ class HomeWidget : GlanceAppWidget() {
                 ) {
                     Column(
                         modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        verticalAlignment = Alignment.Top,
+                        //horizontalAlignment = Alignment.CenterHorizontally,
+                        horizontalAlignment = Alignment.Start // <--- (1) JOONDUS VASAKULE
                     ) {
-                        // Lisasin alarmText
-                        AllInfoText(stationName, title, artist, extraText, statusText, alarmText, centered = true)
+                        AllInfoText(
+                            stationName,
+                            title,
+                            artist,
+                            extraText,
+                            if (bitrate.isNotBlank()) "$statusText • $bitrate" else statusText,
+                            alarmText,
+                            centered = false
+                        )
                     }
                     Spacer(GlanceModifier.height(4.dp))
                     Row(
@@ -118,8 +132,15 @@ class HomeWidget : GlanceAppWidget() {
                         modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Lisasin alarmText
-                        AllInfoText(stationName, title, artist, extraText, statusText, alarmText, centered = false)
+                        AllInfoText(
+                            stationName,
+                            title,
+                            artist,
+                            extraText,
+                            if (bitrate.isNotBlank()) "$statusText • $bitrate" else statusText,
+                            alarmText,
+                            centered = false
+                        )
                     }
                     Spacer(GlanceModifier.width(8.dp))
                     Row(
@@ -136,91 +157,106 @@ class HomeWidget : GlanceAppWidget() {
     private fun AllInfoText(station: String, title: String, artist: String, extra: String, status: String, alarm: String, centered: Boolean) {
         val textAlign = if (centered) TextAlign.Center else TextAlign.Start
 
-        // SINU ÄPI VÄRVID
+        // VÄRVID
         val colorStation = ColorProvider(Color(0xFFEADDFF))
         val colorTitle   = ColorProvider(Color(0xFF03DAC6))
         val colorExtra   = ColorProvider(Color(0xFFCB7E1F))
         val colorText    = ColorProvider(Color(0xFFBB86FC))
         val colorDim     = ColorProvider(Color(0xFFB0B0B0))
-        val colorAlarm   = ColorProvider(Color(0xFFFE7879)) // Lõheroosa
+        val colorAlarm   = ColorProvider(Color(0xFFFE7879))
 
-        // 1. JAAM (IKOON + NIMI)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        // KONTEINER
+        Column(
+            modifier = GlanceModifier.fillMaxHeight(),
             horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start
         ) {
-            Image(
-                provider = ImageProvider(R.drawable.ic_radio_notification),
-                contentDescription = null,
-                modifier = GlanceModifier.size(16.dp),
-                colorFilter = ColorFilter.tint(colorStation) // Sama lilla mis tekstil
-            )
-            Spacer(GlanceModifier.width(6.dp))
-            Text(
-                text = station,
-                style = TextStyle(color = colorStation, fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = textAlign),
-                maxLines = 1
-            )
-        }
 
-        // 2. PEALKIRI
-        val displayTitle = if (title.isBlank() && artist.isBlank()) "..." else title
-        if (displayTitle.isNotBlank()) {
-            Text(
-                text = displayTitle,
-                style = TextStyle(color = colorTitle, fontSize = 14.sp, fontWeight = FontWeight.Medium, textAlign = textAlign),
-                maxLines = 2
-            )
-        }
-
-        // 3. ARTIST
-        if (artist.isNotBlank() && artist != "Otseeeter") {
-            Text(
-                text = artist,
-                style = TextStyle(color = colorText, fontSize = 13.sp, textAlign = textAlign),
-                maxLines = 2
-            )
-        }
-
-        // 4. EXTRA
-        if (extra.isNotBlank()) {
-            Text(
-                text = extra,
-                style = TextStyle(color = colorExtra, fontSize = 12.sp, textAlign = textAlign),
-                maxLines = 2
-            )
-        }
-
-        // 5. STAATUS
-        if (status.isNotBlank()) {
-            Text(
-                text = status,
-                style = TextStyle(color = colorDim, fontSize = 11.sp, textAlign = textAlign),
-                maxLines = 1
-            )
-        }
-
-        // 6. ÄRATUS (IKOON + TEKST) - UUS OSA
-        if (alarm.isNotBlank()) {
+            // --- ÜLEMINE OSA ---
+            // 1. JAAM
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start
             ) {
                 Image(
-                    provider = ImageProvider(android.R.drawable.ic_lock_idle_alarm),
-                    contentDescription = "Alarm",
-                    modifier = GlanceModifier.size(12.dp),
-                    colorFilter = ColorFilter.tint(colorAlarm) // Värvime ikooni roosaks
+                    provider = ImageProvider(R.drawable.ic_radio_notification),
+                    contentDescription = null,
+                    modifier = GlanceModifier.size(16.dp),
+                    colorFilter = ColorFilter.tint(colorStation)
                 )
-                Spacer(GlanceModifier.width(4.dp))
+                Spacer(GlanceModifier.width(6.dp))
                 Text(
-                    text = alarm,
-                    style = TextStyle(color = colorAlarm, fontSize = 11.sp),
+                    text = station,
+                    style = TextStyle(color = colorStation, fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = textAlign),
                     maxLines = 1
                 )
             }
+
+            // 2. PEALKIRI
+            val displayTitle = if (title.isBlank() && artist.isBlank()) "..." else title
+            if (displayTitle.isNotBlank()) {
+                Text(
+                    text = displayTitle,
+                    modifier = GlanceModifier.padding(start = 22.dp),
+                    style = TextStyle(color = colorTitle, fontSize = 14.sp, fontWeight = FontWeight.Medium, textAlign = textAlign),
+                    maxLines = 2
+                )
+            }
+
+            // 3. ARTIST
+            if (artist.isNotBlank() && artist != "Otseeeter") {
+                Text(
+                    text = artist,
+                    modifier = GlanceModifier.padding(start = 22.dp),
+                    style = TextStyle(color = colorText, fontSize = 13.sp, textAlign = textAlign),
+                    maxLines = 2
+                )
+            }
+
+            // 4. EXTRA
+            if (extra.isNotBlank()) {
+                Text(
+                    text = extra,
+                    modifier = GlanceModifier.padding(start = 22.dp),
+                    style = TextStyle(color = colorExtra, fontSize = 12.sp, textAlign = textAlign),
+                    maxLines = 2
+                )
+            }
+
+            // 5. STAATUS
+            if (status.isNotBlank()) {
+                Text(
+                    text = status,
+                    modifier = GlanceModifier.padding(start = 22.dp),
+                    style = TextStyle(color = colorDim, fontSize = 11.sp, textAlign = textAlign),
+                    maxLines = 1
+                )
+            }
+
+            // --- VEDRU (See lükkab äratuse põhja) ---
+            Spacer(modifier = GlanceModifier.defaultWeight())
+
+
+            // --- ALUMINE OSA (Äratus) ---
+            if (alarm.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        provider = ImageProvider(android.R.drawable.ic_lock_idle_alarm),
+                        contentDescription = "Alarm",
+                        modifier = GlanceModifier.size(14.dp),
+                        colorFilter = ColorFilter.tint(colorAlarm)
+                    )
+                    Spacer(GlanceModifier.width(8.dp))
+                    Text(
+                        text = alarm,
+                        style = TextStyle(color = colorAlarm, fontSize = 13.sp),
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
-
 
     @Composable
     private fun ControlButtons(isPlaying: Boolean) {
@@ -273,6 +309,7 @@ class HomeWidget : GlanceAppWidget() {
         val title = stringPreferencesKey("title")
         val artist = stringPreferencesKey("artist")
         val status = stringPreferencesKey("status")
+        val bitrate = stringPreferencesKey("bitrate")
         val alarm = stringPreferencesKey("alarm") // UUS VÕTI
         val isPlaying = booleanPreferencesKey("is_playing")
     }

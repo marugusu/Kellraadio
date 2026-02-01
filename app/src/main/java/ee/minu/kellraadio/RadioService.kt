@@ -703,6 +703,8 @@ class RadioService : Service() {
         val title = currentTitle
         val artist = currentArtist
         val extra = currentExtra
+        val currentBitrate = lastBitrateInfo
+
 
         serviceScope.launch {
             var nextAlarmString = ""
@@ -735,6 +737,7 @@ class RadioService : Service() {
                         prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.stationName] = stationName
                         prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.title] = title
                         prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.artist] = artist
+                        prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.bitrate] = currentBitrate
 
                         val statusText = if (isPlaying) getString(R.string.status_playing) else getString(R.string.status_stopped)
 
