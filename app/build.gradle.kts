@@ -89,4 +89,8 @@ dependencies {
     // JSON SERIALIZATION (JSON tekstist objektide tegemine)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // WIDGET (GLANCE)
+    implementation("androidx.glance:glance-appwidget:1.1.0")
+    implementation("androidx.glance:glance-material3:1.1.0")
 }

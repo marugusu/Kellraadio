@@ -14,6 +14,9 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.updateAppWidgetState
+import ee.minu.kellraadio.widget.HomeWidget
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -89,6 +92,8 @@ class RadioService : Service() {
 
     companion object {
         const val ACTION_UPDATE_STATION_NAME = "ee.minu.kellraadio.UPDATE_NAME"
+        const val ACTION_FORCE_WIDGET_UPDATE = "ee.minu.kellraadio.FORCE_WIDGET_UPDATE"
+
         const val ACTION_STATION_SELECTED_BY_SERVICE = "ee.minu.kellraadio.STATION_SELECTED"
         const val ACTION_PAUSE = "ee.minu.kellraadio.ACTION_PAUSE"
         const val ACTION_RESUME = "ee.minu.kellraadio.ACTION_RESUME"
@@ -105,6 +110,8 @@ class RadioService : Service() {
         const val ACTION_SET_TIMER = "ee.minu.kellraadio.SET_TIMER"
         const val ACTION_TIMER_TICK = "ee.minu.kellraadio.TIMER_TICK"
         const val EXTRA_TIMER_DURATION = "TIMER_DURATION_MINUTES"
+        const val ACTION_PLAY_PAUSE_TOGGLE = "ee.minu.kellraadio.ACTION_PLAY_PAUSE_TOGGLE"
+
     }
 
     private val mediaSessionCallback = object : MediaSession.Callback {
@@ -141,6 +148,7 @@ class RadioService : Service() {
 
     private fun startRadio(url: String, name: String, triggeredBy: String? = null) {
         metadataPushJob?.cancel()
+        updateWidget()
 
         serviceScope.launch(Dispatchers.Main) {
             currentStationName = name
@@ -223,6 +231,7 @@ class RadioService : Service() {
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
         updateNotification()
+        updateWidget()
         metadataPushJob?.cancel()
     }
 
@@ -341,6 +350,7 @@ class RadioService : Service() {
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 updateExternalDevices(currentTitle, currentArtist)
                 metadataPushJob?.cancel()
+                updateWidget()
 
             } else {
                 // MUUDATUS: Kui on pausil, käivitame taimeri
@@ -349,6 +359,7 @@ class RadioService : Service() {
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
                 }
                 metadataPushJob?.cancel()
+                updateWidget()
             }
         }
 
@@ -489,6 +500,25 @@ class RadioService : Service() {
         if (action == ACTION_STOP) {
             stopRadio()
             return START_NOT_STICKY
+        }
+        if (action == ACTION_PLAY_PAUSE_TOGGLE) {
+            if (player.isPlaying) {
+                // Kui mängib, paneme pausi
+                player.pause()
+                updateNotification() // ja updateWidget kutsutakse kuulaja kaudu
+            } else {
+                // Kui ei mängi (või oli kinni), alustame
+                val i = Intent(this, RadioService::class.java)
+                i.action = ACTION_RESUME // Siin i.action viitab kindlalt uuele Intentile
+                startService(i)
+            }
+            // Oluline: Kui teenus oli täiesti kinni, siis startForegroundService äratab ta üles,
+            // ja see blokk siin hoolitseb loogika eest.
+            return START_STICKY
+        }
+        if (action == ACTION_FORCE_WIDGET_UPDATE) {
+            updateWidget()
+            return START_STICKY
         }
 
         if (action == ACTION_SET_TIMER) {
@@ -664,6 +694,43 @@ class RadioService : Service() {
             val stream = java.io.ByteArrayOutputStream()
             bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
             stream.toByteArray()
+        }
+    }
+
+    private fun updateWidget() {
+        // 1. Loeme andmed pealõimes (Main Thread) muutujatesse
+        val isPlaying = if (::player.isInitialized) player.isPlaying else false
+        val stationName = currentStationName
+        val title = currentTitle
+        val artist = currentArtist
+        val extra = currentExtra
+
+        // 2. Käivitame taustalõime ainult salvestamiseks
+        serviceScope.launch {
+            try {
+                val context = applicationContext
+                val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+                val widget = ee.minu.kellraadio.widget.HomeWidget()
+
+                val glanceIds = manager.getGlanceIds(widget.javaClass)
+
+                glanceIds.forEach { glanceId ->
+                    androidx.glance.appwidget.state.updateAppWidgetState(context, glanceId) { prefs ->
+                        prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.stationName] = stationName
+                        prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.title] = title
+                        prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.artist] = artist
+
+                        val statusText = if (isPlaying) "Mängib" else "Peatatud"
+                        val extraInfo = if (extra.isNotBlank()) "$extra • $statusText" else statusText
+                        prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.status] = extraInfo
+
+                        prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.isPlaying] = isPlaying
+                    }
+                    widget.update(context, glanceId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Vidinat ei saanud uuendada: ${e.message}")
+            }
         }
     }
 
