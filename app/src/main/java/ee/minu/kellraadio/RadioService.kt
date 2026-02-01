@@ -79,6 +79,8 @@ class RadioService : Service() {
     private val metadataHelper by lazy { RadioMetadataHelper(this) } // UUS
     private val prefs: SharedPreferences by lazy { getSharedPreferences("RadioServicePrefs", Context.MODE_PRIVATE) }
 
+    private var idleTimeoutJob: kotlinx.coroutines.Job? = null
+
     private var sleepTimerJob: kotlinx.coroutines.Job? = null
     private var sleepTimerRemainingMillis: Long = 0L
 
@@ -326,6 +328,9 @@ class RadioService : Service() {
             updateNotification()
 
             if (isPlaying) {
+                // MUUDATUS: Kui mängib, tühistame sulgemise taimeri
+                idleTimeoutJob?.cancel()
+
                 isChangingStation = false
                 saveToHistory(currentArtist, currentTitle)
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
@@ -338,7 +343,9 @@ class RadioService : Service() {
                 metadataPushJob?.cancel()
 
             } else {
+                // MUUDATUS: Kui on pausil, käivitame taimeri
                 if (!isChangingStation) {
+                    startIdleTimeout() // <--- KÄIVITA TAIMER
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
                 }
                 metadataPushJob?.cancel()
@@ -588,6 +595,7 @@ class RadioService : Service() {
     private fun stopRadio(isError: Boolean = false) {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         stopSleepTimer()
+        idleTimeoutJob?.cancel()
         metadataPushJob?.cancel()
         player.stop()
         player.clearMediaItems()
@@ -617,6 +625,15 @@ class RadioService : Service() {
     }
 
     private fun stopSleepTimer() { sleepTimerJob?.cancel(); sleepTimerJob = null; sleepTimerRemainingMillis = 0; sendTimerTick(0) }
+    private fun startIdleTimeout() {
+        idleTimeoutJob?.cancel()
+        idleTimeoutJob = serviceScope.launch {
+            Log.d(TAG, "Taimer käivitus: Ootan ${AppConfig.Player.IDLE_TIMEOUT_MS}ms enne sulgemist")
+            delay(AppConfig.Player.IDLE_TIMEOUT_MS)
+            Log.d(TAG, "Aeg täis. Sulgen teenuse, et vabastada Bluetooth.")
+            stopRadio()
+        }
+    }
     private fun sendTimerTick(remainingMillis: Long) {
         LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_TIMER_TICK).apply { putExtra("REMAINING_MILLIS", remainingMillis) })
     }

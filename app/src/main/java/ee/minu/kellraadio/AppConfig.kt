@@ -82,4 +82,11 @@ object AppConfig {
             const val PLAYER_WEIGHT_WIDE = 0.5f
         }
     }
+
+    // --- 4. RAADIO MÄNGIJA SEADED ---
+    object Player {
+        // Kui kaua hoiame teenust elus, kui on PAUS (2 minutit)
+        // See on vajalik, et mitte "lukustada" auto Bluetoothi
+        const val IDLE_TIMEOUT_MS = 120000L
+    }
 }
