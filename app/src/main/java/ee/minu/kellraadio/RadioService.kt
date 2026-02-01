@@ -698,20 +698,36 @@ class RadioService : Service() {
     }
 
     private fun updateWidget() {
-        // 1. Loeme andmed pealõimes (Main Thread) muutujatesse
         val isPlaying = if (::player.isInitialized) player.isPlaying else false
         val stationName = currentStationName
         val title = currentTitle
         val artist = currentArtist
         val extra = currentExtra
 
-        // 2. Käivitame taustalõime ainult salvestamiseks
         serviceScope.launch {
+            var nextAlarmString = ""
+            try {
+                val db = AppDatabase.getDatabase(applicationContext)
+                val enabledAlarms = db.alarmDao().getAllEnabledAlarms()
+                if (enabledAlarms.isNotEmpty()) {
+                    val nextAlarm = enabledAlarms.map {
+                        it to AlarmUtils.findNextAlarmTime(it.hour, it.minute, it.days)
+                    }.minByOrNull { it.second }
+
+                    if (nextAlarm != null) {
+                        val timeAndDays = AlarmUtils.getAlarmText(this@RadioService, nextAlarm.first.hour, nextAlarm.first.minute, nextAlarm.first.days)
+                        // VORMING: "07:00 • E-R • Raadio 2" (Ilma ikoonita)
+                        nextAlarmString = "$timeAndDays • ${nextAlarm.first.stationName}"
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Äratuse lugemise viga: ${e.message}")
+            }
+
             try {
                 val context = applicationContext
                 val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
                 val widget = ee.minu.kellraadio.widget.HomeWidget()
-
                 val glanceIds = manager.getGlanceIds(widget.javaClass)
 
                 glanceIds.forEach { glanceId ->
@@ -720,9 +736,13 @@ class RadioService : Service() {
                         prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.title] = title
                         prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.artist] = artist
 
-                        val statusText = if (isPlaying) "Mängib" else "Peatatud"
+                        val statusText = if (isPlaying) getString(R.string.status_playing) else getString(R.string.status_stopped)
+
                         val extraInfo = if (extra.isNotBlank()) "$extra • $statusText" else statusText
                         prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.status] = extraInfo
+
+                        // Saadame äratuse info
+                        prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.alarm] = nextAlarmString
 
                         prefs[ee.minu.kellraadio.widget.HomeWidget.Prefs.isPlaying] = isPlaying
                     }

@@ -65,17 +65,17 @@ class HomeWidget : GlanceAppWidget() {
         val title = prefs[Prefs.title] ?: ""
         val artist = prefs[Prefs.artist] ?: ""
 
-        // PARANDUS: Tükeldame 'status' välja, et saada kätte Extra info ja Staatus eraldi
         val combinedStatus = prefs[Prefs.status] ?: ""
         val parts = combinedStatus.split(" • ")
         val statusText = if (parts.isNotEmpty()) parts.last() else ""
         val extraText = if (parts.size > 1) parts.dropLast(1).joinToString(" • ") else ""
 
-        val isPlaying = prefs[Prefs.isPlaying] ?: false
+        // UUS: Loeme äratuse infot
+        val alarmText = prefs[Prefs.alarm] ?: ""
 
+        val isPlaying = prefs[Prefs.isPlaying] ?: false
         val size = LocalSize.current
-        //val isNarrow = size.width < 260.dp
-        val isNarrow = true
+        val isNarrow = size.width < 260.dp
 
         Box(
             modifier = GlanceModifier
@@ -85,7 +85,7 @@ class HomeWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity<MainActivity>())
         ) {
             if (isNarrow) {
-                // PÜSTINE PAIGUTUS (2x2)
+                // PÜSTINE
                 Column(
                     modifier = GlanceModifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -96,12 +96,10 @@ class HomeWidget : GlanceAppWidget() {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Siin saadame nüüd eraldi extraText ja statusText
-                        AllInfoText(stationName, title, artist, extraText, statusText, centered = true)
+                        // Lisasin alarmText
+                        AllInfoText(stationName, title, artist, extraText, statusText, alarmText, centered = true)
                     }
-
                     Spacer(GlanceModifier.height(4.dp))
-
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -111,7 +109,7 @@ class HomeWidget : GlanceAppWidget() {
                     }
                 }
             } else {
-                // RÕHTNE PAIGUTUS (4x1)
+                // RÕHTNE
                 Row(
                     modifier = GlanceModifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically
@@ -120,12 +118,10 @@ class HomeWidget : GlanceAppWidget() {
                         modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Siin saadame nüüd eraldi extraText ja statusText
-                        AllInfoText(stationName, title, artist, extraText, statusText, centered = false)
+                        // Lisasin alarmText
+                        AllInfoText(stationName, title, artist, extraText, statusText, alarmText, centered = false)
                     }
-
                     Spacer(GlanceModifier.width(8.dp))
-
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -137,7 +133,7 @@ class HomeWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun AllInfoText(station: String, title: String, artist: String, extra: String, status: String, centered: Boolean) {
+    private fun AllInfoText(station: String, title: String, artist: String, extra: String, status: String, alarm: String, centered: Boolean) {
         val textAlign = if (centered) TextAlign.Center else TextAlign.Start
 
         // SINU ÄPI VÄRVID
@@ -146,21 +142,34 @@ class HomeWidget : GlanceAppWidget() {
         val colorExtra   = ColorProvider(Color(0xFFCB7E1F))
         val colorText    = ColorProvider(Color(0xFFBB86FC))
         val colorDim     = ColorProvider(Color(0xFFB0B0B0))
+        val colorAlarm   = ColorProvider(Color(0xFFFE7879)) // Lõheroosa
 
-        // 1. JAAM
-        Text(
-            text = station,
-            style = TextStyle(color = colorStation, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = textAlign),
-            maxLines = 1
-        )
+        // 1. JAAM (IKOON + NIMI)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start
+        ) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_radio_notification),
+                contentDescription = null,
+                modifier = GlanceModifier.size(16.dp),
+                colorFilter = ColorFilter.tint(colorStation) // Sama lilla mis tekstil
+            )
+            Spacer(GlanceModifier.width(6.dp))
+            Text(
+                text = station,
+                style = TextStyle(color = colorStation, fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = textAlign),
+                maxLines = 1
+            )
+        }
 
         // 2. PEALKIRI
         val displayTitle = if (title.isBlank() && artist.isBlank()) "..." else title
         if (displayTitle.isNotBlank()) {
             Text(
                 text = displayTitle,
-                style = TextStyle(color = colorTitle, fontSize = 15.sp, fontWeight = FontWeight.Medium, textAlign = textAlign),
-                maxLines = 1
+                style = TextStyle(color = colorTitle, fontSize = 14.sp, fontWeight = FontWeight.Medium, textAlign = textAlign),
+                maxLines = 2
             )
         }
 
@@ -168,29 +177,50 @@ class HomeWidget : GlanceAppWidget() {
         if (artist.isNotBlank() && artist != "Otseeeter") {
             Text(
                 text = artist,
-                style = TextStyle(color = colorText, fontSize = 14.sp, textAlign = textAlign),
-                maxLines = 1
+                style = TextStyle(color = colorText, fontSize = 13.sp, textAlign = textAlign),
+                maxLines = 2
             )
         }
 
-        // 4. EXTRA (UUS RIDA)
+        // 4. EXTRA
         if (extra.isNotBlank()) {
             Text(
                 text = extra,
-                style = TextStyle(color = colorExtra, fontSize = 13.sp, textAlign = textAlign),
+                style = TextStyle(color = colorExtra, fontSize = 12.sp, textAlign = textAlign),
+                maxLines = 2
+            )
+        }
+
+        // 5. STAATUS
+        if (status.isNotBlank()) {
+            Text(
+                text = status,
+                style = TextStyle(color = colorDim, fontSize = 11.sp, textAlign = textAlign),
                 maxLines = 1
             )
         }
 
-        // 5. STAATUS (UUS RIDA)
-        if (status.isNotBlank()) {
-            Text(
-                text = status,
-                style = TextStyle(color = colorDim, fontSize = 12.sp, textAlign = textAlign),
-                maxLines = 1
-            )
+        // 6. ÄRATUS (IKOON + TEKST) - UUS OSA
+        if (alarm.isNotBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    provider = ImageProvider(android.R.drawable.ic_lock_idle_alarm),
+                    contentDescription = "Alarm",
+                    modifier = GlanceModifier.size(12.dp),
+                    colorFilter = ColorFilter.tint(colorAlarm) // Värvime ikooni roosaks
+                )
+                Spacer(GlanceModifier.width(4.dp))
+                Text(
+                    text = alarm,
+                    style = TextStyle(color = colorAlarm, fontSize = 11.sp),
+                    maxLines = 1
+                )
+            }
         }
     }
+
 
     @Composable
     private fun ControlButtons(isPlaying: Boolean) {
@@ -237,11 +267,13 @@ class HomeWidget : GlanceAppWidget() {
         }
     }
 
+
     object Prefs {
         val stationName = stringPreferencesKey("station_name")
         val title = stringPreferencesKey("title")
         val artist = stringPreferencesKey("artist")
         val status = stringPreferencesKey("status")
+        val alarm = stringPreferencesKey("alarm") // UUS VÕTI
         val isPlaying = booleanPreferencesKey("is_playing")
     }
 }
