@@ -70,6 +70,7 @@ fun PlayerControls(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 140.dp)
                 .animateContentSize()
                 .clip(RoundedCornerShape(12.dp))
                 .background(
