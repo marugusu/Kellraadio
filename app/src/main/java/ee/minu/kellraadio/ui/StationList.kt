@@ -256,7 +256,7 @@ fun StationList(
                         state = gridState,
                         columns = GridCells.Fixed(if (isLandscape) columnCountLandscape else columnCountPortrait),
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 16.dp),
+                        contentPadding = PaddingValues(bottom = 76.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {

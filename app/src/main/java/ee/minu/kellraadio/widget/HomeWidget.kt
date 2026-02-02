@@ -198,7 +198,7 @@ class HomeWidget : GlanceAppWidget() {
                     text = displayTitle,
                     modifier = GlanceModifier.padding(start = 22.dp),
                     style = TextStyle(color = colorTitle, fontSize = 14.sp, fontWeight = FontWeight.Medium, textAlign = textAlign),
-                    maxLines = 2
+                    maxLines = 1
                 )
             }
 
@@ -208,7 +208,7 @@ class HomeWidget : GlanceAppWidget() {
                     text = artist,
                     modifier = GlanceModifier.padding(start = 22.dp),
                     style = TextStyle(color = colorText, fontSize = 13.sp, textAlign = textAlign),
-                    maxLines = 2
+                    maxLines = 1
                 )
             }
 
@@ -218,7 +218,7 @@ class HomeWidget : GlanceAppWidget() {
                     text = extra,
                     modifier = GlanceModifier.padding(start = 22.dp),
                     style = TextStyle(color = colorExtra, fontSize = 12.sp, textAlign = textAlign),
-                    maxLines = 2
+                    maxLines = 1
                 )
             }
 

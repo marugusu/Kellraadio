@@ -335,11 +335,10 @@ class RadioService : Service() {
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updateNotification()
+            updateWidget()
 
             if (isPlaying) {
-                // MUUDATUS: Kui mängib, tühistame sulgemise taimeri
                 idleTimeoutJob?.cancel()
-
                 isChangingStation = false
                 saveToHistory(currentArtist, currentTitle)
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
@@ -350,16 +349,22 @@ class RadioService : Service() {
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 updateExternalDevices(currentTitle, currentArtist)
                 metadataPushJob?.cancel()
-                updateWidget()
 
             } else {
-                // MUUDATUS: Kui on pausil, käivitame taimeri
-                if (!isChangingStation) {
-                    startIdleTimeout() // <--- KÄIVITA TAIMER
+                // --- MUUDATUS SIIN ---
+                // Kontrollime: Kas kasutaja pani ise pausi? (playWhenReady == false)
+                // Kui playWhenReady on true, siis on tegu puhverdamisega ja me EI käivita taimerit.
+                if (!player.playWhenReady && !isChangingStation) {
+                    startIdleTimeout() // Ainult siis, kui on päriselt paus
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
                 }
+
+                // Kui lihtsalt puhverdab, tühistame igaks juhuks vana taimeri, et see kogemata ei tiksuks
+                if (player.playWhenReady) {
+                    idleTimeoutJob?.cancel()
+                }
+
                 metadataPushJob?.cancel()
-                updateWidget()
             }
         }
 
@@ -657,7 +662,9 @@ class RadioService : Service() {
     private fun stopSleepTimer() { sleepTimerJob?.cancel(); sleepTimerJob = null; sleepTimerRemainingMillis = 0; sendTimerTick(0) }
     private fun startIdleTimeout() {
         idleTimeoutJob?.cancel()
-        idleTimeoutJob = serviceScope.launch {
+        // PARANDUS: Lisasime (Dispatchers.Main), et kood jookseks pealõimes.
+        // ExoPlayerit tohib peatada AINULT pealõimes.
+        idleTimeoutJob = serviceScope.launch(Dispatchers.Main) {
             Log.d(TAG, "Taimer käivitus: Ootan ${AppConfig.Player.IDLE_TIMEOUT_MS}ms enne sulgemist")
             delay(AppConfig.Player.IDLE_TIMEOUT_MS)
             Log.d(TAG, "Aeg täis. Sulgen teenuse, et vabastada Bluetooth.")
