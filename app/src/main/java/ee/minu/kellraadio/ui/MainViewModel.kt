@@ -125,9 +125,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadPreferences()
 
         // 1. JÄLGIJA: Uuendab UI-d, kui andmebaas muutub (aga ei käivita enam värskendust)
+        // Flow vaatleja
         viewModelScope.launch {
             stationRepository.allStations.collect { stations ->
-                _uiState.update { it.copy(stations = stations) }
+                // 1. Uuendame nimekirja
+                _uiState.update { currentState ->
+                    // --- PARANDUS: SÜNKRONISEERIMINE ---
+                    // Vaatame, kas hetkel mängiv jaam (nimi) on selles uues nimekirjas olemas.
+                    // Kui on, siis sunnime UI valima selle jaama ID-d.
+                    val activeName = currentState.activeStationName
+                    val correctStation = stations.find { it.name == activeName }
+
+                    val correctedId = correctStation?.id ?: currentState.selectedStationId
+                    val correctedCategory = correctStation?.category ?: currentState.selectedCategory
+
+                    currentState.copy(
+                        stations = stations,
+                        selectedStationId = correctedId,
+                        selectedCategory = if (correctedId != -1 && currentState.selectedCategory != "Favorites" && currentState.selectedCategory != "All") correctedCategory else currentState.selectedCategory
+                    )
+                }
             }
         }
 
