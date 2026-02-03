@@ -495,7 +495,13 @@ class RadioService : Service() {
                     // Kui mälus URLi pole, proovi taastada viimati kuulatud jaam
                     val savedUrl = prefs.getString("LAST_URL", null)
                     val savedName = prefs.getString("LAST_NAME", "Raadio")
-                    if (savedUrl != null) startRadio(savedUrl, savedName ?: "Raadio")
+                    // MUUDATUS: Taastame ka kategooria
+                    val savedCategory = prefs.getString("LAST_CATEGORY", "") ?: ""
+
+                    if (savedUrl != null) {
+                        currentCategory = savedCategory // <--- MÄÄRAME KATEGOORIA
+                        startRadio(savedUrl, savedName ?: "Raadio")
+                    }
                 }
             }
             return START_STICKY
@@ -585,7 +591,12 @@ class RadioService : Service() {
                 val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
                 notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
             } else {
-                prefs.edit().putString("LAST_URL", currentStreamUrl).putString("LAST_NAME", currentStationName).apply()
+                // MUUDATUS: Salvestame nüüd ka kategooria (currentCategory)
+                prefs.edit()
+                    .putString("LAST_URL", currentStreamUrl)
+                    .putString("LAST_NAME", currentStationName)
+                    .putString("LAST_CATEGORY", currentCategory)
+                    .apply()
             }
 
             updateNotification()
