@@ -19,10 +19,11 @@ import java.util.concurrent.CopyOnWriteArraySet
 @OptIn(UnstableApi::class)
 class SkodaAwarePlayer(
     player: Player,
-    // UUS: Turvarežiim (kui true, saadame aega 0, et mitte autot ehmatada)
-    var isSafeMode: Boolean = false,
+
     private val internalListeners: CopyOnWriteArraySet<Player.Listener>
 ) : ForwardingPlayer(player) {
+    // UUS: Turvarežiim (kui true, saadame aega 0, et mitte autot ehmatada)
+    var isSafeMode: Boolean = false,
 
     // Seda muutujat muudab RadioService, kui uus laul algab
     var streamStartTime: Long = 0L
