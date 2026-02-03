@@ -338,6 +338,13 @@ class RadioService : Service() {
             updateWidget()
 
             if (isPlaying) {
+                player.isSafeMode = true
+                serviceScope.launch(Dispatchers.Main) {
+                    delay(10000) // Oota 10 sekundit
+                    if (::player.isInitialized) {
+                        player.isSafeMode = false // Luba normaalne ajaarvestus
+                    }
+                }
                 idleTimeoutJob?.cancel()
                 isChangingStation = false
                 saveToHistory(currentArtist, currentTitle)

@@ -19,6 +19,8 @@ import java.util.concurrent.CopyOnWriteArraySet
 @OptIn(UnstableApi::class)
 class SkodaAwarePlayer(
     player: Player,
+    // UUS: Turvarežiim (kui true, saadame aega 0, et mitte autot ehmatada)
+    var isSafeMode: Boolean = false,
     private val internalListeners: CopyOnWriteArraySet<Player.Listener>
 ) : ForwardingPlayer(player) {
 
@@ -65,8 +67,10 @@ class SkodaAwarePlayer(
     // --- SKODA FIX 2: Võlts-progress ---
     // Arvutame aja ise, sest ExoPlayeri enda aeg striimi puhul ei sobi autodele
     override fun getCurrentPosition(): Long {
+        // KUI TURVAREŽIIM ON SEES -> Tagasta 0 (Staatiline)
+        if (isSafeMode) return 0L
+
         val elapsed = SystemClock.elapsedRealtime() - streamStartTime
-        // Teeme nii, et aeg jookseb 0..5min ringiratast
         return if (streamStartTime > 0) elapsed % 300000L else 0L
     }
 
