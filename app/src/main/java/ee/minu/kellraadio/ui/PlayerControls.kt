@@ -27,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.GlanceModifier
+import androidx.glance.layout.Spacer
 import ee.minu.kellraadio.AlarmUtils
 import ee.minu.kellraadio.R
 import ee.minu.kellraadio.RadioStation
@@ -132,9 +134,13 @@ fun PlayerControls(
                 val statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
                 Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = Color.Gray)
 
+
                 if (alarmInfo != null || sleepTimerMillis > 0) {
                     Spacer(Modifier.height(2.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         if (alarmInfo != null) {
                             val cal = Calendar.getInstance().apply { timeInMillis = alarmInfo.first }
                             val context = androidx.compose.ui.platform.LocalContext.current
@@ -165,7 +171,9 @@ fun PlayerControls(
         Spacer(Modifier.height(16.dp))
         val buttonShape = RoundedCornerShape(12.dp)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val buttonModifier = Modifier.weight(1f).height(64.dp)
+            val buttonModifier = Modifier
+                .weight(1f)
+                .height(64.dp)
             if (isPlaying) {
                 FilledIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onPlayPause() }, modifier = buttonModifier, shape = buttonShape) { Icon(Icons.Default.Pause, "Paus", modifier = Modifier.size(32.dp)) }
             } else {
@@ -183,7 +191,17 @@ fun PlayerControls(
             ) { Icon(Icons.Default.Bedtime, "Unetaimer", modifier = Modifier.size(28.dp)) }
             val isAlarmSet = alarmInfo != null
             val interactionSource = remember { MutableInteractionSource() }
-            Surface(modifier = buttonModifier.clip(buttonShape).combinedClickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAlarmClick() }, onLongClick = { if (isAlarmSet) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onAlarmLongClick() } }), shape = buttonShape, color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondaryContainer, contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondaryContainer) {
+            Surface(modifier = buttonModifier
+                .clip(buttonShape)
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = LocalIndication.current,
+                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAlarmClick() },
+                    onLongClick = {
+                        if (isAlarmSet) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); onAlarmLongClick()
+                        }
+                    }), shape = buttonShape, color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondaryContainer, contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondaryContainer) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Icon(if (isAlarmSet) Icons.Default.AlarmOn else Icons.Default.AlarmAdd, contentDescription = "Äratus", modifier = Modifier.size(28.dp)) }
             }
         }

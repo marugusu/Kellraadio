@@ -46,6 +46,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.glance.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.MaterialTheme
 import ee.minu.kellraadio.MainActivity
 import ee.minu.kellraadio.R
 import ee.minu.kellraadio.RadioService
@@ -86,7 +87,7 @@ class HomeWidget : GlanceAppWidget() {
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(ColorProvider(Color.Black.copy(alpha = 0.7f)))
+                .background(ColorProvider(Color.Black.copy(alpha = 0.25f)))
                 .padding(8.dp)
                 .clickable(actionStartActivity<MainActivity>())
         ) {
@@ -110,7 +111,8 @@ class HomeWidget : GlanceAppWidget() {
                             extraText,
                             if (bitrate.isNotBlank()) "$statusText • $bitrate" else statusText,
                             alarmText,
-                            centered = false
+                            centered = false,
+                            isPlaying = isPlaying
                         )
                     }
                     Spacer(GlanceModifier.height(4.dp))
@@ -154,16 +156,20 @@ class HomeWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun AllInfoText(station: String, title: String, artist: String, extra: String, status: String, alarm: String, centered: Boolean) {
+    private fun AllInfoText(station: String, title: String, artist: String, extra: String, status: String, alarm: String, centered: Boolean, isPlaying: Boolean = false) {
         val textAlign = if (centered) TextAlign.Center else TextAlign.Start
 
         // VÄRVID
-        val colorStation = ColorProvider(Color(0xFFEADDFF))
-        val colorTitle   = ColorProvider(Color(0xFF03DAC6))
-        val colorExtra   = ColorProvider(Color(0xFFCB7E1F))
-        val colorText    = ColorProvider(Color(0xFFBB86FC))
         val colorDim     = ColorProvider(Color(0xFFB0B0B0))
+        val colorStatus = ColorProvider(Color(0xFFEADDFF))
+        val colorStation = ColorProvider(Color(0xFFEADDFF))
+        val colorTitle = if (isPlaying) ColorProvider(Color(0xFF03DAC6)) else colorDim
+        val colorExtra   = if (isPlaying) ColorProvider(Color(0xFFCB7E1F)) else colorDim
+        val colorText    = if (isPlaying)  ColorProvider(Color(0xFFBB86FC)) else colorDim
         val colorAlarm   = ColorProvider(Color(0xFFFE7879))
+
+
+
 
         // KONTEINER
         Column(
@@ -186,7 +192,12 @@ class HomeWidget : GlanceAppWidget() {
                 Spacer(GlanceModifier.width(6.dp))
                 Text(
                     text = station,
-                    style = TextStyle(color = colorStation, fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = textAlign),
+                    style = TextStyle(
+                        color = colorStation,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        textAlign = textAlign
+                    ),
                     maxLines = 1
                 )
             }
@@ -227,7 +238,7 @@ class HomeWidget : GlanceAppWidget() {
                 Text(
                     text = status,
                     modifier = GlanceModifier.padding(start = 22.dp),
-                    style = TextStyle(color = colorDim, fontSize = 11.sp, textAlign = textAlign),
+                    style = TextStyle(color = colorStatus, fontSize = 11.sp, textAlign = textAlign),
                     maxLines = 1
                 )
             }

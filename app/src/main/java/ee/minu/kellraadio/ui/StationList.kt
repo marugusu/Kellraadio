@@ -247,7 +247,7 @@ fun StationList(
                         if (index >= 0) {
                             gridState.animateScrollToItem(
                                 index = index,
-                                scrollOffset = -220
+                                scrollOffset = -360
                             )
                         }
                     }
