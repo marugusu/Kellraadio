@@ -124,29 +124,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         loadPreferences()
 
-        // 1. JÄLGIJA: Uuendab UI-d, kui andmebaas muutub (aga ei käivita enam värskendust)
-        // Flow vaatleja
+        // --- PARANDUS ALGUS: Liiga agressiivse sünkroniseerimise parandus ---
         viewModelScope.launch {
             stationRepository.allStations.collect { stations ->
-                // 1. Uuendame nimekirja
                 _uiState.update { currentState ->
-                    // --- PARANDUS: SÜNKRONISEERIMINE ---
-                    // Vaatame, kas hetkel mängiv jaam (nimi) on selles uues nimekirjas olemas.
-                    // Kui on, siis sunnime UI valima selle jaama ID-d.
-                    val activeName = currentState.activeStationName
-                    val correctStation = stations.find { it.name == activeName }
-
-                    val correctedId = correctStation?.id ?: currentState.selectedStationId
-                    val correctedCategory = correctStation?.category ?: currentState.selectedCategory
-
-                    currentState.copy(
-                        stations = stations,
-                        selectedStationId = correctedId,
-                        selectedCategory = if (correctedId != -1 && currentState.selectedCategory != "Favorites" && currentState.selectedCategory != "All") correctedCategory else currentState.selectedCategory
-                    )
+                    // Lihtsalt uuenda jaamade nimekirja. Ära muuda kategooriat.
+                    currentState.copy(stations = stations)
                 }
             }
         }
+        // --- PARANDUS LÕPP ---
 
         viewModelScope.launch {
             alarmDao.getAllAlarms().collect { alarms -> _uiState.update { it.copy(alarms = alarms) } }
@@ -154,23 +141,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
 
-        // 2. ÜHEKORDNE KONTROLL KÄIVITAMISEL
         viewModelScope.launch {
-            // Ootame ära esimese andmebaasi vastuse (see on kiire)
             val stations = stationRepository.allStations.first()
-
             val lastUpdate = prefs.getLong("last_update_time", 0L)
             val oneDayMillis = 24 * 60 * 60 * 1000L
             val isExpired = (System.currentTimeMillis() - lastUpdate) > oneDayMillis
-
-            // Kui andmebaas on tühi VÕI aegunud -> Värskenda
             if (stations.isEmpty() || isExpired) {
                 refreshStations()
             }
-
         }
-
-        // Laadi riigid kohe sisse
         loadCountries()
     }
 
@@ -195,7 +174,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // --- KASUTAJA TEGEVUSED (EVENTS) ---
 
     fun onTabSelected(index: Int) {
-        _uiState.update { it.copy(currentTab = index) }
+        val pendingCategory = _uiState.value.categoryToSelectOnTabChange
+        // Kui minnakse Raadio lehele (indeks 0) ja ootel on kategooria vahetus
+        if (index == 0 && pendingCategory != null) {
+            onCategorySelected(pendingCategory)
+            // Tühjenda päästik, et see uuesti ei käivituks
+            _uiState.update { it.copy(currentTab = index, categoryToSelectOnTabChange = null) }
+        } else {
+            _uiState.update { it.copy(currentTab = index) }
+        }
     }
 
     fun onCategorySelected(category: String) {
@@ -204,21 +191,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onStationClicked(station: RadioStation) {
-        // --- PARANDUS: ÄRA USALDA SISENDOBJEKTI ANDMEID, VAID AINULT SELLE ID-d ---
-        // 1. Leia kõige värskem jaama info UI olekust, kasutades klikitud jaama ID-d.
-        val freshStation = _uiState.value.stations.find { it.id == station.id }
-
-        // 2. Kui mingil põhjusel jaama ei leita (ei tohiks juhtuda), kasuta fallbackina vana objekti.
-        val stationToPlay = freshStation ?: station
-
-        // 3. Jätka loogikaga, aga kasuta nüüd GARANTEERITULT värsket "stationToPlay" objekti.
-        updateSelectedStationLocal(stationToPlay.id)
+        val freshStation = _uiState.value.stations.find { it.id == station.id } ?: station
+        updateSelectedStationLocal(freshStation.id)
         _uiState.update { it.copy(
-            activeStationName = stationToPlay.name, // Kasutame värsket nime
+            activeStationName = freshStation.name,
             isPlaying = true,
             playerStatus = getString(R.string.status_buffering)
         )}
-        startRadioService(stationToPlay) // Saadame teenusele värske objekti
+        startRadioService(freshStation)
     }
 
     fun onPlayPauseClicked() {
@@ -226,7 +206,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
             context.startService(i)
         } else {
-            // Kui on valitud jaam, mängi seda.
             val station = _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
             if (station != null) {
                 startRadioService(station)
@@ -262,7 +241,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- DIALOOGIDE HALDUS ---
-
     fun openSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = true) } }
     fun closeSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = false) } }
 
@@ -274,36 +252,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(showAlarmDialog = true, alarmToEdit = alarm) }
     }
     fun closeAlarmDialog() { _uiState.update { it.copy(showAlarmDialog = false, alarmToEdit = null) } }
-
     fun openStationActionSheet(station: RadioStation) { _uiState.update { it.copy(showActionSheetForStation = station) } }
     fun closeStationActionSheet() { _uiState.update { it.copy(showActionSheetForStation = null) } }
-
     fun openSongInfo() { _uiState.update { it.copy(showSongInfoSheet = true) } }
     fun closeSongInfo() { _uiState.update { it.copy(showSongInfoSheet = false) } }
-
     fun confirmDeleteStation(station: RadioStation) { _uiState.update { it.copy(stationToDelete = station) } }
     fun cancelDeleteStation() { _uiState.update { it.copy(stationToDelete = null) } }
 
     fun openEditStationDialog(station: RadioStation) {
-        // Sulgeme esmalt menüü, et vältida visuaalseid konflikte
         closeStationActionSheet()
         _uiState.update { it.copy(stationToEdit = station) }
     }
     fun closeEditStationDialog() { _uiState.update { it.copy(stationToEdit = null) } }
 
-
-
     // --- ÄRILINE LOOGIKA ---
-
     fun saveAlarm(hour: Int, minute: Int, days: Set<Int>) {
         val alarmToEdit = _uiState.value.alarmToEdit
         val station = if (alarmToEdit != null) {
-            // Kui muudame, siis jaam on juba alarmis kirjas, aga võime ka praegust aktiivset kasutada, kui tahame
-            // Siin hoiame lihtsuse mõttes alarmi enda jaama nime, või kui on uus, siis valitud jaama
             _uiState.value.stations.find { it.name == alarmToEdit.stationName }
         } else {
             _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
-        } ?: return // Ei tohiks juhtuda
+        } ?: return
 
         val alarm = alarmToEdit?.copy(
             hour = hour, minute = minute, days = days,
@@ -331,7 +300,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (station != null) {
             viewModelScope.launch {
                 stationRepository.deleteStation(station)
-                // MUUDATUS: Kasutame nüüd spetsiaalset jaama kustutamise teadet
                 Toast.makeText(context, getString(R.string.station_toast_deleted), Toast.LENGTH_SHORT).show()
                 cancelDeleteStation()
                 closeStationActionSheet()
@@ -346,28 +314,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         
         viewModelScope.launch {
-            // 1. Salvestame andmebaasi ja saame uue ID
             val newId = stationRepository.saveUserStation(name, url, countryCode)
-
-            // 2. Anname kasutajale teada
             Toast.makeText(context, context.getString(R.string.station_added, name), Toast.LENGTH_SHORT).show()
 
-            // 3. Vahetame kategooriat ("My Stations")
-            onCategorySelected("My")
+            // --- PARANDUS: Ära vaheta kategooriat kohe, vaid jäta meelde ---
+            _uiState.update { it.copy(categoryToSelectOnTabChange = "My") }
 
-            // 4. "TARK" OSA: Kas me kuulame praegu sedasama jaama?
-            // Kui URL on sama ja raadio mängib, siis see pole enam test!
             if (_uiState.value.activeStreamUrl == url && _uiState.value.isPlaying) {
-                // Uuendame UI olekut: seame õige ID (täht läheb kollaseks) ja nime
                 _uiState.update { it.copy(
                     selectedStationId = newId,
-                    activeStationName = name // Eemaldame "(Test)" liite visuaalselt
+                    activeStationName = name
                 )}
-
-                // Uuendame mälus valikut
                 prefs.edit().putInt("last_selected_id", newId).putString("last_selected_name", name).apply()
-
-                // Saadame Service'ile signaali, et ta uuendaks teavitust (võtaks "(Test)" nime tagant ära)
                 val i = Intent(RadioService.ACTION_STATION_CHANGED).apply {
                     putExtra("STATION_NAME", name)
                 }
@@ -425,30 +383,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val stationToUpdate = _uiState.value.stationToEdit
         if (stationToUpdate != null) {
             viewModelScope.launch {
-                // 1. Uuenda andmebaas
                 stationRepository.updateUserStation(stationToUpdate, newName, newUrl, newCountryCode)
-
-                // 2. Kontrolli, kas muudetud jaam on hetkel aktiivne
                 if (stationToUpdate.id == _uiState.value.selectedStationId) {
-                    // 2a. Uuenda UI-s kohe nähtav nimi
                     _uiState.update { it.copy(activeStationName = newName) }
-
-                    // 2b. PARANDUS: Saada otse teenusele käsk nime uuendamiseks
                     val serviceIntent = Intent(context, RadioService::class.java).apply {
                         action = RadioService.ACTION_UPDATE_STATION_NAME
                         putExtra("STATION_NAME", newName)
                     }
                     context.startService(serviceIntent)
                 }
-
-                // 3. Sulge dialoog
                 closeEditStationDialog()
             }
         }
     }
 
     // --- ABIFUNKTSIOONID ---
-
     private fun startRadioService(station: RadioStation) {
         val i = Intent(context, RadioService::class.java).apply {
             putExtra("STREAM_URL", station.url)
@@ -463,7 +412,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(selectedStationId = stationId) }
         prefs.edit().putInt("last_selected_id", stationId).apply()
 
-        // Automaatne kategooria vahetus (sünkroniseerimine)
         val station = _uiState.value.stations.find { it.id == stationId }
         if (station != null) {
             val currentCat = _uiState.value.selectedCategory
@@ -478,16 +426,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
-
-        // 1. Uuendame olekut kohe
         _uiState.update { it.copy(
-            activeStationName = name, // Näita nime kohe
-            activeStreamUrl = url,    // Et SearchScreen Stop nupp töötaks
-            selectedStationId = -1,   // TÄHTIS: See pole andmebaasi jaam -> Lemmiku täht tühjaks
+            activeStationName = name,
+            activeStreamUrl = url,
+            selectedStationId = -1,
             isPlaying = true
         )}
-
-        // 2. Käivitame teenuse
         val i = Intent(context, RadioService::class.java).apply {
             putExtra("STREAM_URL", url)
             putExtra("STATION_NAME", name)

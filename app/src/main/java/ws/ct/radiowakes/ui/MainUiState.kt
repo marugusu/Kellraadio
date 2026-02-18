@@ -36,6 +36,7 @@ data class MainUiState(
     val currentTab: Int = 0,
     val selectedCategory: String = "ERR",
     val selectedStationId: Int = -1,
+    val categoryToSelectOnTabChange: String? = null, // UUS
 
     // --- DIALOOGIDE OLEKUD (UUS) ---
     val showSleepDialog: Boolean = false,
