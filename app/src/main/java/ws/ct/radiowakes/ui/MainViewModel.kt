@@ -167,6 +167,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (stations.isEmpty() || isExpired) {
                 refreshStations()
             }
+
         }
 
         // Laadi riigid kohe sisse

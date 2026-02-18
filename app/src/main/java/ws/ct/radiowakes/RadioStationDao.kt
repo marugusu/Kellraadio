@@ -43,4 +43,8 @@ interface RadioStationDao {
 
     @Update
     suspend fun update(station: RadioStation)
+
+    // UUS: Jaama leidmine nime järgi
+    @Query("SELECT * FROM stations WHERE name = :name LIMIT 1")
+    suspend fun getStationByName(name: String): RadioStation?
 }

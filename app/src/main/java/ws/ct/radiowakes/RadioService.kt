@@ -77,7 +77,7 @@ class RadioService : Service() {
 
     private val notificationManager by lazy { RadioNotificationManager(this) }
     private val metadataHelper by lazy { RadioMetadataHelper(this) } 
-    private val prefs: SharedPreferences by lazy { getSharedPreferences("RadioServicePrefs", Context.MODE_PRIVATE) }
+    private val prefs: SharedPreferences by lazy { getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE) }
 
     private var idleTimeoutJob: kotlinx.coroutines.Job? = null
 
@@ -131,8 +131,10 @@ class RadioService : Service() {
                     else {
                         if (currentStreamUrl.isNotEmpty()) startRadio(currentStreamUrl, currentStationName)
                         else {
-                            val savedUrl = prefs.getString("LAST_URL", null)
-                            val savedName = prefs.getString("LAST_NAME", "Raadio")
+                            // See on vana loogika, mis kasutab nime/URLi.
+                            // TODO: Vaata, kas saame seda paremaks teha ID alusel
+                            val savedUrl = prefs.getString("last_url", null)
+                            val savedName = prefs.getString("last_name", "Raadio")
                             if (savedUrl != null) startRadio(savedUrl, savedName ?: "Raadio")
                         }
                     }
@@ -476,9 +478,10 @@ class RadioService : Service() {
                     player.prepare()
                     player.play()
                 } else {
-                    val savedUrl = prefs.getString("LAST_URL", null)
-                    val savedName = prefs.getString("LAST_NAME", "Raadio")
-                    val savedCategory = prefs.getString("LAST_CATEGORY", "") ?: ""
+                    // TODO: Siin võiks samuti ID-d kasutada
+                    val savedUrl = prefs.getString("last_url", null)
+                    val savedName = prefs.getString("last_name", "Raadio")
+                    val savedCategory = prefs.getString("last_category", "") ?: ""
 
                     if (savedUrl != null) {
                         currentCategory = savedCategory
@@ -558,15 +561,30 @@ class RadioService : Service() {
             currentTitle = currentStationName
             currentExtra = ""
 
+            // --- PARANDUS ALGUS ---
+            serviceScope.launch {
+                val db = AppDatabase.getDatabase(applicationContext)
+                val station = db.radioStationDao().getStationByName(currentStationName)
+                if (station != null) {
+                    prefs.edit()
+                        .putInt("last_selected_id", station.id)
+                        .putString("last_category", station.category)
+                        .apply()
+                } else {
+                    // Kui jaama nime järgi ei leita, salvestame vähemalt nime ja URLi
+                    prefs.edit()
+                        .putInt("last_selected_id", -1) // Eemalda ID, et vältida konflikti
+                        .putString("last_url", currentStreamUrl)
+                        .putString("last_name", currentStationName)
+                        .putString("last_category", currentCategory)
+                        .apply()
+                }
+            }
+            // --- PARANDUS LÕPP ---
+
             if (isAlarmMode) {
                 val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
                 notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
-            } else {
-                prefs.edit()
-                    .putString("LAST_URL", currentStreamUrl)
-                    .putString("LAST_NAME", currentStationName)
-                    .putString("LAST_CATEGORY", currentCategory)
-                    .apply()
             }
 
             updateNotification()
