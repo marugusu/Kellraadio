@@ -79,8 +79,6 @@ class RadioService : Service() {
     private val metadataHelper by lazy { RadioMetadataHelper(this) } 
     private val prefs: SharedPreferences by lazy { getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE) }
 
-    private var idleTimeoutJob: kotlinx.coroutines.Job? = null
-
     private var sleepTimerJob: kotlinx.coroutines.Job? = null
     private var sleepTimerRemainingMillis: Long = 0L
 
@@ -146,28 +144,14 @@ class RadioService : Service() {
     }
 
     private fun startRadio(url: String, name: String, triggeredBy: String? = null) {
-        metadataPushJob?.cancel()
-        updateWidget()
-
-        serviceScope.launch(Dispatchers.Main) {
-            currentStationName = name
-            currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(name)
-
-            currentArtist = getString(R.string.live_broadcast)
-            currentTitle = currentStationName
-            currentExtra = ""
-            lastSentArtist = ""
-            lastSentTitle = ""
-
-            player.streamStartTime = SystemClock.elapsedRealtime()
-
-            sendMetadataUpdate(currentTitle, currentArtist)
-            onStartCommand(Intent(this@RadioService, RadioService::class.java).apply {
-                putExtra("STREAM_URL", url)
-                putExtra("STATION_NAME", name)
+        val intent = Intent(this, RadioService::class.java).apply {
+            putExtra("STREAM_URL", url)
+            putExtra("STATION_NAME", name)
+            if (triggeredBy != null) {
                 putExtra("TRIGGERED_BY", triggeredBy)
-            }, 0, 0)
+            }
         }
+        onStartCommand(intent, 0, 0)
     }
 
     private fun changeStation(offset: Int) {
@@ -203,7 +187,7 @@ class RadioService : Service() {
 
             withContext(Dispatchers.Main) {
                 isAlarmMode = false
-                startRadio(nextStation.url, nextStation.name)
+                startRadio(nextStation.url, nextStation.name, "USER")
             }
         }
     }
@@ -335,7 +319,6 @@ class RadioService : Service() {
                         player.isSafeMode = false
                     }
                 }
-                idleTimeoutJob?.cancel()
                 isChangingStation = false
                 saveToHistory(currentArtist, currentTitle)
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
@@ -348,14 +331,12 @@ class RadioService : Service() {
                 metadataPushJob?.cancel()
 
             } else {
+                // --- MUUDATUS ALGUS: Idle Timeout EEMALDATUD ---
+                // Enam ei käivitata taimerit, mis teenuse sulgeks.
                 if (!player.playWhenReady && !isChangingStation) {
-                    startIdleTimeout()
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
                 }
-
-                if (player.playWhenReady) {
-                    idleTimeoutJob?.cancel()
-                }
+                // --- MUUDATUS LÕPP ---
 
                 metadataPushJob?.cancel()
             }
@@ -473,21 +454,8 @@ class RadioService : Service() {
         }
 
         if (action == ACTION_RESUME) {
-            if (!player.isPlaying) {
-                if (currentStreamUrl.isNotEmpty()) {
-                    player.prepare()
-                    player.play()
-                } else {
-                    // TODO: Siin võiks samuti ID-d kasutada
-                    val savedUrl = prefs.getString("last_url", null)
-                    val savedName = prefs.getString("last_name", "Raadio")
-                    val savedCategory = prefs.getString("last_category", "") ?: ""
-
-                    if (savedUrl != null) {
-                        currentCategory = savedCategory
-                        startRadio(savedUrl, savedName ?: "Raadio")
-                    }
-                }
+            if (!player.isPlaying && currentStreamUrl.isNotEmpty()) {
+                startRadio(currentStreamUrl, currentStationName, "USER_RESUME")
             }
             return START_STICKY
         }
@@ -535,7 +503,7 @@ class RadioService : Service() {
         }
 
         if (streamUrl != null) {
-            if (currentStreamUrl == streamUrl && player.isPlaying) {
+            if (currentStreamUrl == streamUrl && player.isPlaying && triggeredBy != "USER_RESUME") {
                 currentStationName = stationName ?: currentStationName
 
                 if (triggeredBy == "ALARM") {
@@ -635,7 +603,6 @@ class RadioService : Service() {
     private fun stopRadio(isError: Boolean = false) {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         stopSleepTimer()
-        idleTimeoutJob?.cancel()
         metadataPushJob?.cancel()
         player.stop()
         player.clearMediaItems()
@@ -665,13 +632,10 @@ class RadioService : Service() {
     }
 
     private fun stopSleepTimer() { sleepTimerJob?.cancel(); sleepTimerJob = null; sleepTimerRemainingMillis = 0; sendTimerTick(0) }
-    private fun startIdleTimeout() {
-        idleTimeoutJob?.cancel()
-        idleTimeoutJob = serviceScope.launch(Dispatchers.Main) {
-            delay(AppConfig.Player.IDLE_TIMEOUT_MS)
-            stopRadio()
-        }
-    }
+    
+    // --- MUUDATUS: Idle Timeout EEMALDATUD ---
+    // private fun startIdleTimeout() { ... }
+
     private fun sendTimerTick(remainingMillis: Long) {
         LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_TIMER_TICK).apply { putExtra("REMAINING_MILLIS", remainingMillis) })
     }

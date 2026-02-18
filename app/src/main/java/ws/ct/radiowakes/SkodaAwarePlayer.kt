@@ -28,6 +28,9 @@ class SkodaAwarePlayer(
     // Seda muutujat muudab RadioService, kui uus laul algab
     var streamStartTime: Long = 0L
 
+    // UUS: Salvestame aja, mil pleier pandi pausile
+    private var positionAtPause: Long = 0L
+
     override fun addListener(listener: Player.Listener) {
         internalListeners.add(listener)
         super.addListener(listener)
@@ -68,11 +71,18 @@ class SkodaAwarePlayer(
     // --- SKODA FIX 2: Võlts-progress ---
     // Arvutame aja ise, sest ExoPlayeri enda aeg striimi puhul ei sobi autodele
     override fun getCurrentPosition(): Long {
-        // KUI TURVAREŽIIM ON SEES -> Tagasta 0 (Staatiline)
-        if (isSafeMode) return 0L
+        // Kui pleier mängib, arvuta aeg reaalajas
+        if (super.isPlaying()) {
+            // KUI TURVAREŽIIM ON SEES -> Tagasta 0 (Staatiline)
+            if (isSafeMode) return 0L
 
-        val elapsed = SystemClock.elapsedRealtime() - streamStartTime
-        return if (streamStartTime > 0) elapsed % 300000L else 0L
+            val elapsed = SystemClock.elapsedRealtime() - streamStartTime
+            // Salvestame jooksvalt viimase väärtuse, et see oleks pausi hetkel olemas
+            positionAtPause = if (streamStartTime > 0) elapsed % 300000L else 0L
+            return positionAtPause
+        }
+        // Kui on pausil, tagasta viimane salvestatud aeg
+        return positionAtPause
     }
 
     // Tagame, et metaandmed liiguksid korrektselt läbi (ForwardingPlayer teeb seda vaikimisi,
