@@ -60,12 +60,10 @@ class RadioService : Service() {
     private var currentCategory: String = ""
     private var lastBitrateInfo: String = ""
 
-    // Hoiame meeles jooksvat infot
     private var currentArtist: String = ""
     private var currentTitle: String = ""
     private var currentExtra: String = ""
 
-    // Et vältida topelt uuendusi autole
     private var lastSentArtist: String = ""
     private var lastSentTitle: String = ""
 
@@ -77,9 +75,8 @@ class RadioService : Service() {
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // --- ABILISED ---
     private val notificationManager by lazy { RadioNotificationManager(this) }
-    private val metadataHelper by lazy { RadioMetadataHelper(this) } // UUS
+    private val metadataHelper by lazy { RadioMetadataHelper(this) } 
     private val prefs: SharedPreferences by lazy { getSharedPreferences("RadioServicePrefs", Context.MODE_PRIVATE) }
 
     private var idleTimeoutJob: kotlinx.coroutines.Job? = null
@@ -154,7 +151,6 @@ class RadioService : Service() {
             currentStationName = name
             currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(name)
 
-            // Nullime algseisu
             currentArtist = getString(R.string.live_broadcast)
             currentTitle = currentStationName
             currentExtra = ""
@@ -211,9 +207,6 @@ class RadioService : Service() {
     }
 
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
-        Log.i(TAG, "[METADATA_RAW] Striimist tuli: '$trackTitleFromStream'")
-
-        // MUUDATUS: Kasutame helperit parsimiseks
         val parsed = metadataHelper.parse(trackTitleFromStream ?: "", currentStationName)
 
         if (parsed.artist == currentArtist && parsed.title == currentTitle) return
@@ -225,8 +218,6 @@ class RadioService : Service() {
         currentArtist = parsed.artist
         currentTitle = parsed.title
         currentExtra = parsed.extra
-
-        Log.d(TAG, "[METADATA_FINAL] -> Artist: '$currentArtist' | Title: '$currentTitle' | Extra: '$currentExtra'")
 
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
@@ -257,7 +248,6 @@ class RadioService : Service() {
         lastSentTitle = title
         lastSentArtist = artist
 
-        // MUUDATUS: Kasutame helperit metaandmete ehitamiseks
         val newMetadata = metadataHelper.buildMediaMetadata(
             title = title,
             artist = artist,
@@ -282,9 +272,7 @@ class RadioService : Service() {
                 try { listener.onMediaMetadataChanged(newMetadata) } catch (e: Exception) { }
             }
         }
-        // Logime ID, et näha, kas muutub (Helper genereerib selle)
         val id = newMetadata.extras?.getString("android.media.metadata.MEDIA_ID")
-        Log.i(TAG, "AUTOLE: '$title' - '$artist' (ID: $id)")
     }
 
     private val httpTransferListener = object : TransferListener {
@@ -340,9 +328,9 @@ class RadioService : Service() {
             if (isPlaying) {
                 player.isSafeMode = true
                 serviceScope.launch(Dispatchers.Main) {
-                    delay(10000) // Oota 10 sekundit
+                    delay(10000)
                     if (::player.isInitialized) {
-                        player.isSafeMode = false // Luba normaalne ajaarvestus
+                        player.isSafeMode = false
                     }
                 }
                 idleTimeoutJob?.cancel()
@@ -358,15 +346,11 @@ class RadioService : Service() {
                 metadataPushJob?.cancel()
 
             } else {
-                // --- MUUDATUS SIIN ---
-                // Kontrollime: Kas kasutaja pani ise pausi? (playWhenReady == false)
-                // Kui playWhenReady on true, siis on tegu puhverdamisega ja me EI käivita taimerit.
                 if (!player.playWhenReady && !isChangingStation) {
-                    startIdleTimeout() // Ainult siis, kui on päriselt paus
+                    startIdleTimeout()
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
                 }
 
-                // Kui lihtsalt puhverdab, tühistame igaks juhuks vana taimeri, et see kogemata ei tiksuks
                 if (player.playWhenReady) {
                     idleTimeoutJob?.cancel()
                 }
@@ -387,7 +371,6 @@ class RadioService : Service() {
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            Log.e(TAG, "Player Error: ${error.message}")
             LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_ERROR))
 
             val cause = error.cause
@@ -437,8 +420,6 @@ class RadioService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.i(TAG, "Teenus loodud")
-        // TURVAPARANDUS: setAllowCrossProtocolRedirects(false) takistab HTTPS -> HTTP allalülitamist.
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0")
             .setAllowCrossProtocolRedirects(false)
@@ -471,11 +452,9 @@ class RadioService : Service() {
         if (action == ACTION_UPDATE_STATION_NAME) {
             val newName = intent.getStringExtra("STATION_NAME")
             if (!newName.isNullOrEmpty() && newName != currentStationName) {
-                Log.d(TAG, "Teenuse nime uuendamine: '$currentStationName' -> '$newName'")
                 currentStationName = newName
                 currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
                 updateNotification()
-                // Uuendame ka auto ekraani ja muid seadmeid
                 updateExternalDevices(currentTitle, currentArtist)
             }
             return START_STICKY
@@ -497,14 +476,12 @@ class RadioService : Service() {
                     player.prepare()
                     player.play()
                 } else {
-                    // Kui mälus URLi pole, proovi taastada viimati kuulatud jaam
                     val savedUrl = prefs.getString("LAST_URL", null)
                     val savedName = prefs.getString("LAST_NAME", "Raadio")
-                    // MUUDATUS: Taastame ka kategooria
                     val savedCategory = prefs.getString("LAST_CATEGORY", "") ?: ""
 
                     if (savedUrl != null) {
-                        currentCategory = savedCategory // <--- MÄÄRAME KATEGOORIA
+                        currentCategory = savedCategory
                         startRadio(savedUrl, savedName ?: "Raadio")
                     }
                 }
@@ -526,17 +503,13 @@ class RadioService : Service() {
         }
         if (action == ACTION_PLAY_PAUSE_TOGGLE) {
             if (player.isPlaying) {
-                // Kui mängib, paneme pausi
                 player.pause()
-                updateNotification() // ja updateWidget kutsutakse kuulaja kaudu
+                updateNotification()
             } else {
-                // Kui ei mängi (või oli kinni), alustame
                 val i = Intent(this, RadioService::class.java)
-                i.action = ACTION_RESUME // Siin i.action viitab kindlalt uuele Intentile
+                i.action = ACTION_RESUME
                 startService(i)
             }
-            // Oluline: Kui teenus oli täiesti kinni, siis startForegroundService äratab ta üles,
-            // ja see blokk siin hoolitseb loogika eest.
             return START_STICKY
         }
         if (action == ACTION_FORCE_WIDGET_UPDATE) {
@@ -560,11 +533,10 @@ class RadioService : Service() {
 
         if (streamUrl != null) {
             if (currentStreamUrl == streamUrl && player.isPlaying) {
-                Log.i(TAG, "See jaam juba mängib, ei restardi: $stationName")
                 currentStationName = stationName ?: currentStationName
 
                 if (triggeredBy == "ALARM") {
-                    isAlarmMode = true // Märgime, et nüüd on äratuse režiim
+                    isAlarmMode = true
                     val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
                     notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
                 }
@@ -577,14 +549,11 @@ class RadioService : Service() {
             sendBitrateUpdate()
             wakeLock?.acquire(10 * 60 * 1000L)
 
-            Log.i(TAG, "Alustan jaama (onStartCommand): $stationName")
-
             currentStreamUrl = streamUrl
             currentStationName = stationName ?: "Raadio"
             isAlarmMode = triggeredBy == "ALARM"
             currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
 
-            // MUUDATUS: Kasutame siin ka stringResource
             currentArtist = getString(R.string.live_broadcast)
             currentTitle = currentStationName
             currentExtra = ""
@@ -593,7 +562,6 @@ class RadioService : Service() {
                 val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
                 notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
             } else {
-                // MUUDATUS: Salvestame nüüd ka kategooria (currentCategory)
                 prefs.edit()
                     .putString("LAST_URL", currentStreamUrl)
                     .putString("LAST_NAME", currentStationName)
@@ -606,7 +574,6 @@ class RadioService : Service() {
             if (player.isPlaying) player.stop()
             player.clearMediaItems()
 
-            // MUUDATUS: Kasutame helperit ka siin algseisu loomiseks
             val initialMeta = metadataHelper.buildMediaMetadata(
                 title = currentTitle,
                 artist = currentArtist,
@@ -682,12 +649,8 @@ class RadioService : Service() {
     private fun stopSleepTimer() { sleepTimerJob?.cancel(); sleepTimerJob = null; sleepTimerRemainingMillis = 0; sendTimerTick(0) }
     private fun startIdleTimeout() {
         idleTimeoutJob?.cancel()
-        // PARANDUS: Lisasime (Dispatchers.Main), et kood jookseks pealõimes.
-        // ExoPlayerit tohib peatada AINULT pealõimes.
         idleTimeoutJob = serviceScope.launch(Dispatchers.Main) {
-            Log.d(TAG, "Taimer käivitus: Ootan ${AppConfig.Player.IDLE_TIMEOUT_MS}ms enne sulgemist")
             delay(AppConfig.Player.IDLE_TIMEOUT_MS)
-            Log.d(TAG, "Aeg täis. Sulgen teenuse, et vabastada Bluetooth.")
             stopRadio()
         }
     }
@@ -745,7 +708,6 @@ class RadioService : Service() {
 
                     if (nextAlarm != null) {
                         val timeAndDays = AlarmUtils.getAlarmText(this@RadioService, nextAlarm.first.hour, nextAlarm.first.minute, nextAlarm.first.days)
-                        // VORMING: "07:00 • E-R • Raadio 2" (Ilma ikoonita)
                         nextAlarmString = "$timeAndDays • ${nextAlarm.first.stationName}"
                     }
                 }
@@ -755,12 +717,12 @@ class RadioService : Service() {
 
             try {
                 val context = applicationContext
-                val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+                val manager = GlanceAppWidgetManager(context)
                 val widget = ws.ct.radiowakes.widget.HomeWidget()
                 val glanceIds = manager.getGlanceIds(widget.javaClass)
 
                 glanceIds.forEach { glanceId ->
-                    androidx.glance.appwidget.state.updateAppWidgetState(context, glanceId) { prefs ->
+                    updateAppWidgetState(context, glanceId) { prefs ->
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.stationName] = stationName
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.title] = title
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.artist] = artist
@@ -771,7 +733,6 @@ class RadioService : Service() {
                         val extraInfo = if (extra.isNotBlank()) "$extra • $statusText" else statusText
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.status] = extraInfo
 
-                        // Saadame äratuse info
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.alarm] = nextAlarmString
 
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.isPlaying] = isPlaying

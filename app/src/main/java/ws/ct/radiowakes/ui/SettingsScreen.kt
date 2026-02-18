@@ -49,7 +49,6 @@ fun SettingsScreen(
     onColsLandscapeChange: (Int) -> Unit,
     onRefresh: () -> Unit,
     onClearHistory: () -> Unit,
-    onAddTestData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -243,14 +242,6 @@ fun SettingsScreen(
                     icon = Icons.Default.BugReport,
                     onClick = { LogExporter.exportAndShareLog(context) }
                 )
-
-                SettingsCardItem(
-                    headline = stringResource(R.string.settings_test_data),
-                    supporting = stringResource(R.string.settings_test_data_desc),
-                    icon = Icons.Default.Science,
-                    onClick = onAddTestData,
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f)
-                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -439,9 +430,4 @@ private fun getAppVersionName(context: Context): String {
         }
         packageInfo.versionName ?: "1.0"
     } catch (e: Exception) { "1.0" }
-}
-
-@Composable
-fun Spacer(modifier: Modifier) {
-    // This is a placeholder, actual Spacer is in foundation
 }
