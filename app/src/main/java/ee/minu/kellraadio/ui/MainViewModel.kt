@@ -329,6 +329,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveUserStation(name: String, url: String, countryCode: String = "") {
+        if (!isValidUrl(url)) {
+            Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
+            return
+        }
+        
         viewModelScope.launch {
             // 1. Salvestame andmebaasi ja saame uue ID
             val newId = stationRepository.saveUserStation(name, url, countryCode)
@@ -401,6 +406,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateUserStation(newName: String, newUrl: String) {
+        if (!isValidUrl(newUrl)) {
+            Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val stationToUpdate = _uiState.value.stationToEdit
         if (stationToUpdate != null) {
             viewModelScope.launch {
@@ -453,6 +463,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playTestStation(name: String, url: String) {
+        if (!isValidUrl(url)) {
+            Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
+            return
+        }
+
         // 1. Uuendame olekut kohe
         _uiState.update { it.copy(
             activeStationName = name, // Näita nime kohe
@@ -468,6 +483,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             putExtra("TRIGGERED_BY", "USER")
         }
         context.startForegroundService(i)
+    }
+
+    private fun isValidUrl(url: String): Boolean {
+        val trimmed = url.trim().lowercase()
+        return trimmed.startsWith("http://") || trimmed.startsWith("https://")
     }
 
     override fun onCleared() {

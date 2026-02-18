@@ -29,6 +29,7 @@
     <string name="notification_playing">Mäņgõb: %1$s</string>
     <string name="notification_alarm">Ārratõmiz!</string>
     <string name="error_station_not_found">Stacij äb līdõd!</string>
+    <string name="error_invalid_url">Vigā URL! (umb algõ http:// või https://)</string>
 
     <!-- Alarms -->
     <string name="alarm_title">Ārratõmizt</string>

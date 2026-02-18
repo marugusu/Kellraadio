@@ -438,7 +438,12 @@ class RadioService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Teenus loodud")
-        val dataSourceFactory = DefaultHttpDataSource.Factory().setUserAgent("Mozilla/5.0").setAllowCrossProtocolRedirects(true).setTransferListener(httpTransferListener)
+        // TURVAPARANDUS: setAllowCrossProtocolRedirects(false) takistab HTTPS -> HTTP allalülitamist.
+        val dataSourceFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0")
+            .setAllowCrossProtocolRedirects(false)
+            .setTransferListener(httpTransferListener)
+        
         val trackSelector = DefaultTrackSelector(this).apply { setParameters(buildUponParameters().setForceHighestSupportedBitrate(true)) }
 
         val realPlayer = ExoPlayer.Builder(this)

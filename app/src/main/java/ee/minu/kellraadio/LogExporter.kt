@@ -20,7 +20,10 @@ object LogExporter {
             val fileName = "kellraadio_log_$timestamp.txt"
             val logFile = File(logDir, fileName)
 
-            val process = Runtime.getRuntime().exec("logcat -b all -d -v threadtime")
+            // TURVAPARANDUS: Kasutame --pid parameetrit, et eksportida AINULT selle rakenduse logisid.
+            // See takistab teiste rakenduste või süsteemi tundliku info lekkimist.
+            val pid = android.os.Process.myPid()
+            val process = Runtime.getRuntime().exec("logcat -d -v threadtime --pid=$pid")
 
             val bufferedReader = process.inputStream.bufferedReader()
             val outputStream = logFile.outputStream().bufferedWriter()

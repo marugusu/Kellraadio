@@ -34,6 +34,7 @@
     <string name="notification_playing">Mängib: %1$s</string>
     <string name="notification_alarm">Äratus!</string>
     <string name="error_station_not_found">Jaama ei leitud!</string>
+    <string name="error_invalid_url">Vigane URL! (peab algama http:// või https://)</string>
 
     <!-- Alarms -->
     <string name="alarm_title">Äratused</string>

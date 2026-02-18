@@ -432,14 +432,16 @@ private fun getDateHeader(context: Context, timestamp: Long): String {
 }
 
 private fun openSearch(context: Context, query: String) {
-    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=$query"))) } catch (e: Exception) {}
+    val encodedQuery = Uri.encode(query)
+    try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=$encodedQuery"))) } catch (e: Exception) {}
 }
 
 private fun openSpotify(context: Context, query: String) {
+    val encodedQuery = Uri.encode(query)
     try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("spotify:search:$query")).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("spotify:search:$encodedQuery")).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
         context.startActivity(intent)
     } catch (e: Exception) {
-        try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/$query"))) } catch (e2: Exception) {}
+        try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/$encodedQuery"))) } catch (e2: Exception) {}
     }
 }

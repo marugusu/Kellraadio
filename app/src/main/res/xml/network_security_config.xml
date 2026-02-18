@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+      Globaalselt lubame HTTP-liiklust (cleartext), kuna paljud raadiojaamad 
+      kasutavad endiselt HTTP-vooge ning kasutajad saavad ise suvalisi jaamu lisada.
+      Kuid kasutame konfigu-faili, et see oleks hallatav ja järgiks modernseid Androidi suuniseid.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
