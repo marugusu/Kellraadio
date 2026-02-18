@@ -46,8 +46,8 @@ class RadioStationRepository(
     }
 
     // Kasutaja jaama muutmine (UUS)
-    suspend fun updateUserStation(station: RadioStation, newName: String, newUrl: String) {
-        val updatedStation = station.copy(name = newName, url = newUrl)
+    suspend fun updateUserStation(station: RadioStation, newName: String, newUrl: String, newCountryCode: String = "") {
+        val updatedStation = station.copy(name = newName, url = newUrl, countryCode = newCountryCode)
         stationDao.update(updatedStation)
     }
 

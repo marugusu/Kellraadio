@@ -46,6 +46,8 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
     private val _showManualDialog = MutableStateFlow(false)
     val showManualDialog = _showManualDialog.asStateFlow()
 
+    private var cachedCountries: List<RadioFilterItem> = emptyList()
+
     // Kerimise asukoha meelespidamiseks
     val listState = LazyListState()
 
@@ -93,7 +95,9 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
     fun openFilter(type: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            _filterItems.value = if (type == "COUNTRY") repository.getCountries() else repository.getTags()
+            val items = if (type == "COUNTRY") repository.getCountries() else repository.getTags()
+            if (type == "COUNTRY") cachedCountries = items
+            _filterItems.value = items
             _filterType.value = type
             _isLoading.value = false
             _showFilterSheet.value = true
@@ -106,9 +110,17 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
 
     fun openManualAddDialog() {
         _showManualDialog.value = true
+        // Tagame, et riigid on olemas
+        if (cachedCountries.isEmpty()) {
+            viewModelScope.launch {
+                cachedCountries = repository.getCountries()
+            }
+        }
     }
 
     fun closeManualAddDialog() {
         _showManualDialog.value = false
     }
+
+    fun countryListForManual(): List<RadioFilterItem> = cachedCountries
 }

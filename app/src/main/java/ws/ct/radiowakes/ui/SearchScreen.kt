@@ -61,7 +61,6 @@ fun SearchScreen(
         allStations.flatMap { listOf(it.url, it.uuid) }.filter { it.isNotEmpty() }.toSet()
     }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -216,7 +215,7 @@ fun SearchScreen(
     }
 
     if (showFilterSheet) {
-        FilterSheet(
+        FilterDialog(
             title = if (filterType == "COUNTRY") stringResource(R.string.filter_country) else stringResource(R.string.filter_genre),
             items = filterItems,
             onDismiss = { viewModel.closeFilterSheet() },
@@ -233,95 +232,14 @@ fun SearchScreen(
 
     if (showManualDialog) {
         ManualAddDialog(
+            allCountries = viewModel.countryListForManual(),
             onDismiss = { viewModel.closeManualAddDialog() },
             onTest = { name, url -> onPlayTest(if(name.isNotBlank()) name else "Tundmatu", url, false) },
-            onSave = { name, url ->
-                onSaveStation(name, url, "")
+            onSave = { name, url, country ->
+                onSaveStation(name, url, country)
                 viewModel.closeManualAddDialog()
             }
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FilterSheet(
-    title: String,
-    items: List<RadioFilterItem>,
-    onDismiss: () -> Unit,
-    onSelect: (RadioFilterItem) -> Unit
-) {
-    var searchQuery by remember { mutableStateOf("") }
-
-    val filteredItems = remember(items, searchQuery) {
-        if (searchQuery.isBlank()) items else items.filter { it.name.contains(searchQuery, ignoreCase = true) }
-    }
-
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-        ) {
-            Column(modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 0.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
-                )
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    leadingIcon = { Icon(Icons.Default.Search, null) }
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                LazyColumn(
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    items(filteredItems) { item ->
-                        val flag = if (item.isoCode != null) ws.ct.radiowakes.ui.getFlagEmoji(item.isoCode) else ""
-                        ListItem(
-                            headlineContent = {
-                                Text(
-                                    text = item.name,
-                                    fontWeight = FontWeight.Normal,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            },
-                            supportingContent = {
-                                Text(
-                                    text = "${item.stationCount}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            leadingContent = {
-                                if (flag.isNotEmpty()) {
-                                    Text(
-                                        text = flag,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
-                            },
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onSelect(item) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -333,7 +251,7 @@ fun SearchResultItem(
     onPlay: () -> Unit,
     onAdd: () -> Unit
 ) {
-    val flag = ws.ct.radiowakes.ui.getFlagEmoji(station.countryCode)
+    val flag = getFlagEmoji(station.countryCode)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp),
@@ -391,14 +309,23 @@ fun SearchResultItem(
 }
 
 @Composable
-fun ManualAddDialog(onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String) -> Unit) {
+fun ManualAddDialog(
+    allCountries: List<RadioFilterItem>,
+    onDismiss: () -> Unit,
+    onTest: (String, String) -> Unit,
+    onSave: (String, String, String) -> Unit
+) {
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
+    var countryCode by remember { mutableStateOf("") }
+    var countryName by remember { mutableStateOf("") }
+    var showCountryPicker by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.manual_dialog_title)) },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -411,9 +338,36 @@ fun ManualAddDialog(onDismiss: () -> Unit, onTest: (String, String) -> Unit, onS
                     label = { Text(stringResource(R.string.stream_url)) },
                     modifier = Modifier.fillMaxWidth()
                 )
+                
+                OutlinedCard(
+                    onClick = { showCountryPicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""
+                        if (flag.isNotEmpty()) {
+                            Text(flag, style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.width(12.dp))
+                        } else {
+                            Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.width(12.dp))
+                        }
+                        Text(
+                            text = if (countryName.isNotEmpty()) countryName else stringResource(R.string.filter_country),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (countryName.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(Icons.Default.ArrowDropDown, null)
+                    }
+                }
             }
         },
-        confirmButton = { Button(onClick = { onSave(name, url) }) { Text(stringResource(R.string.action_save)) } },
+        confirmButton = { Button(onClick = { onSave(name, url, countryCode) }) { Text(stringResource(R.string.action_save)) } },
         dismissButton = {
             Row {
                 TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) {
@@ -425,4 +379,17 @@ fun ManualAddDialog(onDismiss: () -> Unit, onTest: (String, String) -> Unit, onS
             }
         }
     )
+
+    if (showCountryPicker) {
+        FilterDialog(
+            title = stringResource(R.string.filter_country),
+            items = allCountries,
+            onDismiss = { showCountryPicker = false },
+            onSelect = { item ->
+                countryCode = item.isoCode ?: ""
+                countryName = item.name
+                showCountryPicker = false
+            }
+        )
+    }
 }

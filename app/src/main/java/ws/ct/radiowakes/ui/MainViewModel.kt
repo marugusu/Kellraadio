@@ -167,8 +167,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (stations.isEmpty() || isExpired) {
                 refreshStations()
             }
-
         }
+
+        // Laadi riigid kohe sisse
+        loadCountries()
     }
 
     private fun loadPreferences() {
@@ -179,6 +181,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             colsLandscape = prefs.getInt("cols_landscape", 3),
             showFlags = prefs.getBoolean("show_flags", true)
         )}
+    }
+
+    private fun loadCountries() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCountriesLoading = true) }
+            val countries = stationRepository.getCountries()
+            _uiState.update { it.copy(countries = countries, isCountriesLoading = false) }
+        }
     }
 
     // --- KASUTAJA TEGEVUSED (EVENTS) ---
@@ -405,7 +415,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateUserStation(newName: String, newUrl: String) {
+    fun updateUserStation(newName: String, newUrl: String, newCountryCode: String = "") {
         if (!isValidUrl(newUrl)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
@@ -415,7 +425,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (stationToUpdate != null) {
             viewModelScope.launch {
                 // 1. Uuenda andmebaas
-                stationRepository.updateUserStation(stationToUpdate, newName, newUrl)
+                stationRepository.updateUserStation(stationToUpdate, newName, newUrl, newCountryCode)
 
                 // 2. Kontrolli, kas muudetud jaam on hetkel aktiivne
                 if (stationToUpdate.id == _uiState.value.selectedStationId) {

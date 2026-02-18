@@ -1,6 +1,7 @@
 package ws.ct.radiowakes.ui
 
 import ws.ct.radiowakes.Alarm
+import ws.ct.radiowakes.RadioFilterItem
 import ws.ct.radiowakes.RadioStation
 import ws.ct.radiowakes.SongAdditionalInfo
 
@@ -21,9 +22,11 @@ data class MainUiState(
     // --- ANDMED ---
     val stations: List<RadioStation> = emptyList(),
     val alarms: List<Alarm> = emptyList(),
+    val countries: List<RadioFilterItem> = emptyList(),
 
     // --- UI KONFIGURATSIOON ---
     val isRefreshing: Boolean = false,
+    val isCountriesLoading: Boolean = false,
     val sleepTimerRemaining: Long = 0L,
     val showFlags: Boolean = true,
     val colsPortrait: Int = 3,

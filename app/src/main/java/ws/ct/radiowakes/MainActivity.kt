@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -463,12 +464,14 @@ fun RaadioEkraan(
         EditStationDialog(
             stationName = stationToEdit.name,
             stationUrl = stationToEdit.url,
+            stationCountry = stationToEdit.countryCode,
+            allCountries = state.countries,
             onDismiss = mainViewModel::closeEditStationDialog,
             onTest = { name, url ->
                 mainViewModel.playTestStation("$name (${context.getString(R.string.action_test)})", url)
             },
-            onSave = { newName, newUrl ->
-                mainViewModel.updateUserStation(newName, newUrl)
+            onSave = { newName, newUrl, newCountry ->
+                mainViewModel.updateUserStation(newName, newUrl, newCountry)
             }
         )
     }
@@ -567,14 +570,28 @@ fun ContentScreens(
 }
 
 @Composable
-fun EditStationDialog(stationName: String, stationUrl: String, onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String) -> Unit) {
+fun EditStationDialog(
+    stationName: String,
+    stationUrl: String,
+    stationCountry: String,
+    allCountries: List<ws.ct.radiowakes.RadioFilterItem>,
+    onDismiss: () -> Unit,
+    onTest: (String, String) -> Unit,
+    onSave: (String, String, String) -> Unit
+) {
     var name by remember { mutableStateOf(stationName) }
     var url by remember { mutableStateOf(stationUrl) }
+    var countryCode by remember { mutableStateOf(stationCountry) }
+    var countryName by remember { 
+        mutableStateOf(allCountries.find { it.isoCode == stationCountry }?.name ?: "") 
+    }
+    var showCountryPicker by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.action_edit_station)) },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -587,9 +604,36 @@ fun EditStationDialog(stationName: String, stationUrl: String, onDismiss: () -> 
                     label = { Text(stringResource(R.string.stream_url)) },
                     modifier = Modifier.fillMaxWidth()
                 )
+                
+                OutlinedCard(
+                    onClick = { showCountryPicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""
+                        if (flag.isNotEmpty()) {
+                            Text(flag, style = MaterialTheme.typography.titleMedium)
+                            Spacer(modifier = Modifier.width(12.dp))
+                        } else {
+                            Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.width(12.dp))
+                        }
+                        Text(
+                            text = if (countryName.isNotEmpty()) countryName else stringResource(R.string.filter_country),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (countryName.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(Icons.Default.ArrowDropDown, null)
+                    }
+                }
             }
         },
-        confirmButton = { Button(onClick = { onSave(name, url) }) { Text(stringResource(R.string.action_save)) } },
+        confirmButton = { Button(onClick = { onSave(name, url, countryCode) }) { Text(stringResource(R.string.action_save)) } },
         dismissButton = {
             Row {
                 TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) {
@@ -601,4 +645,17 @@ fun EditStationDialog(stationName: String, stationUrl: String, onDismiss: () -> 
             }
         }
     )
+
+    if (showCountryPicker) {
+        FilterDialog(
+            title = stringResource(R.string.filter_country),
+            items = allCountries,
+            onDismiss = { showCountryPicker = false },
+            onSelect = { item ->
+                countryCode = item.isoCode ?: ""
+                countryName = item.name
+                showCountryPicker = false
+            }
+        )
+    }
 }
