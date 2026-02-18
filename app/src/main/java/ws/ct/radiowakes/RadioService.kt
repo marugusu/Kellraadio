@@ -125,15 +125,11 @@ class RadioService : Service() {
                     return SessionResult.RESULT_SUCCESS
                 }
                 Player.COMMAND_PLAY_PAUSE -> {
-                    if (player.isPlaying) player.pause()
-                    else {
-                        if (currentStreamUrl.isNotEmpty()) startRadio(currentStreamUrl, currentStationName)
-                        else {
-                            // See on vana loogika, mis kasutab nime/URLi.
-                            // TODO: Vaata, kas saame seda paremaks teha ID alusel
-                            val savedUrl = prefs.getString("last_url", null)
-                            val savedName = prefs.getString("last_name", "Raadio")
-                            if (savedUrl != null) startRadio(savedUrl, savedName ?: "Raadio")
+                    if (player.isPlaying) {
+                        player.pause()
+                    } else {
+                        if (currentStreamUrl.isNotEmpty()) {
+                            playStation(currentStreamUrl, currentStationName, "USER_RESUME")
                         }
                     }
                     return SessionResult.RESULT_SUCCESS
@@ -141,17 +137,6 @@ class RadioService : Service() {
             }
             return super.onPlayerCommandRequest(session, controller, playerCommand)
         }
-    }
-
-    private fun startRadio(url: String, name: String, triggeredBy: String? = null) {
-        val intent = Intent(this, RadioService::class.java).apply {
-            putExtra("STREAM_URL", url)
-            putExtra("STATION_NAME", name)
-            if (triggeredBy != null) {
-                putExtra("TRIGGERED_BY", triggeredBy)
-            }
-        }
-        onStartCommand(intent, 0, 0)
     }
 
     private fun changeStation(offset: Int) {
@@ -187,24 +172,18 @@ class RadioService : Service() {
 
             withContext(Dispatchers.Main) {
                 isAlarmMode = false
-                startRadio(nextStation.url, nextStation.name, "USER")
+                playStation(nextStation.url, nextStation.name, "USER")
             }
         }
     }
 
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
         val parsed = metadataHelper.parse(trackTitleFromStream ?: "", currentStationName)
-
-        if (parsed.artist == currentArtist && parsed.title == currentTitle) return
-
         saveToHistory(parsed.artist, parsed.title)
-
         player.streamStartTime = SystemClock.elapsedRealtime()
-
         currentArtist = parsed.artist
         currentTitle = parsed.title
         currentExtra = parsed.extra
-
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
         updateNotification()
@@ -258,7 +237,6 @@ class RadioService : Service() {
                 try { listener.onMediaMetadataChanged(newMetadata) } catch (e: Exception) { }
             }
         }
-        val id = newMetadata.extras?.getString("android.media.metadata.MEDIA_ID")
     }
 
     private val httpTransferListener = object : TransferListener {
@@ -331,13 +309,9 @@ class RadioService : Service() {
                 metadataPushJob?.cancel()
 
             } else {
-                // --- MUUDATUS ALGUS: Idle Timeout EEMALDATUD ---
-                // Enam ei käivitata taimerit, mis teenuse sulgeks.
                 if (!player.playWhenReady && !isChangingStation) {
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
                 }
-                // --- MUUDATUS LÕPP ---
-
                 metadataPushJob?.cancel()
             }
         }
@@ -355,7 +329,6 @@ class RadioService : Service() {
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_ERROR))
-
             val cause = error.cause
             val isFatalError = when {
                 cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException -> cause.responseCode in 400..499
@@ -363,25 +336,16 @@ class RadioService : Service() {
                 error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> true
                 else -> false
             }
-
             if (isFatalError) {
                 stopRadio(isError = true)
                 return
             }
-
             isChangingStation = false
             serviceScope.launch {
                 delay(2000)
                 withContext(Dispatchers.Main) {
                     if (currentStreamUrl.isNotEmpty()) {
-                        val mediaItem = MediaItem.Builder()
-                            .setUri(currentStreamUrl)
-                            .setMediaId("Raadio")
-                            .setMediaMetadata(player.playlistMetadata)
-                            .build()
-                        player.setMediaItem(mediaItem)
-                        player.prepare()
-                        player.play()
+                        playStation(currentStreamUrl, currentStationName, "RECONNECT")
                     }
                 }
             }
@@ -409,7 +373,6 @@ class RadioService : Service() {
             .setTransferListener(httpTransferListener)
         
         val trackSelector = DefaultTrackSelector(this).apply { setParameters(buildUponParameters().setForceHighestSupportedBitrate(true)) }
-
         val realPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory))
             .setTrackSelector(trackSelector)
@@ -417,9 +380,7 @@ class RadioService : Service() {
             .setHandleAudioBecomingNoisy(true).build()
 
         realPlayer.addListener(playerListener)
-
         player = SkodaAwarePlayer(realPlayer, listeners)
-
         mediaSession = MediaSession.Builder(this, player).setSessionActivity(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)).setCallback(mediaSessionCallback).build()
         LocalBroadcastManager.getInstance(this).registerReceiver(statusReceiver, IntentFilter(ACTION_GET_STATUS))
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -429,165 +390,155 @@ class RadioService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         wakeLock?.acquire(10 * 60 * 1000L)
-
         val action = intent?.action
 
-        if (action == ACTION_UPDATE_STATION_NAME) {
-            val newName = intent.getStringExtra("STATION_NAME")
-            if (!newName.isNullOrEmpty() && newName != currentStationName) {
-                currentStationName = newName
-                currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
-                updateNotification()
-                updateExternalDevices(currentTitle, currentArtist)
-            }
-            return START_STICKY
-        }
-
-        if (action == ACTION_SKIP_NEXT) {
-            changeStation(1)
-            return START_STICKY
-        }
-
-        if (action == ACTION_SKIP_PREVIOUS) {
-            changeStation(-1)
-            return START_STICKY
-        }
-
-        if (action == ACTION_RESUME) {
-            if (!player.isPlaying && currentStreamUrl.isNotEmpty()) {
-                startRadio(currentStreamUrl, currentStationName, "USER_RESUME")
-            }
-            return START_STICKY
-        }
-
-        if (action == ACTION_PAUSE) {
-            player.pause()
-            if (wakeLock?.isHeld == true) wakeLock?.release()
-            metadataPushJob?.cancel()
-            updateNotification()
-            return START_STICKY
-        }
-
-        if (action == ACTION_STOP) {
-            stopRadio()
-            return START_NOT_STICKY
-        }
-        if (action == ACTION_PLAY_PAUSE_TOGGLE) {
-            if (player.isPlaying) {
+        when(action) {
+            ACTION_PAUSE -> {
                 player.pause()
+                if (wakeLock?.isHeld == true) wakeLock?.release()
+                metadataPushJob?.cancel()
                 updateNotification()
-            } else {
-                val i = Intent(this, RadioService::class.java)
-                i.action = ACTION_RESUME
-                startService(i)
+                return START_STICKY
             }
-            return START_STICKY
+            ACTION_RESUME -> {
+                if (!player.isPlaying && currentStreamUrl.isNotEmpty()) {
+                    playStation(currentStreamUrl, currentStationName, "USER_RESUME")
+                }
+                return START_STICKY
+            }
+            ACTION_STOP -> {
+                stopRadio()
+                return START_NOT_STICKY
+            }
+            ACTION_SKIP_NEXT -> { changeStation(1); return START_STICKY }
+            ACTION_SKIP_PREVIOUS -> { changeStation(-1); return START_STICKY }
+            ACTION_PLAY_PAUSE_TOGGLE -> {
+                if (player.isPlaying) {
+                    player.pause()
+                    updateNotification()
+                } else {
+                    if (currentStreamUrl.isNotEmpty()) {
+                         playStation(currentStreamUrl, currentStationName, "USER_RESUME")
+                    }
+                }
+                return START_STICKY
+            }
+            ACTION_UPDATE_STATION_NAME -> {
+                val newName = intent.getStringExtra("STATION_NAME")
+                if (!newName.isNullOrEmpty() && newName != currentStationName) {
+                    currentStationName = newName
+                    currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+                    updateNotification()
+                    updateExternalDevices(currentTitle, currentArtist)
+                }
+                return START_STICKY
+            }
+            ACTION_SET_TIMER -> {
+                val duration = intent.getIntExtra(EXTRA_TIMER_DURATION, 0)
+                startSleepTimer(duration)
+                return START_STICKY
+            }
+            ACTION_FORCE_WIDGET_UPDATE -> {
+                updateWidget()
+                return START_STICKY
+            }
         }
-        if (action == ACTION_FORCE_WIDGET_UPDATE) {
-            updateWidget()
-            return START_STICKY
-        }
-
-        if (action == ACTION_SET_TIMER) {
-            val duration = intent.getIntExtra(EXTRA_TIMER_DURATION, 0)
-            startSleepTimer(duration)
-            return START_STICKY
-        }
-
+        
         val streamUrl = intent?.getStringExtra("STREAM_URL")
-        val stationName = intent?.getStringExtra("STATION_NAME")
-        val triggeredBy = intent?.getStringExtra("TRIGGERED_BY")
-        val categoryParam = intent?.getStringExtra("CATEGORY_NAME")
-        if (categoryParam != null) {
-            currentCategory = categoryParam
-        }
-
         if (streamUrl != null) {
+            val stationName = intent.getStringExtra("STATION_NAME")
+            val triggeredBy = intent.getStringExtra("TRIGGERED_BY")
+            val category = intent.getStringExtra("CATEGORY_NAME")
+            if (category != null) currentCategory = category
+            
             if (currentStreamUrl == streamUrl && player.isPlaying && triggeredBy != "USER_RESUME") {
-                currentStationName = stationName ?: currentStationName
-
                 if (triggeredBy == "ALARM") {
                     isAlarmMode = true
                     val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
                     notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
                 }
-
                 updateNotification()
-                return START_STICKY
+            } else {
+                playStation(streamUrl, stationName, triggeredBy)
             }
-            isChangingStation = true
-            lastBitrateInfo = ""
-            sendBitrateUpdate()
-            wakeLock?.acquire(10 * 60 * 1000L)
+        }
+        return START_STICKY
+    }
 
-            currentStreamUrl = streamUrl
-            currentStationName = stationName ?: "Raadio"
-            isAlarmMode = triggeredBy == "ALARM"
-            currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+    private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?) {
+        isChangingStation = true
+        lastBitrateInfo = ""
+        sendBitrateUpdate()
+        wakeLock?.acquire(10 * 60 * 1000L)
 
-            currentArtist = getString(R.string.live_broadcast)
-            currentTitle = currentStationName
-            currentExtra = ""
+        // --- LÕPLIK PARANDUS ALGAB SIIT ---
+        // Lähtesta ka viimati saadetud info vahemälu. See tagab, et esimene
+        // metaandmete uuendus pärast taaskäivitust saadetakse alati edasi.
+        lastSentTitle = ""
+        lastSentArtist = ""
+        // --- LÕPLIK PARANDUS LÕPEB SIIN ---
 
-            // --- PARANDUS ALGUS ---
-            serviceScope.launch {
-                val db = AppDatabase.getDatabase(applicationContext)
-                val station = db.radioStationDao().getStationByName(currentStationName)
-                if (station != null) {
-                    prefs.edit()
-                        .putInt("last_selected_id", station.id)
-                        .putString("last_category", station.category)
-                        .apply()
-                } else {
-                    // Kui jaama nime järgi ei leita, salvestame vähemalt nime ja URLi
-                    prefs.edit()
-                        .putInt("last_selected_id", -1) // Eemalda ID, et vältida konflikti
-                        .putString("last_url", currentStreamUrl)
-                        .putString("last_name", currentStationName)
-                        .putString("last_category", currentCategory)
-                        .apply()
-                }
+        currentStreamUrl = streamUrl
+        currentStationName = stationName ?: "Raadio"
+        isAlarmMode = triggeredBy == "ALARM"
+        currentStationBitmap = ws.ct.radiowakes.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+
+        currentArtist = getString(R.string.live_broadcast)
+        currentTitle = currentStationName
+        currentExtra = ""
+
+        serviceScope.launch {
+            val db = AppDatabase.getDatabase(applicationContext)
+            val station = db.radioStationDao().getStationByName(currentStationName)
+            if (station != null) {
+                prefs.edit()
+                    .putInt("last_selected_id", station.id)
+                    .putString("last_category", station.category)
+                    .apply()
+            } else {
+                prefs.edit()
+                    .putInt("last_selected_id", -1)
+                    .putString("last_url", currentStreamUrl)
+                    .putString("last_name", currentStationName)
+                    .putString("last_category", currentCategory)
+                    .apply()
             }
-            // --- PARANDUS LÕPP ---
-
-            if (isAlarmMode) {
-                val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
-                notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
-            }
-
-            updateNotification()
-
-            if (player.isPlaying) player.stop()
-            player.clearMediaItems()
-
-            val initialMeta = metadataHelper.buildMediaMetadata(
-                title = currentTitle,
-                artist = currentArtist,
-                stationName = currentStationName,
-                artworkData = getArtworkBytes()
-            )
-
-            player.setMediaItem(
-                MediaItem.Builder()
-                    .setUri(streamUrl)
-                    .setMediaId("Raadio")
-                    .setMediaMetadata(initialMeta)
-                    .build()
-            )
-
-            player.playlistMetadata = initialMeta
-            player.streamStartTime = SystemClock.elapsedRealtime()
-
-            player.prepare()
-            player.play()
+        }
+        
+        if (isAlarmMode) {
+            val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
+            notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
         }
 
-        return START_STICKY
+        updateNotification()
+
+        if (player.isPlaying) player.stop()
+        player.clearMediaItems()
+
+        val initialMeta = metadataHelper.buildMediaMetadata(
+            title = currentTitle,
+            artist = currentArtist,
+            stationName = currentStationName,
+            artworkData = getArtworkBytes()
+        )
+
+        player.setMediaItem(
+            MediaItem.Builder()
+                .setUri(streamUrl)
+                .setMediaId("Raadio")
+                .setMediaMetadata(initialMeta)
+                .build()
+        )
+
+        player.playlistMetadata = initialMeta
+        player.streamStartTime = SystemClock.elapsedRealtime()
+
+        player.prepare()
+        player.play()
     }
 
     private fun updateNotification() {
         val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
-
         if (player.isPlaying || isAlarmMode) {
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -633,26 +584,20 @@ class RadioService : Service() {
 
     private fun stopSleepTimer() { sleepTimerJob?.cancel(); sleepTimerJob = null; sleepTimerRemainingMillis = 0; sendTimerTick(0) }
     
-    // --- MUUDATUS: Idle Timeout EEMALDATUD ---
-    // private fun startIdleTimeout() { ... }
-
     private fun sendTimerTick(remainingMillis: Long) {
         LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_TIMER_TICK).apply { putExtra("REMAINING_MILLIS", remainingMillis) })
     }
 
     private fun saveToHistory(artist: String, title: String) {
         if (artist.isBlank() && title.isBlank()) return
-
         serviceScope.launch {
             try {
                 val db = AppDatabase.getDatabase(applicationContext)
                 val historyDao = db.historyDao()
                 val lastItem = historyDao.getLatestItem()
-
                 if (lastItem != null && lastItem.artist == artist && lastItem.title == title) {
                     return@launch
                 }
-
                 historyDao.insert(ws.ct.radiowakes.HistoryItem(stationName = currentStationName, artist = artist, title = title, timestamp = System.currentTimeMillis()))
                 historyDao.cleanOldHistory()
             } catch (e: Exception) {
@@ -676,7 +621,6 @@ class RadioService : Service() {
         val artist = currentArtist
         val extra = currentExtra
         val currentBitrate = lastBitrateInfo
-
 
         serviceScope.launch {
             var nextAlarmString = ""
@@ -709,14 +653,10 @@ class RadioService : Service() {
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.title] = title
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.artist] = artist
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.bitrate] = currentBitrate
-
                         val statusText = if (isPlaying) getString(R.string.status_playing) else getString(R.string.status_stopped)
-
                         val extraInfo = if (extra.isNotBlank()) "$extra • $statusText" else statusText
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.status] = extraInfo
-
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.alarm] = nextAlarmString
-
                         prefs[ws.ct.radiowakes.widget.HomeWidget.Prefs.isPlaying] = isPlaying
                     }
                     widget.update(context, glanceId)
