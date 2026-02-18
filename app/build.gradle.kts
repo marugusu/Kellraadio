@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "ee.minu.kellraadio"
+    namespace = "ws.ct.radiowakes"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "ee.minu.kellraadio"
+        applicationId = "ws.ct.radiowakes"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
