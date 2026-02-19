@@ -179,6 +179,8 @@ class RadioService : Service() {
 
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
         val parsed = metadataHelper.parse(trackTitleFromStream ?: "", currentStationName)
+        Log.d(TAG, "updatePlayerMetadata: RAW='$trackTitleFromStream' -> PARSED Title='${parsed.title}' Artist='${parsed.artist}'")
+
         saveToHistory(parsed.artist, parsed.title)
         player.streamStartTime = SystemClock.elapsedRealtime()
         currentArtist = parsed.artist
@@ -208,9 +210,8 @@ class RadioService : Service() {
 
     private fun updateExternalDevices(title: String, artist: String) {
         if (!::player.isInitialized) return
-
-        // --- PARANDUS: Eemaldatud vigane kontroll ---
-        // if (title == lastSentTitle && artist == lastSentArtist) return
+        
+        Log.d(TAG, "updateExternalDevices: SENDING TO CAR -> Title='$title', Artist='$artist', Album='$currentStationName'")
 
         lastSentTitle = title
         lastSentArtist = artist
@@ -224,14 +225,15 @@ class RadioService : Service() {
 
         player.playlistMetadata = newMetadata
 
+        // --- TAASTATUD: MediaItemi asendamine ---
+        // See sunnib ExoPlayerit ja MediaSessionit aru saama, et info on muutunud.
         val currentItem = player.currentMediaItem
         if (currentItem != null) {
-            val uniqueId = newMetadata.extras?.getString("android.media.metadata.MEDIA_ID") ?: "Raadio"
-            val newItem = currentItem.buildUpon()
+             val newItem = currentItem.buildUpon()
                 .setMediaMetadata(newMetadata)
-                .setMediaId(uniqueId)
                 .build()
             player.replaceMediaItem(0, newItem)
+            Log.d(TAG, "updateExternalDevices: Replaced MediaItem with new metadata")
         }
 
         serviceScope.launch(Dispatchers.Main) {
@@ -262,7 +264,10 @@ class RadioService : Service() {
         override fun onMetadata(metadata: Metadata) {
             for (i in 0 until metadata.length()) {
                 val entry = metadata.get(i)
-                if (entry is IcyInfo) updatePlayerMetadata(entry.title)
+                if (entry is IcyInfo) {
+                    Log.d(TAG, "onMetadata: Received IcyInfo title='${entry.title}'")
+                    updatePlayerMetadata(entry.title)
+                }
                 if (entry is IcyHeaders && entry.bitrate != C.RATE_UNSET_INT) {
                     lastBitrateInfo = "${entry.bitrate} kbps"; sendBitrateUpdate()
                 }
@@ -468,6 +473,9 @@ class RadioService : Service() {
     }
 
     private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?) {
+        // LOG: Start
+        Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy'")
+
         isChangingStation = true
         lastBitrateInfo = ""
         sendBitrateUpdate()
@@ -477,7 +485,7 @@ class RadioService : Service() {
         lastSentArtist = ""
 
         currentStreamUrl = streamUrl
-        currentStationName = stationName ?: "Raadio"
+        currentStationName = stationName ?: "Radio"
         isAlarmMode = triggeredBy == "ALARM"
         currentStationBitmap = ws.ct.radiow.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
 
@@ -519,6 +527,9 @@ class RadioService : Service() {
             stationName = currentStationName,
             artworkData = getArtworkBytes()
         )
+
+        // LOG: Algse info saatmine (näitab ka Albumit)
+        Log.d(TAG, "playStation: Sending INITIAL metadata: Title='$currentTitle', Artist='$currentArtist', Album='$currentStationName'")
 
         player.setMediaItem(
             MediaItem.Builder()
