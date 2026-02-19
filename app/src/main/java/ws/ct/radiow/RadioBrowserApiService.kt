@@ -25,14 +25,6 @@ data class RadioBrowserStation(
     val clickcount: Int
 )
 
-// UUS: Mudel riigi ja žanri nimekirja jaoks
-@Serializable
-data class RadioFilterItem(
-    val name: String,
-    @SerialName("stationcount") val stationCount: Int,
-    @SerialName("iso_3166_1") val isoCode: String? = null // UUS VÄLI (võib olla null žanrite puhul)
-)
-
 interface RadioBrowserApiService {
 
     @GET("json/stations/search")

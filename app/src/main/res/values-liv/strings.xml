@@ -56,12 +56,15 @@
 <string name="manual_dialog_title">"Līsa stacij iž"</string>
 <string name="station_name">"Stacij nim"</string>
 <string name="stream_url">"Strīmi URL"</string>
+<string name="station_category">"Kategooria"</string>
 <string name="station_added">"Līsatõd: %1$s"</string>
 <string name="filter_my">"Min"</string>
 <string name="settings_title">"Sādimizt"</string>
 <string name="settings_group_radio">"Rādij ja kanālõd"</string>
 <string name="settings_refresh">"Uddistõ stacijid"</string>
 <string name="settings_refresh_desc">"Lēdõ uddistõd nimkīerõ"</string>
+<string name="settings_hide_remote">"Pēt server kanālõd"</string>
+<string name="settings_hide_remote_desc">"Näytõ agā iž līstõd kanālõd"</string>
 <string name="settings_reset_order">"Tagāž tūmiz armstõdõd jierdõ"</string>
 <string name="settings_reset_order_desc">"Tagāž tūmiz armstõdõd algõlīžõn jierdõ" </string>
 <string name="reset_order_confirm_title">"Tagāž tūmiz armstõdõd jierdõ?"</string>

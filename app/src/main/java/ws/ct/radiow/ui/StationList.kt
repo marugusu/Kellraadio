@@ -20,12 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ws.ct.radiow.RadioStation
 import ws.ct.radiow.R
+import ws.ct.radiow.RadioStation
+import ws.ct.radiow.getFlagEmoji
 import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -56,7 +56,7 @@ fun StationList(
     val favoritesLabel = stringResource(R.string.cat_favorites)
     val myStationsLabel = stringResource(R.string.cat_my_stations)
     val allLabel = stringResource(R.string.cat_all)
-    val myFilterLabel = stringResource(R.string.filter_my) // UUS
+    val myFilterLabel = stringResource(R.string.filter_my)
     val playingStatusText = stringResource(R.string.status_playing)
 
     fun getCategoryDisplayName(categoryId: String): String {
@@ -138,7 +138,7 @@ fun StationList(
             }
         }
 
-        // RIDA 2: ALAMFILTRID (Tõlgitud "My")
+        // RIDA 2: ALAMFILTRID
         AnimatedVisibility(
             visible = subCategories.isNotEmpty(),
             enter = expandVertically(),
@@ -150,18 +150,24 @@ fun StationList(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 item {
-                    Icon(
-                        imageVector = Icons.Default.FilterAlt,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                    )
+                    Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                        val isCountryCategory = selectedCategory.length == 2
+                        if (isCountryCategory) {
+                            Text(text = getFlagEmoji(selectedCategory), fontSize = 18.sp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.FilterAlt,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
                 }
                 items(subCategories.size) { index ->
                     val sub = subCategories[index]
                     val isSelected = selectedSubCategories.contains(sub)
                     
-                    // TÕLGE: Kui tunnuseks on "My", kasuta tõlget, muidu jäta nagu on
                     val displayLabel = if (sub == "My") myFilterLabel else sub
 
                     FilterChip(

@@ -1,8 +1,6 @@
 package ws.ct.radiow.ui
 
-import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,11 +13,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -27,21 +23,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import ws.ct.radiow.RadioBrowserStation
-import ws.ct.radiow.RadioFilterItem
-import ws.ct.radiow.RadioStationRepository
-import ws.ct.radiow.RadioStation
+import ws.ct.radiow.*
 import ws.ct.radiow.R
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     repository: RadioStationRepository,
     allStations: List<RadioStation>,
+    allCategories: List<String>,
     activeUrl: String,
     onPlayTest: (String, String, Boolean) -> Unit,
-    onSaveStation: (String, String, String) -> Unit,
+    onSaveStation: (String, String, String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(repository))
 ) {
@@ -60,7 +53,6 @@ fun SearchScreen(
     val savedIdentifiers = remember(allStations) {
         allStations.flatMap { listOf(it.url, it.uuid) }.filter { it.isNotEmpty() }.toSet()
     }
-    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -201,7 +193,7 @@ fun SearchScreen(
                             isSaved = isAlreadySaved,
                             onPlay = { onPlayTest(station.name, station.urlResolved, isAlreadySaved) },
                             onAdd = {
-                                onSaveStation(station.name, station.urlResolved, station.countryCode)
+                                onSaveStation(station.name, station.urlResolved, station.countryCode, "")
                             }
                         )
                     }
@@ -233,10 +225,11 @@ fun SearchScreen(
     if (showManualDialog) {
         ManualAddDialog(
             allCountries = viewModel.countryListForManual(),
+            allCategories = allCategories,
             onDismiss = { viewModel.closeManualAddDialog() },
             onTest = { name, url -> onPlayTest(if(name.isNotBlank()) name else "Tundmatu", url, false) },
-            onSave = { name, url, country ->
-                onSaveStation(name, url, country)
+            onSave = { name, url, country, category ->
+                onSaveStation(name, url, country, category)
                 viewModel.closeManualAddDialog()
             }
         )
@@ -263,14 +256,15 @@ fun SearchResultItem(
         ) {
             IconButton(
                 onClick = onPlay,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(if (isPlaying) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                modifier = Modifier.size(40.dp),
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = if (isPlaying) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = if (isPlaying) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
+                )
             ) {
                 Icon(
                     if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
-                    null,
-                    tint = if (isPlaying) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
+                    null
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -286,7 +280,6 @@ fun SearchResultItem(
                     append(station.country)
                     append(" • ${station.bitrate} kbps")
                     if (station.votes > 0) append(" • 👍 ${station.votes}")
-                    if (station.clickcount > 0) append(" • 👥 ${station.clickcount}")
                 }
                 Text(text = infoText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -308,46 +301,60 @@ fun SearchResultItem(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualAddDialog(
     allCountries: List<RadioFilterItem>,
+    allCategories: List<String>,
     onDismiss: () -> Unit,
     onTest: (String, String) -> Unit,
-    onSave: (String, String, String) -> Unit
+    onSave: (String, String, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var countryCode by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
     var countryName by remember { mutableStateOf("") }
     var showCountryPicker by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.manual_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.station_name)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text(stringResource(R.string.stream_url)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                OutlinedCard(
-                    onClick = { showCountryPicker = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.station_name)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text(stringResource(R.string.stream_url)) }, modifier = Modifier.fillMaxWidth())
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = { category = it },
+                        label = { Text(stringResource(R.string.station_category)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
                     ) {
+                        allCategories.forEach { selectionOption ->
+                            DropdownMenuItem(
+                                text = { Text(selectionOption) },
+                                onClick = {
+                                    category = selectionOption
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                OutlinedCard(onClick = { showCountryPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""
                         if (flag.isNotEmpty()) {
                             Text(flag, style = MaterialTheme.typography.titleMedium)
@@ -367,15 +374,11 @@ fun ManualAddDialog(
                 }
             }
         },
-        confirmButton = { Button(onClick = { onSave(name, url, countryCode) }) { Text(stringResource(R.string.action_save)) } },
+        confirmButton = { Button(onClick = { onSave(name, url, countryCode, category) }) { Text(stringResource(R.string.action_save)) } },
         dismissButton = {
             Row {
-                TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) {
-                    Text(stringResource(R.string.action_test))
-                }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.action_cancel))
-                }
+                TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) { Text(stringResource(R.string.action_test)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             }
         }
     )

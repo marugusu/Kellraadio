@@ -23,6 +23,7 @@ data class MainUiState(
     val stations: List<RadioStation> = emptyList(),
     val alarms: List<Alarm> = emptyList(),
     val countries: List<RadioFilterItem> = emptyList(),
+    val allCategories: List<String> = emptyList(),
 
     // --- UI KONFIGURATSIOON ---
     val isRefreshing: Boolean = false,
@@ -31,7 +32,8 @@ data class MainUiState(
     val showFlags: Boolean = true,
     val colsPortrait: Int = 3,
     val colsLandscape: Int = 3,
-    val widgetTransparency: Float = 0.25f, // UUS: Vaikimisi 25%
+    val widgetTransparency: Float = 0.25f,
+    val hideRemoteStations: Boolean = false,
 
     // --- NAVIGATSIOON JA VALIKUD ---
     val currentTab: Int = 0,

@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import kotlinx.coroutines.flow.first
 
-import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +16,7 @@ import ws.ct.radiow.AlarmUtils
 import ws.ct.radiow.AppDatabase
 import ws.ct.radiow.R
 import ws.ct.radiow.RadioBrowserApiService
+import ws.ct.radiow.RadioFilterItem
 import ws.ct.radiow.RadioService
 import ws.ct.radiow.RadioStation
 import ws.ct.radiow.RadioStationRepository
@@ -31,7 +31,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val context = application.applicationContext
     private val prefs = context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE)
 
-    // --- REPOSITOORIUMID ---
     private val database = AppDatabase.getDatabase(context)
     val stationRepository = RadioStationRepository(
         StationApiService.create(),
@@ -41,11 +40,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val alarmDao = database.alarmDao()
 
-    // --- UI OLEK ---
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
 
-    // --- BROADCAST RECEIVER (Raadio sündmused) ---
     private val radioReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -120,9 +117,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             stationRepository.allStations.collect { stations ->
+                val allCategories = stations
+                    .filter { !it.isUserStation && it.category.isNotBlank() }
+                    .map { it.category }
+                    .distinct()
+                    .sorted()
                 _uiState.update { currentState ->
-                    currentState.copy(stations = stations)
+                    currentState.copy(stations = stations, allCategories = allCategories)
                 }
+                updateCountries()
             }
         }
 
@@ -141,7 +144,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 refreshStations()
             }
         }
-        loadCountries()
+        updateCountries()
     }
 
     private fun loadPreferences() {
@@ -151,19 +154,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             colsPortrait = prefs.getInt("cols_portrait", 3),
             colsLandscape = prefs.getInt("cols_landscape", 3),
             showFlags = prefs.getBoolean("show_flags", true),
-            widgetTransparency = prefs.getFloat("widget_transparency", 0.25f) // UUS
+            widgetTransparency = prefs.getFloat("widget_transparency", 0.25f),
+            hideRemoteStations = prefs.getBoolean("hide_remote_stations", false)
         )}
     }
 
-    private fun loadCountries() {
+    fun updateCountries() {
         viewModelScope.launch {
             _uiState.update { it.copy(isCountriesLoading = true) }
-            val countries = stationRepository.getCountries()
-            _uiState.update { it.copy(countries = countries, isCountriesLoading = false) }
+            val remoteCountries = stationRepository.getCountries().toMutableList()
+            val localCountryCodes = _uiState.value.stations
+                .map { it.countryCode }
+                .filter { it.isNotBlank() }
+                .distinct()
+
+            var listWasModified = false
+            localCountryCodes.forEach { code ->
+                if (remoteCountries.none { it.name.equals(code, ignoreCase = true) || (it.isoCode != null && it.isoCode.equals(code, ignoreCase = true)) }) {
+                    val upperCaseCode = code.uppercase()
+                    remoteCountries.add(RadioFilterItem(name = upperCaseCode, stationCount = 1, isoCode = upperCaseCode))
+                    listWasModified = true
+                }
+            }
+
+            if (listWasModified) {
+                remoteCountries.sortBy { it.name }
+            }
+
+            _uiState.update { it.copy(countries = remoteCountries, isCountriesLoading = false) }
         }
     }
-
-    // --- KASUTAJA TEGEVUSED (EVENTS) ---
 
     fun onTabSelected(index: Int) {
         val pendingCategory = _uiState.value.categoryToSelectOnTabChange
@@ -283,8 +303,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- DIALOOGIDE HALDUS ---
-
     fun openSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = true) } }
     fun closeSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = false) } }
 
@@ -311,8 +329,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(stationToEdit = station) }
     }
     fun closeEditStationDialog() { _uiState.update { it.copy(stationToEdit = null) } }
-
-    // --- ÄRILINE LOOGIKA ---
 
     fun saveAlarm(hour: Int, minute: Int, days: Set<Int>) {
         val alarmToEdit = _uiState.value.alarmToEdit
@@ -355,14 +371,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun saveUserStation(name: String, url: String, countryCode: String = "") {
+    fun saveUserStation(name: String, url: String, countryCode: String, category: String) {
         if (!isValidUrl(url)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
         
         viewModelScope.launch {
-            val newId = stationRepository.saveUserStation(name, url, countryCode)
+            val newId = stationRepository.saveUserStation(name, url, countryCode, category)
             Toast.makeText(context, context.getString(R.string.station_added, name), Toast.LENGTH_SHORT).show()
             _uiState.update { it.copy(categoryToSelectOnTabChange = "My") }
 
@@ -388,6 +404,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 prefs.edit().putLong("last_update_time", System.currentTimeMillis()).apply()
                 Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
+                // Ignore
             } finally {
                 _uiState.update { it.copy(isRefreshing = false) }
             }
@@ -409,10 +426,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putBoolean("show_flags", show).apply()
     }
 
+    fun toggleHideRemoteStations(hide: Boolean) {
+        _uiState.update { it.copy(hideRemoteStations = hide) }
+        prefs.edit().putBoolean("hide_remote_stations", hide).apply()
+    }
+
     fun setWidgetTransparency(value: Float) {
         _uiState.update { it.copy(widgetTransparency = value) }
         prefs.edit().putFloat("widget_transparency", value).apply()
-        // Saadame teenusele käsu vidina uuendamiseks
         val i = Intent(context, RadioService::class.java).apply {
             action = RadioService.ACTION_FORCE_WIDGET_UPDATE
         }
@@ -423,14 +444,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { stationRepository.clearHistory() }
     }
 
-    fun addTestData() {
-        viewModelScope.launch {
-            stationRepository.insertTestHistory()
-            Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    fun updateUserStation(newName: String, newUrl: String, newCountryCode: String = "") {
+    fun updateUserStation(newName: String, newUrl: String, newCountryCode: String, newCategory: String) {
         if (!isValidUrl(newUrl)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
@@ -439,7 +453,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val stationToUpdate = _uiState.value.stationToEdit
         if (stationToUpdate != null) {
             viewModelScope.launch {
-                stationRepository.updateUserStation(stationToUpdate, newName, newUrl, newCountryCode)
+                stationRepository.updateUserStation(stationToUpdate, newName, newUrl, newCountryCode, newCategory)
                 if (stationToUpdate.id == _uiState.value.selectedStationId) {
                     _uiState.update { it.copy(activeStationName = newName) }
                     val serviceIntent = Intent(context, RadioService::class.java).apply {
@@ -452,8 +466,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-
-    // --- ABIFUNKTSIOONID ---
 
     private fun startRadioService(station: RadioStation) {
         val i = Intent(context, RadioService::class.java).apply {

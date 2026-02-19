@@ -30,7 +30,7 @@ class RadioStationRepository(
         stationDao.delete(station)
     }
 
-    suspend fun saveUserStation(name: String, url: String, countryCode: String = ""): Int {
+    suspend fun saveUserStation(name: String, url: String, countryCode: String, category: String): Int {
         val maxId = stationDao.getMaxId() ?: 9999
         val newId = if (maxId < 10000) 10000 else maxId + 1
 
@@ -38,7 +38,7 @@ class RadioStationRepository(
             id = newId,
             name = name,
             url = url,
-            category = "My",
+            category = category,
             priority = 10000 + (newId - 10000),
             isUserStation = true,
             uuid = UUID.randomUUID().toString(),
@@ -49,12 +49,10 @@ class RadioStationRepository(
         return newId
     }
 
-    suspend fun updateUserStation(station: RadioStation, newName: String, newUrl: String, newCountryCode: String = "") {
-        val updatedStation = station.copy(name = newName, url = newUrl, countryCode = newCountryCode)
+    suspend fun updateUserStation(station: RadioStation, newName: String, newUrl: String, newCountryCode: String, newCategory: String) {
+        val updatedStation = station.copy(name = newName, url = newUrl, countryCode = newCountryCode, category = newCategory)
         stationDao.update(updatedStation)
     }
-
-    // --- PRIORITEETIDE HALDUS ---
 
     private suspend fun ensureNormalized(favorites: List<RadioStation>): List<RadioStation> {
         val needsNormalization = favorites.map { it.favoriteOrder }.distinct().size != favorites.size || 
@@ -105,7 +103,6 @@ class RadioStationRepository(
         stationDao.update(station.copy(favoriteOrder = maxOrder + 1))
     }
 
-    // UUS: Nulli järjekord
     suspend fun resetFavoriteOrder() {
         stationDao.resetFavoriteOrders()
     }

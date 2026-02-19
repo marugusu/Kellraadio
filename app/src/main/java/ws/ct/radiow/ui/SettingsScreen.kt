@@ -45,14 +45,16 @@ fun SettingsScreen(
     colsPortrait: Int,
     colsLandscape: Int,
     showFlags: Boolean,
-    widgetTransparency: Float, // PARAMEETER OLEMAS
+    hideRemoteStations: Boolean,
+    widgetTransparency: Float,
     onToggleShowFlags: (Boolean) -> Unit,
+    onToggleHideRemoteStations: (Boolean) -> Unit,
     onColsPortraitChange: (Int) -> Unit,
     onColsLandscapeChange: (Int) -> Unit,
     onRefresh: () -> Unit,
     onClearHistory: () -> Unit,
     onResetOrder: () -> Unit,
-    onWidgetTransparencyChange: (Float) -> Unit, // PARAMEETER OLEMAS
+    onWidgetTransparencyChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -127,7 +129,13 @@ fun SettingsScreen(
                     isLoading = isRefreshing,
                     onClick = onRefresh
                 )
-
+                SettingsCardItem(
+                    headline = stringResource(R.string.settings_hide_remote),
+                    supporting = stringResource(R.string.settings_hide_remote_desc),
+                    icon = Icons.Default.VisibilityOff,
+                    onClick = { onToggleHideRemoteStations(!hideRemoteStations) },
+                    trailingContent = { Switch(checked = hideRemoteStations, onCheckedChange = { onToggleHideRemoteStations(it) }) }
+                )
                 SettingsCardItem(
                     headline = stringResource(R.string.settings_reset_order),
                     supporting = stringResource(R.string.settings_reset_order_desc),
@@ -144,7 +152,6 @@ fun SettingsScreen(
             }
 
             SettingsGroup(title = stringResource(R.string.settings_group_appearance)) {
-                // 1. KAART: KANALITE RUUDUSTIK
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -215,7 +222,6 @@ fun SettingsScreen(
                     }
                 }
 
-                // 2. KAART: RIIGILIPUD
                 SettingsCardItem(
                     headline = stringResource(R.string.settings_show_flags),
                     supporting = stringResource(R.string.settings_show_flags_desc),
@@ -224,23 +230,33 @@ fun SettingsScreen(
                     trailingContent = { Switch(checked = showFlags, onCheckedChange = { onToggleShowFlags(it) }) }
                 )
 
-                // 3. KAART: VIDINA LÄBIPAISTVUS
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.settings_widget_transparency),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_widget_transparency_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Widgets,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.settings_widget_transparency),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_widget_transparency_desc),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -252,7 +268,7 @@ fun SettingsScreen(
                             )
                             Slider(
                                 value = widgetTransparency,
-                                onValueChange = onWidgetTransparencyChange, // KASUTAME FUNKTSIOONI
+                                onValueChange = onWidgetTransparencyChange,
                                 valueRange = 0f..1f,
                                 modifier = Modifier.weight(1f)
                             )

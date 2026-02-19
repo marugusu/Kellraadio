@@ -72,6 +72,7 @@
     <string name="manual_dialog_title">Lisa jaam käsitsi</string>
     <string name="station_name">Jaama nimi</string>
     <string name="stream_url">Striimi URL</string>
+    <string name="station_category">Kategooria</string>
     <string name="station_added">Lisatud: %1$s</string>
     <string name="filter_my">Minu</string>
 
@@ -80,6 +81,8 @@
     <string name="settings_group_radio">Raadio ja Kanalid</string>
     <string name="settings_refresh">Värskenda jaamu</string>
     <string name="settings_refresh_desc">Lae serverist uusim kanalite nimekiri</string>
+    <string name="settings_hide_remote">Peida serveri kanalid</string>
+    <string name="settings_hide_remote_desc">Kuva ainult käsitsi lisatud jaamu</string>
     <string name="settings_reset_order">Taasta lemmikkanalite järjekord</string>
     <string name="settings_reset_order_desc">Pane lemmikkanalid tagasi algsesse järjekorda</string>
     <string name="reset_order_confirm_title">Taasta järjekord?</string>

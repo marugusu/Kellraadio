@@ -72,6 +72,7 @@
     <string name="manual_dialog_title">Add station manually</string>
     <string name="station_name">Station Name</string>
     <string name="stream_url">Stream URL</string>
+    <string name="station_category">Category</string>
     <string name="station_added">Added: %1$s</string>
     <string name="filter_my">My</string>
 
@@ -80,6 +81,8 @@
     <string name="settings_group_radio">Radio &amp; Channels</string>
     <string name="settings_refresh">Refresh stations</string>
     <string name="settings_refresh_desc">Download latest channel list from server</string>
+    <string name="settings_hide_remote">Hide remote channels</string>
+    <string name="settings_hide_remote_desc">Only show manually added stations</string>
     <string name="settings_reset_order">Reset favorites channel order</string>
     <string name="settings_reset_order_desc">Restore original sorting of favorite channels</string>
     <string name="reset_order_confirm_title">Reset order?</string>
