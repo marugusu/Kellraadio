@@ -45,6 +45,12 @@ object AppConfig {
 
     // --- 3. UI JA DISAIN (Lühendid ja logod) ---
     object UI {
+        // Peagruppide soovitud järjekord (riigid)
+        val PREFERRED_COUNTRY_ORDER = listOf("EE")
+
+        // Eesti jaamade alamjaotuste (teine rida) soovitud järjekord
+        val ESTONIAN_SUB_CATEGORY_ORDER = listOf("My", "ERR", "Duo", "Sky", "TV3")
+
         // Erandid jaamade lühendite genereerimisel (Logo asendaja)
         // Võti peab olema VÄIKETÄHTEDEGA!
         val STATION_INITIALS_EXCEPTIONS = mapOf(

@@ -34,7 +34,8 @@ data class MainUiState(
 
     // --- NAVIGATSIOON JA VALIKUD ---
     val currentTab: Int = 0,
-    val selectedCategory: String = "ERR",
+    val selectedCategory: String = "Favorites", // Algne peagrupp
+    val selectedSubCategories: Set<String> = emptySet(), // UUS: Teise rea filtrid
     val selectedStationId: Int = -1,
     val categoryToSelectOnTabChange: String? = null,
 
@@ -46,5 +47,5 @@ data class MainUiState(
     val showSongInfoSheet: Boolean = false,
     val stationToDelete: RadioStation? = null,
     val stationToEdit: RadioStation? = null,
-    val showResetOrderDialog: Boolean = false // UUS
+    val showResetOrderDialog: Boolean = false
 )

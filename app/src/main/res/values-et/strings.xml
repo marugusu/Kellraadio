@@ -73,6 +73,7 @@
     <string name="station_name">Jaama nimi</string>
     <string name="stream_url">Striimi URL</string>
     <string name="station_added">Lisatud: %1$s</string>
+    <string name="filter_my">Minu</string>
 
     <!-- Settings -->
     <string name="settings_title">Seaded</string>

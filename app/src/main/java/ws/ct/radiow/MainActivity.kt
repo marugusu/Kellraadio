@@ -37,6 +37,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import ws.ct.radiow.ui.*
 import kotlinx.coroutines.launch
 import ws.ct.radiow.R
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -108,44 +109,80 @@ fun RaadioEkraan(
         else w?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
-    val desiredOrder = listOf("Eesti", "ERR", "Duo", "Sky", "Muu Eesti", "Välis")
+    // --- KATEGOORIATE JA FILTRITE ARVUTAMINE ---
     val categoriesData = remember(state.stations) {
         val favs = state.stations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
-        val base = state.stations.map { it.category }.distinct().toMutableList()
-
-        if (favs.isNotEmpty()) {
-            if (base.contains("Favorites")) base.remove("Favorites")
-            base.add(0, "Favorites")
-        }
         val userStations = state.stations.filter { it.isUserStation }
-        if (userStations.isNotEmpty() && !base.contains("My")) {
-            val insertIndex = if (favs.isNotEmpty()) 1 else 0
-            base.add(insertIndex, "My")
-        }
-        if (base.contains("All")) base.remove("All")
-        base.add("All")
+        
+        val countryCodes = state.stations
+            .filter { !it.isUserStation && it.countryCode.isNotEmpty() }
+            .map { it.countryCode }
+            .distinct()
+            .toMutableList()
 
-        val sorted = base.sortedWith(compareBy<String> {
-            when (it) {
-                "Favorites" -> -1
-                "My" -> 0
-                "All" -> Int.MAX_VALUE
-                else -> {
-                    val index = desiredOrder.indexOf(it)
-                    if (index != -1) index + 1 else Int.MAX_VALUE - 1
-                }
-            }
-        }.thenBy { it })
-        Pair(favs, sorted)
+        val baseGroups = mutableListOf<String>()
+        if (favs.isNotEmpty()) baseGroups.add("Favorites")
+        if (userStations.isNotEmpty()) baseGroups.add("My")
+        
+        // UUS: Sorteerimine konfi alusel
+        val sortedCountries = countryCodes.sortedWith(compareBy<String> { code ->
+            val index = AppConfig.UI.PREFERRED_COUNTRY_ORDER.indexOf(code)
+            if (index != -1) index else Int.MAX_VALUE
+        }.thenBy { Locale("", it).getDisplayCountry() })
+
+        baseGroups.addAll(sortedCountries)
+        baseGroups.add("All")
+
+        Pair(favs, baseGroups)
     }
     val favoriteStations = categoriesData.first
-    val finalCategories = categoriesData.second
+    val mainCategories = categoriesData.second
 
-    val filteredStations = remember(state.selectedCategory, state.stations, favoriteStations) {
-        when (state.selectedCategory) {
+    // --- ALAMKATEGOORIAD (FILTRID) VALITUD GRUPI JAOKS ---
+    val currentSubCategories = remember(state.selectedCategory, state.stations) {
+        if (state.selectedCategory.length == 2 || state.selectedCategory == "All") {
+            val stationsInGroup = state.stations.filter { 
+                if (state.selectedCategory == "All") true 
+                else it.countryCode == state.selectedCategory 
+            }
+
+            val hasUserStations = stationsInGroup.any { it.isUserStation }
+            val categories = stationsInGroup
+                .filter { !it.isUserStation } 
+                .map { it.category }
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .toMutableList()
+
+            if (hasUserStations) categories.add(0, "My")
+
+            val customOrder = if (state.selectedCategory == "EE") AppConfig.UI.ESTONIAN_SUB_CATEGORY_ORDER else listOf("My")
+            
+            categories.sortedWith(compareBy<String> { sub ->
+                val index = customOrder.indexOf(sub)
+                if (index != -1) index else Int.MAX_VALUE
+            }.thenBy { it })
+        } else {
+            emptyList()
+        }
+    }
+
+    // --- LÕPLIK FILTREERITUD JAAMADE NIMEKIRI ---
+    val filteredStations = remember(state.selectedCategory, state.selectedSubCategories, state.stations, favoriteStations) {
+        val baseList = when (state.selectedCategory) {
             "Favorites" -> favoriteStations
+            "My" -> state.stations.filter { it.isUserStation }
             "All" -> state.stations
-            else -> state.stations.filter { it.category == state.selectedCategory }
+            else -> state.stations.filter { it.countryCode == state.selectedCategory }
+        }
+
+        if (state.selectedSubCategories.isEmpty()) {
+            baseList
+        } else {
+            baseList.filter { station ->
+                state.selectedSubCategories.contains(station.category) || 
+                (state.selectedSubCategories.contains("My") && station.isUserStation)
+            }
         }
     }
 
@@ -177,41 +214,11 @@ fun RaadioEkraan(
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
-                NavigationRailItem(
-                    selected = state.currentTab == 0,
-                    onClick = { mainViewModel.onTabSelected(0) },
-                    icon = { Icon(Icons.Default.Radio, null) },
-                    label = { Text(navRadioTitle) },
-                    colors = railItemColors
-                )
-                NavigationRailItem(
-                    selected = state.currentTab == 1,
-                    onClick = { mainViewModel.onTabSelected(1) },
-                    icon = { Icon(Icons.Default.Alarm, null) },
-                    label = { Text(navAlarmsTitle) },
-                    colors = railItemColors
-                )
-                NavigationRailItem(
-                    selected = state.currentTab == 2,
-                    onClick = { mainViewModel.onTabSelected(2) },
-                    icon = { Icon(Icons.Default.History, null) },
-                    label = { Text(navHistoryTitle) },
-                    colors = railItemColors
-                )
-                NavigationRailItem(
-                    selected = state.currentTab == 3,
-                    onClick = { mainViewModel.onTabSelected(3) },
-                    icon = { Icon(Icons.Default.AddCircleOutline, null) },
-                    label = { Text(navAddTitle) },
-                    colors = railItemColors
-                )
-                NavigationRailItem(
-                    selected = state.currentTab == 4,
-                    onClick = { mainViewModel.onTabSelected(4) },
-                    icon = { Icon(Icons.Default.Settings, null) },
-                    label = { Text(navSettingsTitle) },
-                    colors = railItemColors
-                )
+                NavigationRailItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 4, onClick = { mainViewModel.onTabSelected(4) }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(navSettingsTitle) }, colors = railItemColors)
                 Spacer(modifier = Modifier.weight(1f))
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
@@ -244,9 +251,7 @@ fun RaadioEkraan(
                         onAlarmLongClick = { nextAlarmInfo?.second?.let { mainViewModel.openAlarmDialog(it) } },
                         onToggleFavorite = {
                             val currentStation = state.stations.find { it.id == state.selectedStationId }
-                            if (currentStation != null) {
-                                mainViewModel.onToggleFavorite(currentStation)
-                            }
+                            if (currentStation != null) { mainViewModel.onToggleFavorite(currentStation) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -255,42 +260,12 @@ fun RaadioEkraan(
                 if (songInfo != null) {
                     if (isLargeScreenHeight) {
                         val stationColor = ws.ct.radiow.ui.StationArtworkUtils.getStationColor(state.activeStationName)
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(top = 16.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)
-                                    )
-                                )
-                        ) {
-                            SongInfoContentLandscape(
-                                artist = state.parsedArtist,
-                                title = state.parsedTitle,
-                                stationName = state.activeStationName,
-                                info = songInfo!!
-                            )
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)))) {
+                            SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
                         }
                     } else {
-                        AnimatedVisibility(
-                            visible = !state.showSongInfoSheet,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            SongInfoTeaser(
-                                info = songInfo!!,
-                                artist = state.parsedArtist,
-                                title = state.parsedTitle,
-                                stationName = state.activeStationName,
-                                onClick = mainViewModel::openSongInfo,
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                                backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black))
-                            )
+                        AnimatedVisibility(visible = !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                            SongInfoTeaser(info = songInfo!!, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 16.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black)))
                         }
                     }
                 }
@@ -300,7 +275,8 @@ fun RaadioEkraan(
                 ContentScreens(
                     state = state,
                     filteredStations = filteredStations,
-                    categories = finalCategories,
+                    mainCategories = mainCategories,
+                    subCategories = currentSubCategories,
                     viewModel = mainViewModel,
                     context = context
                 )
@@ -311,72 +287,21 @@ fun RaadioEkraan(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             bottomBar = {
                 Column(modifier = Modifier.background(Color.Black)) {
-                    AnimatedVisibility(
-                        visible = state.currentTab == 0 && songInfo != null && !state.showSongInfoSheet,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        songInfo?.let { info ->
-                            SongInfoTeaser(
-                                info = info,
-                                artist = state.parsedArtist,
-                                title = state.parsedTitle,
-                                stationName = state.activeStationName,
-                                onClick = mainViewModel::openSongInfo
-                            )
-                        }
+                    AnimatedVisibility(visible = state.currentTab == 0 && songInfo != null && !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                        songInfo?.let { info -> SongInfoTeaser(info = info, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo) }
                     }
-
                     if (state.currentTab == 0 && songInfo != null && !state.showSongInfoSheet) {
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(brush = Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), Color.Transparent))))
                     } else {
                         HorizontalDivider(thickness = 1.dp, color = Color(0xFF222222))
                     }
-
                     NavigationBar(containerColor = Color.Black, contentColor = Color.White, tonalElevation = 0.dp) {
-                        val navItemColors = NavigationBarItemDefaults.colors(
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = Color.White,
-                            unselectedIconColor = Color.Gray,
-                            unselectedTextColor = Color.Gray
-                        )
-
-                        NavigationBarItem(
-                            selected = state.currentTab == 0,
-                            onClick = { mainViewModel.onTabSelected(0) },
-                            icon = { Icon(Icons.Default.Radio, null) },
-                            label = { Text(navRadioTitle) },
-                            colors = navItemColors
-                        )
-                        NavigationBarItem(
-                            selected = state.currentTab == 1,
-                            onClick = { mainViewModel.onTabSelected(1) },
-                            icon = { Icon(Icons.Default.Alarm, null) },
-                            label = { Text(navAlarmsTitle) },
-                            colors = navItemColors
-                        )
-                        NavigationBarItem(
-                            selected = state.currentTab == 2,
-                            onClick = { mainViewModel.onTabSelected(2) },
-                            icon = { Icon(Icons.Default.History, null) },
-                            label = { Text(navHistoryTitle) },
-                            colors = navItemColors
-                        )
-                        NavigationBarItem(
-                            selected = state.currentTab == 3,
-                            onClick = { mainViewModel.onTabSelected(3) },
-                            icon = { Icon(Icons.Default.AddCircleOutline, null) },
-                            label = { Text(navAddTitle) },
-                            colors = navItemColors
-                        )
-                        NavigationBarItem(
-                            selected = state.currentTab == 4,
-                            onClick = { mainViewModel.onTabSelected(4) },
-                            icon = { Icon(Icons.Default.Settings, null) },
-                            label = { Text(navSettingsTitle) },
-                            colors = navItemColors
-                        )
+                        val navItemColors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTextColor = Color.White, unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray)
+                        NavigationBarItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 4, onClick = { mainViewModel.onTabSelected(4) }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(navSettingsTitle) }, colors = navItemColors)
                     }
                 }
             }
@@ -409,17 +334,15 @@ fun RaadioEkraan(
                         onAlarmLongClick = { nextAlarmInfo?.second?.let { mainViewModel.openAlarmDialog(it) } },
                         onToggleFavorite = {
                             val currentStation = state.stations.find { it.id == state.selectedStationId }
-                            if (currentStation != null) {
-                                mainViewModel.onToggleFavorite(currentStation)
-                            }
+                            if (currentStation != null) { mainViewModel.onToggleFavorite(currentStation) }
                         },
                         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp)
                     )
-
                     ContentScreens(
                         state = state,
                         filteredStations = filteredStations,
-                        categories = finalCategories,
+                        mainCategories = mainCategories,
+                        subCategories = currentSubCategories,
                         viewModel = mainViewModel,
                         context = context
                     )
@@ -428,154 +351,45 @@ fun RaadioEkraan(
         }
     }
 
-    if (state.showSleepDialog) {
-        SleepTimerDialog(
-            initialMillis = state.sleepTimerRemaining,
-            onDismiss = mainViewModel::closeSleepTimerDialog
-        )
-    }
-
+    if (state.showSleepDialog) { SleepTimerDialog(initialMillis = state.sleepTimerRemaining, onDismiss = mainViewModel::closeSleepTimerDialog) }
     if (state.showAlarmDialog) {
         val currentAlarmToEdit = state.alarmToEdit
-
-        val stationForDialog = if (currentAlarmToEdit != null) {
-            state.stations.find { it.name == currentAlarmToEdit.stationName }
-                ?: RadioStation(0, currentAlarmToEdit.stationName, currentAlarmToEdit.stationUrl)
-        } else {
-            state.stations.find { it.id == state.selectedStationId }
-        }
-
-        AlarmDialog(
-            selectedStation = stationForDialog,
-            initialHour = currentAlarmToEdit?.hour,
-            initialMinute = currentAlarmToEdit?.minute,
-            initialDays = currentAlarmToEdit?.days ?: emptySet(),
-            onDismiss = mainViewModel::closeAlarmDialog,
-            onDelete = if (currentAlarmToEdit != null && currentAlarmToEdit.id != 0) {
-                { mainViewModel.deleteAlarm(currentAlarmToEdit) }
-            } else null,
-            onAlarmSaved = mainViewModel::saveAlarm
-        )
+        val stationForDialog = if (currentAlarmToEdit != null) { state.stations.find { it.name == currentAlarmToEdit.stationName } ?: RadioStation(0, currentAlarmToEdit.stationName, currentAlarmToEdit.stationUrl) } else { state.stations.find { it.id == state.selectedStationId } }
+        AlarmDialog(selectedStation = stationForDialog, initialHour = currentAlarmToEdit?.hour, initialMinute = currentAlarmToEdit?.minute, initialDays = currentAlarmToEdit?.days ?: emptySet(), onDismiss = mainViewModel::closeAlarmDialog, onDelete = if (currentAlarmToEdit != null && currentAlarmToEdit.id != 0) { { mainViewModel.deleteAlarm(currentAlarmToEdit) } } else null, onAlarmSaved = mainViewModel::saveAlarm)
     }
-
     if (state.showActionSheetForStation != null) {
         val liveStation = state.stations.find { it.id == state.showActionSheetForStation!!.id } ?: state.showActionSheetForStation!!
-        
         val favorites = state.stations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
         val index = favorites.indexOfFirst { it.id == liveStation.id }
         val displayOrder = if (index != -1) index + 1 else 0
-
-        StationActionSheet(
-            station = liveStation,
-            favoritePosition = displayOrder,
-            onDismiss = mainViewModel::closeStationActionSheet,
-            onToggleFavorite = {
-                mainViewModel.onToggleFavorite(liveStation)
-                mainViewModel.closeStationActionSheet()
-            },
-            onSetAlarm = {
-                mainViewModel.openAlarmDialog(Alarm(hour = 7, minute = 0, days = emptySet(), stationName = liveStation.name, stationUrl = liveStation.url))
-            },
-            onEdit = {
-                mainViewModel.openEditStationDialog(liveStation)
-            },
-            onDelete = { mainViewModel.confirmDeleteStation(liveStation) },
-            onMoveUp = { mainViewModel.moveStationUp(liveStation) },
-            onMoveDown = { mainViewModel.moveStationDown(liveStation) },
-            onMoveToTop = { mainViewModel.moveStationToTop(liveStation) },
-            onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) }
-        )
+        StationActionSheet(station = liveStation, favoritePosition = displayOrder, onDismiss = mainViewModel::closeStationActionSheet, onToggleFavorite = { mainViewModel.onToggleFavorite(liveStation); mainViewModel.closeStationActionSheet() }, onSetAlarm = { mainViewModel.openAlarmDialog(Alarm(hour = 7, minute = 0, days = emptySet(), stationName = liveStation.name, stationUrl = liveStation.url)) }, onEdit = { mainViewModel.openEditStationDialog(liveStation) }, onDelete = { mainViewModel.confirmDeleteStation(liveStation) }, onMoveUp = { mainViewModel.moveStationUp(liveStation) }, onMoveDown = { mainViewModel.moveStationDown(liveStation) }, onMoveToTop = { mainViewModel.moveStationToTop(liveStation) }, onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) })
     }
-
     val stationToDelete = state.stationToDelete
-    if (stationToDelete != null) {
-        AlertDialog(
-            onDismissRequest = mainViewModel::cancelDeleteStation,
-            title = { Text(stringResource(R.string.delete_station_confirm_title)) },
-            text = { Text(stringResource(R.string.delete_station_confirm_text, stationToDelete.name)) },
-            confirmButton = {
-                TextButton(
-                    onClick = mainViewModel::deleteUserStation,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text(stringResource(R.string.action_delete)) }
-            },
-            dismissButton = {
-                TextButton(onClick = mainViewModel::cancelDeleteStation) { Text(stringResource(R.string.action_cancel)) }
-            }
-        )
-    }
-
-    if (state.showResetOrderDialog) {
-        AlertDialog(
-            onDismissRequest = mainViewModel::closeResetOrderDialog,
-            title = { Text(stringResource(R.string.reset_order_confirm_title)) },
-            text = { Text(stringResource(R.string.reset_order_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = mainViewModel::resetFavoriteOrder) {
-                    Text(stringResource(R.string.action_reset))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = mainViewModel::closeResetOrderDialog) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-        )
-    }
-
+    if (stationToDelete != null) { AlertDialog(onDismissRequest = mainViewModel::cancelDeleteStation, title = { Text(stringResource(R.string.delete_station_confirm_title)) }, text = { Text(stringResource(R.string.delete_station_confirm_text, stationToDelete.name)) }, confirmButton = { TextButton(onClick = mainViewModel::deleteUserStation, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.action_delete)) } }, dismissButton = { TextButton(onClick = mainViewModel::cancelDeleteStation) { Text(stringResource(R.string.action_cancel)) } }) }
+    if (state.showResetOrderDialog) { AlertDialog(onDismissRequest = mainViewModel::closeResetOrderDialog, title = { Text(stringResource(R.string.reset_order_confirm_title)) }, text = { Text(stringResource(R.string.reset_order_confirm_text)) }, confirmButton = { TextButton(onClick = mainViewModel::resetFavoriteOrder) { Text(stringResource(R.string.action_reset)) } }, dismissButton = { TextButton(onClick = mainViewModel::closeResetOrderDialog) { Text(stringResource(R.string.action_cancel)) } }) }
     val stationToEdit = state.stationToEdit
-    if (stationToEdit != null) {
-        EditStationDialog(
-            stationName = stationToEdit.name,
-            stationUrl = stationToEdit.url,
-            stationCountry = stationToEdit.countryCode,
-            allCountries = state.countries,
-            onDismiss = mainViewModel::closeEditStationDialog,
-            onTest = { name, url ->
-                mainViewModel.playTestStation("$name (${context.getString(R.string.action_test)})", url)
-            },
-            onSave = { newName, newUrl, newCountry ->
-                mainViewModel.updateUserStation(newName, newUrl, newCountry)
-            }
-        )
-    }
-
-    if (state.showSongInfoSheet && songInfo != null) {
-        ModalBottomSheet(
-            onDismissRequest = mainViewModel::closeSongInfo,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ) {
-            SongInfoSheet(
-                artist = state.parsedArtist,
-                title = state.parsedTitle,
-                stationName = state.activeStationName,
-                info = songInfo!!,
-                onDismiss = mainViewModel::closeSongInfo
-            )
-        }
-    }
+    if (stationToEdit != null) { EditStationDialog(stationName = stationToEdit.name, stationUrl = stationToEdit.url, stationCountry = stationToEdit.countryCode, allCountries = state.countries, onDismiss = mainViewModel::closeEditStationDialog, onTest = { name, url -> mainViewModel.playTestStation("$name (${context.getString(R.string.action_test)})", url) }, onSave = { newName, newUrl, newCountry -> mainViewModel.updateUserStation(newName, newUrl, newCountry) }) }
+    if (state.showSongInfoSheet && songInfo != null) { ModalBottomSheet(onDismissRequest = mainViewModel::closeSongInfo, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) { SongInfoSheet(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!, onDismiss = mainViewModel::closeSongInfo) } }
 }
 
 @Composable
 fun ContentScreens(
     state: MainUiState,
     filteredStations: List<RadioStation>,
-    categories: List<String>,
+    mainCategories: List<String>,
+    subCategories: List<String>,
     viewModel: MainViewModel,
     context: android.content.Context
 ) {
     val searchViewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(viewModel.stationRepository))
-
-    val scope = rememberCoroutineScope()
-
     when (state.currentTab) {
         0 -> StationList(
             stations = state.stations,
             filteredStations = filteredStations,
-            categories = categories,
+            categories = mainCategories,
+            subCategories = subCategories,
             selectedCategory = state.selectedCategory,
+            selectedSubCategories = state.selectedSubCategories,
             selectedStationId = state.selectedStationId,
             playerStatus = state.playerStatus,
             isRefreshing = state.isRefreshing,
@@ -583,144 +397,25 @@ fun ContentScreens(
             columnCountLandscape = state.colsLandscape,
             showFlags = state.showFlags,
             onCategorySelect = viewModel::onCategorySelected,
+            onSubCategoryToggle = viewModel::toggleSubCategory,
             onRefresh = viewModel::refreshStations,
             onStationSelect = viewModel::onStationClicked,
             onStationLongClick = viewModel::openStationActionSheet
         )
-
-        1 -> AlarmsScreen(
-            alarms = state.alarms,
-            onAddAlarm = { viewModel.openAlarmDialog(null) },
-            onToggleAlarm = viewModel::toggleAlarm,
-            onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) }
-        )
-
-        2 -> HistoryScreen(
-            repository = viewModel.stationRepository,
-            onPlayStationByName = viewModel::onHistoryStationClicked
-        )
-
-        3 -> SearchScreen(
-            repository = viewModel.stationRepository,
-            allStations = state.stations,
-            activeUrl = state.activeStreamUrl,
-            onPlayTest = { name, url, isSaved ->
-                if (url == state.activeStreamUrl && state.isPlaying) {
-                    val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
-                    context.startService(i)
-                } else {
-                    val displayName = if (isSaved) name else "$name (${context.getString(R.string.action_test)})"
-                    viewModel.playTestStation(displayName, url)
-                }
-            },
-            onSaveStation = { name, url, country ->
-                viewModel.saveUserStation(name, url, country)
-            },
-            viewModel = searchViewModel
-        )
-
-        4 -> SettingsScreen(
-            isRefreshing = state.isRefreshing,
-            colsPortrait = state.colsPortrait,
-            colsLandscape = state.colsLandscape,
-            showFlags = state.showFlags,
-            onToggleShowFlags = viewModel::toggleFlags,
-            onColsPortraitChange = viewModel::setColsPortrait,
-            onColsLandscapeChange = viewModel::setColsLandscape,
-            onRefresh = viewModel::refreshStations,
-            onClearHistory = viewModel::clearHistory,
-            onResetOrder = viewModel::openResetOrderDialog
-        )
+        1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })
+        2 -> HistoryScreen(repository = viewModel.stationRepository, onPlayStationByName = viewModel::onHistoryStationClicked)
+        3 -> SearchScreen(repository = viewModel.stationRepository, allStations = state.stations, activeUrl = state.activeStreamUrl, onPlayTest = { name, url, isSaved -> if (url == state.activeStreamUrl && state.isPlaying) { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }; context.startService(i) } else { val displayName = if (isSaved) name else "$name (${context.getString(R.string.action_test)})"; viewModel.playTestStation(displayName, url) } }, onSaveStation = { name, url, country -> viewModel.saveUserStation(name, url, country) }, viewModel = searchViewModel)
+        4 -> SettingsScreen(isRefreshing = state.isRefreshing, colsPortrait = state.colsPortrait, colsLandscape = state.colsLandscape, showFlags = state.showFlags, onToggleShowFlags = viewModel::toggleFlags, onColsPortraitChange = viewModel::setColsPortrait, onColsLandscapeChange = viewModel::setColsLandscape, onRefresh = viewModel::refreshStations, onClearHistory = viewModel::clearHistory, onResetOrder = viewModel::openResetOrderDialog)
     }
 }
 
 @Composable
-fun EditStationDialog(
-    stationName: String,
-    stationUrl: String,
-    stationCountry: String,
-    allCountries: List<ws.ct.radiow.RadioFilterItem>,
-    onDismiss: () -> Unit,
-    onTest: (String, String) -> Unit,
-    onSave: (String, String, String) -> Unit
-) {
+fun EditStationDialog(stationName: String, stationUrl: String, stationCountry: String, allCountries: List<ws.ct.radiow.RadioFilterItem>, onDismiss: () -> Unit, onTest: (String, String) -> Unit, onSave: (String, String, String) -> Unit) {
     var name by remember { mutableStateOf(stationName) }
     var url by remember { mutableStateOf(stationUrl) }
     var countryCode by remember { mutableStateOf(stationCountry) }
-    var countryName by remember { 
-        mutableStateOf(allCountries.find { it.isoCode == stationCountry }?.name ?: "") 
-    }
+    var countryName by remember { mutableStateOf(allCountries.find { it.isoCode == stationCountry }?.name ?: "") }
     var showCountryPicker by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.action_edit_station)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.station_name)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text(stringResource(R.string.stream_url)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                OutlinedCard(
-                    onClick = { showCountryPicker = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""
-                        if (flag.isNotEmpty()) {
-                            Text(flag, style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.width(12.dp))
-                        } else {
-                            Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.width(12.dp))
-                        }
-                        Text(
-                            text = if (countryName.isNotEmpty()) countryName else stringResource(R.string.filter_country),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (countryName.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(Icons.Default.ArrowDropDown, null)
-                    }
-                }
-            }
-        },
-        confirmButton = { Button(onClick = { onSave(name, url, countryCode) }) { Text(stringResource(R.string.action_save)) } },
-        dismissButton = {
-            Row {
-                TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) {
-                    Text(stringResource(R.string.action_test))
-                }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-        }
-    )
-
-    if (showCountryPicker) {
-        FilterDialog(
-            title = stringResource(R.string.filter_country),
-            items = allCountries,
-            onDismiss = { showCountryPicker = false },
-            onSelect = { item ->
-                countryCode = item.isoCode ?: ""
-                countryName = item.name
-                showCountryPicker = false
-            }
-        )
-    }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.action_edit_station)) }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.station_name)) }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text(stringResource(R.string.stream_url)) }, modifier = Modifier.fillMaxWidth()); OutlinedCard(onClick = { showCountryPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""; if (flag.isNotEmpty()) { Text(flag, style = MaterialTheme.typography.titleMedium); Spacer(modifier = Modifier.width(12.dp)) } else { Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(modifier = Modifier.width(12.dp)) }; Text(text = if (countryName.isNotEmpty()) countryName else stringResource(R.string.filter_country), style = MaterialTheme.typography.bodyLarge, color = if (countryName.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f)); Icon(Icons.Default.ArrowDropDown, null) } } } }, confirmButton = { Button(onClick = { onSave(name, url, countryCode) }) { Text(stringResource(R.string.action_save)) } }, dismissButton = { Row { TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) { Text(stringResource(R.string.action_test)) }; TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } } } )
+    if (showCountryPicker) { FilterDialog(title = stringResource(R.string.filter_country), items = allCountries, onDismiss = { showCountryPicker = false }, onSelect = { item -> countryCode = item.isoCode ?: ""; countryName = item.name; showCountryPicker = false }) }
 }

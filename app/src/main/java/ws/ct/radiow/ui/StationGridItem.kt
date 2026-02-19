@@ -50,21 +50,34 @@ fun StationGridItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    // Olekud
     var isLongPressDetected by remember { mutableStateOf(false) }
     var pressJob by remember { mutableStateOf<Job?>(null) }
 
-    // VÄRVID
-    val containerColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.primaryContainer else if (isFocused) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant
-    val contentColor = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-    val borderStroke = if (isFocused || isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+    val containerColor = when {
+        isSelected && isPlaying -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    
+    val contentColor = if (isSelected && isPlaying) {
+        MaterialTheme.colorScheme.onPrimaryContainer 
+    } else if (isFocused) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    
+    val borderStroke = if (isFocused || (isSelected && isPlaying)) {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.primary) // TAASTATUD: 2dp
+    } else if (isSelected) {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+    } else null
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
             .clip(RoundedCornerShape(12.dp))
-            // 1. TV PULDI LOOGIKA
             .onKeyEvent { event ->
                 val isEnter = event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
                         event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_ENTER ||
@@ -74,50 +87,31 @@ fun StationGridItem(
 
                 if (event.type == KeyEventType.KeyDown) {
                     if (event.nativeKeyEvent.repeatCount == 0) {
-                        // Nupp vajutati alla: alusta lugemist
                         isLongPressDetected = false
                         pressJob?.cancel()
-
-                        scope.launch {
-                            interactionSource.emit(PressInteraction.Press(Offset.Zero))
-                        }
-
+                        scope.launch { interactionSource.emit(PressInteraction.Press(Offset.Zero)) }
                         pressJob = scope.launch {
                             delay(500)
-                            // Aeg sai täis -> Märgime, et on pikk vajutus
                             isLongPressDetected = true
-                            // Anname tagasisidet, et kasutaja teaks lahti lasta
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-
-                            // NB! Me EI kutsu siin onLongClick(), et vältida fookuse hüppamist
-                            // Me ootame, kuni kasutaja nupu lahti laseb.
                         }
                     }
                     return@onKeyEvent true
                 }
                 else if (event.type == KeyEventType.KeyUp) {
                     pressJob?.cancel()
-
-                    scope.launch {
-                        interactionSource.emit(PressInteraction.Release(PressInteraction.Press(Offset.Zero)))
-                    }
-
+                    scope.launch { interactionSource.emit(PressInteraction.Release(PressInteraction.Press(Offset.Zero))) }
                     if (isLongPressDetected) {
-                        // Nupp lasti lahti ja see OLI pikk vajutus -> Avame menüü
-                        // Nüüd on "KeyUp" tehtud ja see ei saa enam menüü nupule "selga joosta"
                         onLongClick()
                     } else {
-                        // Lühike vajutus
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onClick()
                     }
-
                     isLongPressDetected = false
                     return@onKeyEvent true
                 }
                 false
             }
-            // 2. PUUTE-EKRAANI LOOGIKA
             .pointerInput(Unit) {
                 detectTapGestures(
                     onLongPress = {
@@ -150,27 +144,26 @@ fun StationGridItem(
                 Text(
                     text = getFlagEmoji(station.countryCode),
                     style = androidx.compose.ui.text.TextStyle(fontSize = 10.sp),
-                    modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 4.dp, bottom = 4.dp,)
+                    modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 4.dp)
                 )
             }
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected || isFocused) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(top = 8.dp, bottom = 0.dp, start = 4.dp, end = 4.dp)
+                    .padding(top = 8.dp, start = 4.dp, end = 4.dp)
             )
             if (station.isFavorite && showFavoriteIcon) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(16.dp).align(Alignment.TopEnd).padding(top = 4.dp, end = 8.dp,bottom = 4.dp,)
+                    modifier = Modifier.size(16.dp).align(Alignment.TopEnd).padding(top = 4.dp, end = 8.dp)
                 )
             }
         }

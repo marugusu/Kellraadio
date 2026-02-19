@@ -68,6 +68,7 @@
     <string name="station_name">방송국 이름</string>
     <string name="stream_url">스트림 URL</string>
     <string name="station_added">추가됨: %1$s</string>
+    <string name="filter_my">내 방송</string>
 
     <!-- Settings -->
     <string name="settings_title">설정</string>

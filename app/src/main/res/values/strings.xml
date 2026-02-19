@@ -73,6 +73,7 @@
     <string name="station_name">Station Name</string>
     <string name="stream_url">Stream URL</string>
     <string name="station_added">Added: %1$s</string>
+    <string name="filter_my">My</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
