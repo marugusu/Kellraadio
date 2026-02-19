@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
@@ -78,13 +79,17 @@ class HomeWidget : GlanceAppWidget() {
         val alarmText = prefs[Prefs.alarm] ?: ""
 
         val isPlaying = prefs[Prefs.isPlaying] ?: false
+        
+        // UUS: Loeme läbipaistvust
+        val bgTransparency = prefs[Prefs.bgTransparency] ?: 0.25f
+
         val size = LocalSize.current
         val isNarrow = true
 
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(ColorProvider(Color.Black.copy(alpha = 0.25f)))
+                .background(ColorProvider(Color.Black.copy(alpha = bgTransparency))) // UUS: Kasutame muutujat
                 .padding(8.dp)
                 .clickable(actionStartActivity<MainActivity>())
         ) {
@@ -300,6 +305,7 @@ class HomeWidget : GlanceAppWidget() {
         val bitrate = stringPreferencesKey("bitrate")
         val alarm = stringPreferencesKey("alarm")
         val isPlaying = booleanPreferencesKey("is_playing")
+        val bgTransparency = floatPreferencesKey("bg_transparency") // UUS VÕTI
     }
 }
 

@@ -31,6 +31,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val context = application.applicationContext
     private val prefs = context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE)
 
+    // --- REPOSITOORIUMID ---
     private val database = AppDatabase.getDatabase(context)
     val stationRepository = RadioStationRepository(
         StationApiService.create(),
@@ -40,9 +41,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val alarmDao = database.alarmDao()
 
+    // --- UI OLEK ---
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState = _uiState.asStateFlow()
 
+    // --- BROADCAST RECEIVER (Raadio sündmused) ---
     private val radioReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -117,7 +120,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             stationRepository.allStations.collect { stations ->
-                _uiState.update { currentState -> currentState.copy(stations = stations) }
+                _uiState.update { currentState ->
+                    currentState.copy(stations = stations)
+                }
             }
         }
 
@@ -145,7 +150,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedStationId = prefs.getInt("last_selected_id", -1),
             colsPortrait = prefs.getInt("cols_portrait", 3),
             colsLandscape = prefs.getInt("cols_landscape", 3),
-            showFlags = prefs.getBoolean("show_flags", true)
+            showFlags = prefs.getBoolean("show_flags", true),
+            widgetTransparency = prefs.getFloat("widget_transparency", 0.25f) // UUS
         )}
     }
 
@@ -157,7 +163,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- KASUTAJA TEGEVUSED ---
+    // --- KASUTAJA TEGEVUSED (EVENTS) ---
 
     fun onTabSelected(index: Int) {
         val pendingCategory = _uiState.value.categoryToSelectOnTabChange
@@ -172,7 +178,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onCategorySelected(category: String) {
         _uiState.update { it.copy(
             selectedCategory = category,
-            selectedSubCategories = emptySet() // Tühjenda filtrid peagrupi vahetusel
+            selectedSubCategories = emptySet()
         )}
         prefs.edit().putString("last_category", category).apply()
     }
@@ -233,7 +239,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onToggleFavorite(station: RadioStation) {
-        viewModelScope.launch { stationRepository.toggleFavorite(station) }
+        viewModelScope.launch {
+            stationRepository.toggleFavorite(station)
+        }
     }
 
     fun moveStationUp(station: RadioStation) {
@@ -266,6 +274,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openResetOrderDialog() { _uiState.update { it.copy(showResetOrderDialog = true) } }
     fun closeResetOrderDialog() { _uiState.update { it.copy(showResetOrderDialog = false) } }
+    
     fun resetFavoriteOrder() {
         viewModelScope.launch {
             stationRepository.resetFavoriteOrder()
@@ -274,8 +283,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- DIALOOGIDE HALDUS ---
+
     fun openSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = true) } }
     fun closeSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = false) } }
+
     fun openAlarmDialog(alarm: Alarm? = null) {
         if (alarm == null && _uiState.value.selectedStationId == -1) {
             Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
@@ -284,17 +296,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(showAlarmDialog = true, alarmToEdit = alarm) }
     }
     fun closeAlarmDialog() { _uiState.update { it.copy(showAlarmDialog = false, alarmToEdit = null) } }
+
     fun openStationActionSheet(station: RadioStation) { _uiState.update { it.copy(showActionSheetForStation = station) } }
     fun closeStationActionSheet() { _uiState.update { it.copy(showActionSheetForStation = null) } }
+
     fun openSongInfo() { _uiState.update { it.copy(showSongInfoSheet = true) } }
     fun closeSongInfo() { _uiState.update { it.copy(showSongInfoSheet = false) } }
+
     fun confirmDeleteStation(station: RadioStation) { _uiState.update { it.copy(stationToDelete = station) } }
     fun cancelDeleteStation() { _uiState.update { it.copy(stationToDelete = null) } }
+
     fun openEditStationDialog(station: RadioStation) {
         closeStationActionSheet()
         _uiState.update { it.copy(stationToEdit = station) }
     }
     fun closeEditStationDialog() { _uiState.update { it.copy(stationToEdit = null) } }
+
+    // --- ÄRILINE LOOGIKA ---
 
     fun saveAlarm(hour: Int, minute: Int, days: Set<Int>) {
         val alarmToEdit = _uiState.value.alarmToEdit
@@ -303,12 +321,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
         } ?: return
-        val alarm = alarmToEdit?.copy(hour = hour, minute = minute, days = days, stationName = station.name, stationUrl = station.url, isEnabled = true) ?: Alarm(hour = hour, minute = minute, days = days, stationName = station.name, stationUrl = station.url)
+
+        val alarm = alarmToEdit?.copy(
+            hour = hour, minute = minute, days = days,
+            stationName = station.name, stationUrl = station.url, isEnabled = true
+        ) ?: Alarm(
+            hour = hour, minute = minute, days = days,
+            stationName = station.name, stationUrl = station.url
+        )
+
         AlarmUtils.saveOrUpdateAlarm(context, alarm)
         closeAlarmDialog()
     }
-    fun toggleAlarm(alarm: Alarm) { AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false) }
-    fun deleteAlarm(alarm: Alarm) { AlarmUtils.deleteAlarm(context, alarm); closeAlarmDialog() }
+
+    fun toggleAlarm(alarm: Alarm) {
+        AlarmUtils.saveOrUpdateAlarm(context, alarm.copy(isEnabled = !alarm.isEnabled), showToast = false)
+    }
+
+    fun deleteAlarm(alarm: Alarm) {
+        AlarmUtils.deleteAlarm(context, alarm)
+        closeAlarmDialog()
+    }
+
     fun deleteUserStation() {
         val station = _uiState.value.stationToDelete
         if (station != null) {
@@ -320,23 +354,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
     fun saveUserStation(name: String, url: String, countryCode: String = "") {
         if (!isValidUrl(url)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
+        
         viewModelScope.launch {
             val newId = stationRepository.saveUserStation(name, url, countryCode)
             Toast.makeText(context, context.getString(R.string.station_added, name), Toast.LENGTH_SHORT).show()
             _uiState.update { it.copy(categoryToSelectOnTabChange = "My") }
+
             if (_uiState.value.activeStreamUrl == url && _uiState.value.isPlaying) {
-                _uiState.update { it.copy(selectedStationId = newId, activeStationName = name)}
+                _uiState.update { it.copy(
+                    selectedStationId = newId,
+                    activeStationName = name
+                )}
                 prefs.edit().putInt("last_selected_id", newId).putString("last_selected_name", name).apply()
-                val i = Intent(RadioService.ACTION_STATION_CHANGED).apply { putExtra("STATION_NAME", name)}
+                val i = Intent(RadioService.ACTION_STATION_CHANGED).apply {
+                    putExtra("STATION_NAME", name)
+                }
                 LocalBroadcastManager.getInstance(context).sendBroadcast(i)
             }
         }
     }
+
     fun refreshStations() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
@@ -350,28 +393,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-    fun setColsPortrait(cols: Int) { _uiState.update { it.copy(colsPortrait = cols) }; prefs.edit().putInt("cols_portrait", cols).apply() }
-    fun setColsLandscape(cols: Int) { _uiState.update { it.copy(colsLandscape = cols) }; prefs.edit().putInt("cols_landscape", cols).apply() }
-    fun toggleFlags(show: Boolean) { _uiState.update { it.copy(showFlags = show) }; prefs.edit().putBoolean("show_flags", show).apply() }
-    fun clearHistory() { viewModelScope.launch { stationRepository.clearHistory() } }
+
+    fun setColsPortrait(cols: Int) {
+        _uiState.update { it.copy(colsPortrait = cols) }
+        prefs.edit().putInt("cols_portrait", cols).apply()
+    }
+
+    fun setColsLandscape(cols: Int) {
+        _uiState.update { it.copy(colsLandscape = cols) }
+        prefs.edit().putInt("cols_landscape", cols).apply()
+    }
+
+    fun toggleFlags(show: Boolean) {
+        _uiState.update { it.copy(showFlags = show) }
+        prefs.edit().putBoolean("show_flags", show).apply()
+    }
+
+    fun setWidgetTransparency(value: Float) {
+        _uiState.update { it.copy(widgetTransparency = value) }
+        prefs.edit().putFloat("widget_transparency", value).apply()
+        // Saadame teenusele käsu vidina uuendamiseks
+        val i = Intent(context, RadioService::class.java).apply {
+            action = RadioService.ACTION_FORCE_WIDGET_UPDATE
+        }
+        context.startService(i)
+    }
+
+    fun clearHistory() {
+        viewModelScope.launch { stationRepository.clearHistory() }
+    }
+
     fun addTestData() {
         viewModelScope.launch {
             stationRepository.insertTestHistory()
             Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
         }
     }
+
     fun updateUserStation(newName: String, newUrl: String, newCountryCode: String = "") {
         if (!isValidUrl(newUrl)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
+
         val stationToUpdate = _uiState.value.stationToEdit
         if (stationToUpdate != null) {
             viewModelScope.launch {
                 stationRepository.updateUserStation(stationToUpdate, newName, newUrl, newCountryCode)
                 if (stationToUpdate.id == _uiState.value.selectedStationId) {
                     _uiState.update { it.copy(activeStationName = newName) }
-                    val serviceIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_UPDATE_STATION_NAME; putExtra("STATION_NAME", newName) }
+                    val serviceIntent = Intent(context, RadioService::class.java).apply {
+                        action = RadioService.ACTION_UPDATE_STATION_NAME
+                        putExtra("STATION_NAME", newName)
+                    }
                     context.startService(serviceIntent)
                 }
                 closeEditStationDialog()
@@ -379,18 +453,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- ABIFUNKTSIOONID ---
+
     private fun startRadioService(station: RadioStation) {
         val i = Intent(context, RadioService::class.java).apply {
             putExtra("STREAM_URL", station.url)
             putExtra("STATION_NAME", station.name)
             putExtra("TRIGGERED_BY", "USER")
-            putExtra("CATEGORY_NAME", station.category) // Saada õige kategooria teenusele
+            putExtra("CATEGORY_NAME", station.category)
         }
         context.startForegroundService(i)
     }
+
     private fun updateSelectedStationLocal(stationId: Int) {
         _uiState.update { it.copy(selectedStationId = stationId) }
         prefs.edit().putInt("last_selected_id", stationId).apply()
+
         val station = _uiState.value.stations.find { it.id == stationId }
         if (station != null) {
             val currentCat = _uiState.value.selectedCategory
@@ -399,19 +477,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
     fun playTestStation(name: String, url: String) {
         if (!isValidUrl(url)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
-        _uiState.update { it.copy(activeStationName = name, activeStreamUrl = url, selectedStationId = -1, isPlaying = true)}
-        val i = Intent(context, RadioService::class.java).apply { putExtra("STREAM_URL", url); putExtra("STATION_NAME", name); putExtra("TRIGGERED_BY", "USER") }
+        _uiState.update { it.copy(
+            activeStationName = name,
+            activeStreamUrl = url,
+            selectedStationId = -1,
+            isPlaying = true
+        )}
+        val i = Intent(context, RadioService::class.java).apply {
+            putExtra("STREAM_URL", url)
+            putExtra("STATION_NAME", name)
+            putExtra("TRIGGERED_BY", "USER")
+        }
         context.startForegroundService(i)
     }
+
     private fun isValidUrl(url: String): Boolean {
         val trimmed = url.trim().lowercase()
         return trimmed.startsWith("http://") || trimmed.startsWith("https://")
     }
-    override fun onCleared() { super.onCleared(); LocalBroadcastManager.getInstance(context).unregisterReceiver(radioReceiver) }
-    private fun getString(resId: Int): String { return getApplication<Application>().getString(resId) }
+
+    override fun onCleared() {
+        super.onCleared()
+        LocalBroadcastManager.getInstance(context).unregisterReceiver(radioReceiver)
+    }
+
+    private fun getString(resId: Int): String {
+        return getApplication<Application>().getString(resId)
+    }
 }

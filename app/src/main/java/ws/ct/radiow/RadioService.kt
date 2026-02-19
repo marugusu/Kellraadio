@@ -225,8 +225,6 @@ class RadioService : Service() {
 
         player.playlistMetadata = newMetadata
 
-        // --- TAASTATUD: MediaItemi asendamine ---
-        // See sunnib ExoPlayerit ja MediaSessionit aru saama, et info on muutunud.
         val currentItem = player.currentMediaItem
         if (currentItem != null) {
              val newItem = currentItem.buildUpon()
@@ -624,6 +622,9 @@ class RadioService : Service() {
     }
 
     private fun updateWidget() {
+        // UUS: Loeb värsket läbipaistvust
+        val bgTransparency = prefs.getFloat("widget_transparency", 0.25f)
+        
         val isPlaying = if (::player.isInitialized) player.isPlaying else false
         val stationName = currentStationName
         val title = currentTitle
@@ -667,6 +668,8 @@ class RadioService : Service() {
                         prefs[ws.ct.radiow.widget.HomeWidget.Prefs.status] = extraInfo
                         prefs[ws.ct.radiow.widget.HomeWidget.Prefs.alarm] = nextAlarmString
                         prefs[ws.ct.radiow.widget.HomeWidget.Prefs.isPlaying] = isPlaying
+                        // UUS: Salvesta läbipaistvus vidina olekusse
+                        prefs[ws.ct.radiow.widget.HomeWidget.Prefs.bgTransparency] = bgTransparency
                     }
                     widget.update(context, glanceId)
                 }

@@ -86,6 +86,9 @@
     <string name="settings_landscape">가로 모드 (Landscape)</string>
     <string name="settings_show_flags">국기 표시</string>
     <string name="settings_show_flags_desc">방송국 이름 옆에 국기 표시</string>
+    <string name="settings_widget_transparency">위젯 투명도</string>
+    <string name="settings_widget_transparency_desc">홈 화면 위젯 배경 투명도 조절</string>
+    
     <string name="settings_group_general">일반</string>
     <string name="settings_language">언어 / Language</string>
     <string name="settings_language_desc">앱 언어 선택</string>

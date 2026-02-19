@@ -109,7 +109,6 @@ fun RaadioEkraan(
         else w?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
-    // --- KATEGOORIATE JA FILTRITE ARVUTAMINE ---
     val categoriesData = remember(state.stations) {
         val favs = state.stations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
         val userStations = state.stations.filter { it.isUserStation }
@@ -124,7 +123,6 @@ fun RaadioEkraan(
         if (favs.isNotEmpty()) baseGroups.add("Favorites")
         if (userStations.isNotEmpty()) baseGroups.add("My")
         
-        // UUS: Sorteerimine konfi alusel
         val sortedCountries = countryCodes.sortedWith(compareBy<String> { code ->
             val index = AppConfig.UI.PREFERRED_COUNTRY_ORDER.indexOf(code)
             if (index != -1) index else Int.MAX_VALUE
@@ -138,7 +136,6 @@ fun RaadioEkraan(
     val favoriteStations = categoriesData.first
     val mainCategories = categoriesData.second
 
-    // --- ALAMKATEGOORIAD (FILTRID) VALITUD GRUPI JAOKS ---
     val currentSubCategories = remember(state.selectedCategory, state.stations) {
         if (state.selectedCategory.length == 2 || state.selectedCategory == "All") {
             val stationsInGroup = state.stations.filter { 
@@ -167,7 +164,6 @@ fun RaadioEkraan(
         }
     }
 
-    // --- LÕPLIK FILTREERITUD JAAMADE NIMEKIRI ---
     val filteredStations = remember(state.selectedCategory, state.selectedSubCategories, state.stations, favoriteStations) {
         val baseList = when (state.selectedCategory) {
             "Favorites" -> favoriteStations
@@ -405,7 +401,20 @@ fun ContentScreens(
         1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })
         2 -> HistoryScreen(repository = viewModel.stationRepository, onPlayStationByName = viewModel::onHistoryStationClicked)
         3 -> SearchScreen(repository = viewModel.stationRepository, allStations = state.stations, activeUrl = state.activeStreamUrl, onPlayTest = { name, url, isSaved -> if (url == state.activeStreamUrl && state.isPlaying) { val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }; context.startService(i) } else { val displayName = if (isSaved) name else "$name (${context.getString(R.string.action_test)})"; viewModel.playTestStation(displayName, url) } }, onSaveStation = { name, url, country -> viewModel.saveUserStation(name, url, country) }, viewModel = searchViewModel)
-        4 -> SettingsScreen(isRefreshing = state.isRefreshing, colsPortrait = state.colsPortrait, colsLandscape = state.colsLandscape, showFlags = state.showFlags, onToggleShowFlags = viewModel::toggleFlags, onColsPortraitChange = viewModel::setColsPortrait, onColsLandscapeChange = viewModel::setColsLandscape, onRefresh = viewModel::refreshStations, onClearHistory = viewModel::clearHistory, onResetOrder = viewModel::openResetOrderDialog)
+        4 -> SettingsScreen(
+            isRefreshing = state.isRefreshing,
+            colsPortrait = state.colsPortrait,
+            colsLandscape = state.colsLandscape,
+            showFlags = state.showFlags,
+            widgetTransparency = state.widgetTransparency, // EDASTAME VÄÄRTUSE
+            onToggleShowFlags = viewModel::toggleFlags,
+            onColsPortraitChange = viewModel::setColsPortrait,
+            onColsLandscapeChange = viewModel::setColsLandscape,
+            onRefresh = viewModel::refreshStations,
+            onClearHistory = viewModel::clearHistory,
+            onResetOrder = viewModel::openResetOrderDialog,
+            onWidgetTransparencyChange = viewModel::setWidgetTransparency // EDASTAME FUNKTSIOONI
+        )
     }
 }
 

@@ -91,6 +91,9 @@
     <string name="settings_landscape">Külili vaade (Landscape)</string>
     <string name="settings_show_flags">Näita riigilippe</string>
     <string name="settings_show_flags_desc">Kuva kanalite juures päritoluriigi lippu</string>
+    <string name="settings_widget_transparency">Vidina läbipaistvus</string>
+    <string name="settings_widget_transparency_desc">Muuda koduekraani vidina tausta</string>
+    
     <string name="settings_group_general">Üldine</string>
     <string name="settings_language">Keel / Language</string>
     <string name="settings_language_desc">Vali rakenduse keel</string>

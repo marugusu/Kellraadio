@@ -91,6 +91,9 @@
     <string name="settings_landscape">Landscape view</string>
     <string name="settings_show_flags">Show country flags</string>
     <string name="settings_show_flags_desc">Display origin flag next to station name</string>
+    <string name="settings_widget_transparency">Widget Transparency</string>
+    <string name="settings_widget_transparency_desc">Adjust home screen widget background opacity</string>
+    
     <string name="settings_group_general">General</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_desc">Choose app language</string>

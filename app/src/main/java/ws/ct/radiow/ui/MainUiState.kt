@@ -31,11 +31,12 @@ data class MainUiState(
     val showFlags: Boolean = true,
     val colsPortrait: Int = 3,
     val colsLandscape: Int = 3,
+    val widgetTransparency: Float = 0.25f, // UUS: Vaikimisi 25%
 
     // --- NAVIGATSIOON JA VALIKUD ---
     val currentTab: Int = 0,
-    val selectedCategory: String = "Favorites", // Algne peagrupp
-    val selectedSubCategories: Set<String> = emptySet(), // UUS: Teise rea filtrid
+    val selectedCategory: String = "Favorites",
+    val selectedSubCategories: Set<String> = emptySet(),
     val selectedStationId: Int = -1,
     val categoryToSelectOnTabChange: String? = null,
 

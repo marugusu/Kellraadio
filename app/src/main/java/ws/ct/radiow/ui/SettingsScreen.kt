@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import ws.ct.radiow.LogExporter
 import ws.ct.radiow.R
+import kotlin.math.roundToInt
 
 data class AppLanguage(val code: String, val flag: String, val name: String)
 
@@ -44,12 +45,14 @@ fun SettingsScreen(
     colsPortrait: Int,
     colsLandscape: Int,
     showFlags: Boolean,
+    widgetTransparency: Float, // PARAMEETER OLEMAS
     onToggleShowFlags: (Boolean) -> Unit,
     onColsPortraitChange: (Int) -> Unit,
     onColsLandscapeChange: (Int) -> Unit,
     onRefresh: () -> Unit,
     onClearHistory: () -> Unit,
-    onResetOrder: () -> Unit, // UUS
+    onResetOrder: () -> Unit,
+    onWidgetTransparencyChange: (Float) -> Unit, // PARAMEETER OLEMAS
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -141,6 +144,7 @@ fun SettingsScreen(
             }
 
             SettingsGroup(title = stringResource(R.string.settings_group_appearance)) {
+                // 1. KAART: KANALITE RUUDUSTIK
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -160,9 +164,7 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-
                         Spacer(modifier = Modifier.height(16.dp))
-
                         Text(
                             text = stringResource(R.string.settings_portrait),
                             style = MaterialTheme.typography.labelMedium,
@@ -186,9 +188,7 @@ fun SettingsScreen(
                                 }
                             }
                         }
-
                         Spacer(modifier = Modifier.height(16.dp))
-
                         Text(
                             text = stringResource(R.string.settings_landscape),
                             style = MaterialTheme.typography.labelMedium,
@@ -212,31 +212,49 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                    }
+                }
 
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surface)
-                        Spacer(modifier = Modifier.height(16.dp))
+                // 2. KAART: RIIGILIPUD
+                SettingsCardItem(
+                    headline = stringResource(R.string.settings_show_flags),
+                    supporting = stringResource(R.string.settings_show_flags_desc),
+                    icon = Icons.Default.Flag,
+                    onClick = { onToggleShowFlags(!showFlags) },
+                    trailingContent = { Switch(checked = showFlags, onCheckedChange = { onToggleShowFlags(it) }) }
+                )
 
+                // 3. KAART: VIDINA LÄBIPAISTVUS
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_widget_transparency),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_widget_transparency_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.settings_show_flags),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = stringResource(R.string.settings_show_flags_desc),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Switch(
-                                checked = showFlags,
-                                onCheckedChange = onToggleShowFlags
+                            Text(
+                                text = "${(widgetTransparency * 100).roundToInt()}%",
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.width(48.dp)
+                            )
+                            Slider(
+                                value = widgetTransparency,
+                                onValueChange = onWidgetTransparencyChange, // KASUTAME FUNKTSIOONI
+                                valueRange = 0f..1f,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
