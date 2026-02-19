@@ -1,4 +1,4 @@
-package ws.ct.radiowakes
+package ws.ct.radiow
 
 import org.junit.Test
 

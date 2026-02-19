@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">RadioWakes</string> <!-- Kellraadio Kierarādij -->
+    <string name="app_name">RadioW</string> <!-- Kellraadio Kierarādij -->
 
     <!-- Navigation -->
     <string name="nav_radio">Rādij</string>

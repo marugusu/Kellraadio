@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "ws.ct.radiowakes"
+    namespace = "ws.ct.radiow"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "ws.ct.radiowakes"
+        applicationId = "ws.ct.radiow"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

@@ -81,7 +81,7 @@
         </provider>
 
         <receiver
-            android:name="ws.ct.radiowakes.widget.HomeWidgetReceiver"
+            android:name="ws.ct.radiow.widget.HomeWidgetReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
