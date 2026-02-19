@@ -34,11 +34,13 @@ class RadioStationRepository(
         val maxId = stationDao.getMaxId() ?: 9999
         val newId = if (maxId < 10000) 10000 else maxId + 1
 
+        val stationCategory = category.ifBlank { "My" }
+
         val newStation = RadioStation(
             id = newId,
             name = name,
             url = url,
-            category = category,
+            category = stationCategory,
             priority = 10000 + (newId - 10000),
             isUserStation = true,
             uuid = UUID.randomUUID().toString(),
@@ -50,14 +52,15 @@ class RadioStationRepository(
     }
 
     suspend fun updateUserStation(station: RadioStation, newName: String, newUrl: String, newCountryCode: String, newCategory: String) {
-        val updatedStation = station.copy(name = newName, url = newUrl, countryCode = newCountryCode, category = newCategory)
+        val stationCategory = newCategory.ifBlank { "My" }
+        val updatedStation = station.copy(name = newName, url = newUrl, countryCode = newCountryCode, category = stationCategory)
         stationDao.update(updatedStation)
     }
 
     private suspend fun ensureNormalized(favorites: List<RadioStation>): List<RadioStation> {
-        val needsNormalization = favorites.map { it.favoriteOrder }.distinct().size != favorites.size || 
+        val needsNormalization = favorites.map { it.favoriteOrder }.distinct().size != favorites.size ||
                                  favorites.any { it.favoriteOrder == 0 }
-        
+
         return if (needsNormalization) {
             val normalized = favorites.mapIndexed { index, station ->
                 station.copy(favoriteOrder = index + 1)
