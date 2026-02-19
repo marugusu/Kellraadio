@@ -168,6 +168,7 @@ fun RaadioEkraan(
 
         Row(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             NavigationRail(containerColor = Color.Black, contentColor = Color.White) {
+                // 1. Defineerime värvid (täpselt nagu portraitis)
                 val railItemColors = NavigationRailItemDefaults.colors(
                     indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -176,7 +177,46 @@ fun RaadioEkraan(
                     unselectedTextColor = Color.Gray
                 )
 
-                // NavigationRail items...
+                Spacer(modifier = Modifier.weight(1f))
+
+                // 2. Rakendame värvid (colors = railItemColors)
+                NavigationRailItem(
+                    selected = state.currentTab == 0,
+                    onClick = { mainViewModel.onTabSelected(0) },
+                    icon = { Icon(Icons.Default.Radio, null) },
+                    label = { Text(navRadioTitle) },
+                    colors = railItemColors
+                )
+                NavigationRailItem(
+                    selected = state.currentTab == 1,
+                    onClick = { mainViewModel.onTabSelected(1) },
+                    icon = { Icon(Icons.Default.Alarm, null) },
+                    label = { Text(navAlarmsTitle) },
+                    colors = railItemColors
+                )
+                NavigationRailItem(
+                    selected = state.currentTab == 2,
+                    onClick = { mainViewModel.onTabSelected(2) },
+                    icon = { Icon(Icons.Default.History, null) },
+                    label = { Text(navHistoryTitle) },
+                    colors = railItemColors
+                )
+                NavigationRailItem(
+                    selected = state.currentTab == 3,
+                    onClick = { mainViewModel.onTabSelected(3) },
+                    icon = { Icon(Icons.Default.AddCircleOutline, null) },
+                    label = { Text(navAddTitle) },
+                    colors = railItemColors
+                )
+                NavigationRailItem(
+                    selected = state.currentTab == 4,
+                    onClick = { mainViewModel.onTabSelected(4) },
+                    icon = { Icon(Icons.Default.Settings, null) },
+                    label = { Text(navSettingsTitle) },
+                    colors = railItemColors
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 

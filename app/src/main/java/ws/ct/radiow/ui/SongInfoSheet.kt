@@ -44,6 +44,7 @@ fun SongInfoSheet(
 ) {
     val stationColor = StationArtworkUtils.getStationColor(stationName)
 
+    // Jälgime pildi laadimise olekut (tausta udu jaoks)
     var imageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
     val isImageLoaded = imageState is AsyncImagePainter.State.Success
     val isBlurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -53,6 +54,7 @@ fun SongInfoSheet(
             .fillMaxWidth()
             .fillMaxHeight(0.90f)
     ) {
+        // --- KIHT 1: TAUST (Ainult Sheeti puhul) ---
         if (isImageLoaded && isBlurSupported) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -76,6 +78,8 @@ fun SongInfoSheet(
             )
         }
 
+        // --- KIHT 2: SISU ---
+        // Kutsume välja eraldatud sisu
         SongInfoContent(
             artist = artist,
             title = title,
@@ -86,6 +90,10 @@ fun SongInfoSheet(
     }
 }
 
+/**
+ * Eraldatud sisu komponent.
+ * Seda saame kasutada nii Sheetis kui ka otse MainActivitys (tahvli vaates).
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SongInfoContent(
@@ -100,6 +108,8 @@ fun SongInfoContent(
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
 
+    // See olek on vajalik lokaalselt, et teada kas näidata logo või pilti,
+    // kui seda kasutatakse väljaspool Sheeti
     var localImageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
     val isImageLoaded = localImageState is AsyncImagePainter.State.Success
 
@@ -112,6 +122,7 @@ fun SongInfoContent(
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
+        // 1. ALBUMI KAANEPILT (VÕI LOGO)
         Box(
             modifier = Modifier
                 .size(280.dp)
@@ -120,6 +131,7 @@ fun SongInfoContent(
                 .background(if (isImageLoaded) Color.DarkGray else stationColor),
             contentAlignment = Alignment.Center
         ) {
+            // A) LOGO
             Text(
                 text = stationInitials,
                 fontSize = 80.sp,
@@ -127,6 +139,7 @@ fun SongInfoContent(
                 color = Color.White.copy(alpha = 0.3f)
             )
 
+            // B) PILT
             if (!info.coverArtUrl.isNullOrEmpty()) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
@@ -138,7 +151,7 @@ fun SongInfoContent(
                     contentScale = ContentScale.Crop,
                     onState = { state ->
                         localImageState = state
-                        onImageStateChange?.invoke(state)
+                        onImageStateChange?.invoke(state) // Saada info ülespoole (Sheeti jaoks)
                     }
                 )
             }
@@ -146,6 +159,7 @@ fun SongInfoContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // 2. INFO
         Text(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
@@ -183,6 +197,7 @@ fun SongInfoContent(
 
         Spacer(modifier = Modifier.height(40.dp))
 
+        // 3. LAULUSÕNAD
         if (!info.lyrics.isNullOrEmpty()) {
             Text(
                 text = stringResource(R.string.info_lyrics),
@@ -211,11 +226,15 @@ fun SongInfoContent(
     }
 }
 
+/**
+ * UUS: Spetsiaalne disain laiale ekraanile (TV / Tahvel).
+ * Siin on Pilt vasakul ja Tekst paremal.
+*/
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SongInfoContentLandscape(
-    artist: String,
-    title: String,
+    artist: String,          // jäetud sisse, kui hiljem vaja
+    title: String,           // jäetud sisse, kui hiljem vaja
     stationName: String,
     info: SongAdditionalInfo,
     modifier: Modifier = Modifier
@@ -224,28 +243,28 @@ fun SongInfoContentLandscape(
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
 
-    var localImageState by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
-    val isImageLoaded = localImageState is AsyncImagePainter.State.Success
-
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(0.dp)
-            .verticalScroll(scrollState)
     ) {
+        // --- 1. ÜLEMINE OSA (pilt vasakus servas, info paremal)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(0.dp),
+                .background(Color.Black)
+                .padding(0.dp),               // natuke rohkem ruumi servadest
             verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // A) PILT – vasakus servas, suur, ümarate nurkadega, proportsioonidega
             Box(
                 modifier = Modifier
-                    .size(240.dp)
+                    .weight(0.5f)
+                    .aspectRatio(1f)               // ruut, et ei veniks
                     .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp))
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (isImageLoaded) Color.DarkGray else stationColor),
+                    .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -262,36 +281,23 @@ fun SongInfoContentLandscape(
                             .crossfade(true)
                             .build(),
                         contentDescription = "Album Art",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        onState = { state -> localImageState = state }
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Fit   // kogu pilt näha, ei venita ega lõika ära
                     )
                 }
             }
 
+            // B) PAREM POOL – chips ja muu info (nagu algselt)
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(0.5f)
+                    .fillMaxHeight(),
                 verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.Start
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Text(
-                    text = artist,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-
                 if (info.album != null || info.year != null || info.genre != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
                     FlowRow(
-                        horizontalArrangement = Arrangement.Start,
+                        horizontalArrangement = Arrangement.Center,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -308,34 +314,6 @@ fun SongInfoContentLandscape(
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        if (!info.lyrics.isNullOrEmpty()) {
-            Text(
-                text = stringResource(R.string.info_lyrics),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.5f),
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = info.lyrics,
-                style = MaterialTheme.typography.bodyLarge,
-                lineHeight = 32.sp,
-                color = Color.White.copy(alpha = 0.9f),
-                textAlign = TextAlign.Start
-            )
-        } else if (info.coverArtUrl.isNullOrEmpty() || localImageState is AsyncImagePainter.State.Error) {
-            Text(
-                text = stringResource(R.string.info_not_found),
-                color = Color.Gray
-            )
-        }
-
-        Spacer(modifier = Modifier.height(64.dp))
     }
 }
 
