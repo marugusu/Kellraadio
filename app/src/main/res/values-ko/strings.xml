@@ -12,6 +12,7 @@
     <string name="action_cancel">취소</string>
     <string name="action_save">저장</string>
     <string name="action_delete">삭제</string>
+    <string name="action_reset">초기화</string>
     <string name="action_close">닫기</string>
     <string name="action_search">검색</string>
     <string name="action_play">재생</string>
@@ -73,6 +74,11 @@
     <string name="settings_group_radio">라디오 및 채널</string>
     <string name="settings_refresh">방송국 목록 갱신</string>
     <string name="settings_refresh_desc">서버에서 최신 목록 다운로드</string>
+    <string name="settings_reset_order">즐겨찾는 채널 순서 초기화</string>
+    <string name="settings_reset_order_desc">즐겨찾는 채널을 기본 정렬 순서로 되돌립니다</string>
+    <string name="reset_order_confirm_title">순서 초기화하시겠습니까?</string>
+    <string name="reset_order_confirm_text">즐겨찾는 채널의 정렬 순서를 초기화하시겠습니까?</string>
+
     <string name="settings_group_appearance">화면 및 레이아웃</string>
     <string name="settings_grid_layout">채널 그리드</string>
     <string name="settings_portrait">세로 모드 (Portrait)</string>
@@ -89,6 +95,7 @@
     <string name="settings_test_data_desc">데이터베이스에 샘플 데이터 추가</string>
     <string name="app_version">버전 %1$s</string>
     <string name="toast_updated">갱신됨!</string>
+    <string name="toast_order_reset">순서가 초기화되었습니다!</string>
     <string name="settings_clear_history">기록 삭제</string>
     <string name="settings_clear_history_desc">모든 청취 기록 삭제</string>
 

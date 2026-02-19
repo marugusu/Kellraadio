@@ -17,6 +17,7 @@
     <string name="action_cancel">Loobu</string>
     <string name="action_save">Salvesta</string>
     <string name="action_delete">Kustuta</string>
+    <string name="action_reset">Taasta</string>
     <string name="action_close">Sulge</string>
     <string name="action_search">Otsi</string>
     <string name="action_play">Mängi</string>
@@ -78,6 +79,11 @@
     <string name="settings_group_radio">Raadio ja Kanalid</string>
     <string name="settings_refresh">Värskenda jaamu</string>
     <string name="settings_refresh_desc">Lae serverist uusim kanalite nimekiri</string>
+    <string name="settings_reset_order">Taasta lemmikkanalite järjekord</string>
+    <string name="settings_reset_order_desc">Pane lemmikkanalid tagasi algsesse järjekorda</string>
+    <string name="reset_order_confirm_title">Taasta järjekord?</string>
+    <string name="reset_order_confirm_text">Kas oled kindel, et soovid lemmikkanalite järjekorra algseks muuta?</string>
+
     <string name="settings_group_appearance">Välimus ja Paigutus</string>
     <string name="settings_grid_layout">Kanalite ruudustik</string>
     <string name="settings_portrait">Püstine vaade (Portrait)</string>
@@ -94,6 +100,7 @@
     <string name="settings_test_data_desc">Lisa andmebaasi prooviandmeid</string>
     <string name="app_version">Versioon %1$s</string>
     <string name="toast_updated">Uuendatud!</string>
+    <string name="toast_order_reset">Lemmikute järjekord taastatud!</string>
     <string name="settings_clear_history">Kustuta ajalugu</string>
     <string name="settings_clear_history_desc">Eemalda kõik salvestatud kuulamised</string>
 

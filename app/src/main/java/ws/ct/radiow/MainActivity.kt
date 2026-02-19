@@ -110,7 +110,7 @@ fun RaadioEkraan(
 
     val desiredOrder = listOf("Eesti", "ERR", "Duo", "Sky", "Muu Eesti", "Välis")
     val categoriesData = remember(state.stations) {
-        val favs = state.stations.filter { it.isFavorite }
+        val favs = state.stations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
         val base = state.stations.map { it.category }.distinct().toMutableList()
 
         if (favs.isNotEmpty()) {
@@ -168,7 +168,6 @@ fun RaadioEkraan(
 
         Row(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             NavigationRail(containerColor = Color.Black, contentColor = Color.White) {
-                // 1. Defineerime värvid (täpselt nagu portraitis)
                 val railItemColors = NavigationRailItemDefaults.colors(
                     indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -178,8 +177,6 @@ fun RaadioEkraan(
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
-
-                // 2. Rakendame värvid (colors = railItemColors)
                 NavigationRailItem(
                     selected = state.currentTab == 0,
                     onClick = { mainViewModel.onTabSelected(0) },
@@ -215,7 +212,6 @@ fun RaadioEkraan(
                     label = { Text(navSettingsTitle) },
                     colors = railItemColors
                 )
-
                 Spacer(modifier = Modifier.weight(1f))
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
@@ -464,8 +460,14 @@ fun RaadioEkraan(
 
     if (state.showActionSheetForStation != null) {
         val liveStation = state.stations.find { it.id == state.showActionSheetForStation!!.id } ?: state.showActionSheetForStation!!
+        
+        val favorites = state.stations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
+        val index = favorites.indexOfFirst { it.id == liveStation.id }
+        val displayOrder = if (index != -1) index + 1 else 0
+
         StationActionSheet(
             station = liveStation,
+            favoritePosition = displayOrder,
             onDismiss = mainViewModel::closeStationActionSheet,
             onToggleFavorite = {
                 mainViewModel.onToggleFavorite(liveStation)
@@ -477,7 +479,11 @@ fun RaadioEkraan(
             onEdit = {
                 mainViewModel.openEditStationDialog(liveStation)
             },
-            onDelete = { mainViewModel.confirmDeleteStation(liveStation) }
+            onDelete = { mainViewModel.confirmDeleteStation(liveStation) },
+            onMoveUp = { mainViewModel.moveStationUp(liveStation) },
+            onMoveDown = { mainViewModel.moveStationDown(liveStation) },
+            onMoveToTop = { mainViewModel.moveStationToTop(liveStation) },
+            onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) }
         )
     }
 
@@ -495,6 +501,24 @@ fun RaadioEkraan(
             },
             dismissButton = {
                 TextButton(onClick = mainViewModel::cancelDeleteStation) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
+    }
+
+    if (state.showResetOrderDialog) {
+        AlertDialog(
+            onDismissRequest = mainViewModel::closeResetOrderDialog,
+            title = { Text(stringResource(R.string.reset_order_confirm_title)) },
+            text = { Text(stringResource(R.string.reset_order_confirm_text)) },
+            confirmButton = {
+                TextButton(onClick = mainViewModel::resetFavoriteOrder) {
+                    Text(stringResource(R.string.action_reset))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = mainViewModel::closeResetOrderDialog) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             }
         )
     }
@@ -604,7 +628,8 @@ fun ContentScreens(
             onColsPortraitChange = viewModel::setColsPortrait,
             onColsLandscapeChange = viewModel::setColsLandscape,
             onRefresh = viewModel::refreshStations,
-            onClearHistory = viewModel::clearHistory
+            onClearHistory = viewModel::clearHistory,
+            onResetOrder = viewModel::openResetOrderDialog
         )
     }
 }

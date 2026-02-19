@@ -23,5 +23,8 @@ data class RadioStation(
     val isUserStation: Boolean = false,
     val uuid: String = "",
     @SerialName("countrycode")
-    val countryCode: String = ""
+    val countryCode: String = "",
+    
+    // UUS: Järjekord ainult lemmikute vaates
+    val favoriteOrder: Int = 0
 )

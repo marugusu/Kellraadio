@@ -49,6 +49,7 @@ fun SettingsScreen(
     onColsLandscapeChange: (Int) -> Unit,
     onRefresh: () -> Unit,
     onClearHistory: () -> Unit,
+    onResetOrder: () -> Unit, // UUS
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -122,6 +123,13 @@ fun SettingsScreen(
                     icon = Icons.Default.Refresh,
                     isLoading = isRefreshing,
                     onClick = onRefresh
+                )
+
+                SettingsCardItem(
+                    headline = stringResource(R.string.settings_reset_order),
+                    supporting = stringResource(R.string.settings_reset_order_desc),
+                    icon = Icons.Default.SortByAlpha,
+                    onClick = onResetOrder
                 )
 
                 SettingsCardItem(

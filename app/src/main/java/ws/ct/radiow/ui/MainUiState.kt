@@ -36,14 +36,15 @@ data class MainUiState(
     val currentTab: Int = 0,
     val selectedCategory: String = "ERR",
     val selectedStationId: Int = -1,
-    val categoryToSelectOnTabChange: String? = null, // UUS
+    val categoryToSelectOnTabChange: String? = null,
 
-    // --- DIALOOGIDE OLEKUD (UUS) ---
+    // --- DIALOOGIDE OLEKUD ---
     val showSleepDialog: Boolean = false,
     val showAlarmDialog: Boolean = false,
-    val alarmToEdit: Alarm? = null, // Kui null, siis lisame uue. Kui olemas, siis muudame.
-    val showActionSheetForStation: RadioStation? = null, // Millise jaama menüü on lahti?
+    val alarmToEdit: Alarm? = null,
+    val showActionSheetForStation: RadioStation? = null,
     val showSongInfoSheet: Boolean = false,
-    val stationToDelete: RadioStation? = null, // Kustutamise kinnitusaken
-    val stationToEdit: RadioStation? = null
+    val stationToDelete: RadioStation? = null,
+    val stationToEdit: RadioStation? = null,
+    val showResetOrderDialog: Boolean = false // UUS
 )

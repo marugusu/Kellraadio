@@ -1,144 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RadioW</string> <!-- Kellraadio Kierarādij -->
-
-    <!-- Navigation -->
-    <string name="nav_radio">Rādij</string>
-    <string name="nav_alarms">Ārratõmizt</string>
-    <string name="nav_history">Aig</string>
-    <string name="nav_add_channel">Līsa kanāl</string>
-    <string name="nav_settings">Sādimizt</string>
-
-    <!-- General Actions -->
-    <string name="action_cancel">Katkestõ</string>
-    <string name="action_save">Tāļtõ</string>
-    <string name="action_delete">Kistūtõ</string>
-    <string name="action_close">Pannõ kīņ</string>
-    <string name="action_search">Vȯtš</string>
-    <string name="action_play">Mäņg</string>
-    <string name="action_pause">Piddõ</string>
-    <string name="action_stop">Stop</string>
-    <string name="action_test">Provõ</string>
-
-    <!-- Player & Service -->
-    <string name="status_playing">Mäņgõb</string>
-    <string name="status_stopped">Saisõb</string>
-    <string name="status_buffering">Lēdõb...</string>
-    <string name="status_error">Üv viga</string>
-    <string name="live_broadcast">Otšõ</string>
-    <string name="select_station">Vaļī stacij</string>
-    <string name="notification_playing">Mäņgõb: %1$s</string>
-    <string name="notification_alarm">Ārratõmiz!</string>
-    <string name="error_station_not_found">Stacij äb līdõd!</string>
-    <string name="error_invalid_url">Vigā URL! (umb algõ http:// või https://)</string>
-
-    <!-- Alarms -->
-    <string name="alarm_title">Ārratõmizt</string>
-    <string name="alarm_no_alarms">Ārratõmizt äb ūo</string>
-    <string name="alarm_add_new">Līsa ārratõmiz</string>
-    <string name="alarm_set_title">Sāddõ ārratõmiz</string>
-    <string name="alarm_edit_title">Mūot ārratõmizt</string>
-    <string name="alarm_toast_saved">Ārratõmiz tāļtõd!</string>
-    <string name="alarm_toast_deleted">Ārratõmiz kistūtõd!</string>
-    <string name="timer_dialog_title">Magāntaimer</string>
-    <string name="timer_minutes">%1$d minūtõd</string>
-    <string name="timer_until">Mäņgõb saņi kell %1$s</string>
-    <string name="timer_start">Käivitõ</string>
-
-    <!-- History -->
-    <string name="history_title">Aig</string>
-    <string name="history_empty">Aig um tījā.</string>
-    <string name="history_empty_day">Säl pǟval äb ūo kūldtõd.</string>
-    <string name="history_delete_confirm_title">Kistūtõ aig</string>
-    <string name="history_delete_confirm_text">Voi tōd kistūtõ amā kūldtõd aig?</string>
-    <string name="history_today">Tämpõ</string>
-    <string name="history_yesterday">Eilõ</string>
-    <string name="date_picker_title">Vaļī pǟva</string>
-
-    <!-- Search / Add Station -->
-    <string name="search_title">Līsa kanāl</string>
-    <string name="search_placeholder">Vȯtš stacij...</string>
-    <string name="search_manual">Līsa iž</string>
-    <string name="search_no_results">Äb līdõd.</string>
-    <string name="filter_country">Mō</string>
-    <string name="filter_genre">Žanr</string>
-    <string name="filter_all_countries">Amā mōd</string>
-    <string name="filter_all_genres">Amā žanrõd</string>
-    <string name="manual_dialog_title">Līsa stacij iž</string>
-    <string name="station_name">Stacij nim</string>
-    <string name="stream_url">Strīm URL</string>
-    <string name="station_added">Līsatõd: %1$s</string>
-
-    <!-- Settings -->
-    <string name="settings_title">Sādimizt</string>
-    <string name="settings_group_radio">Rādij ja kanālõd</string>
-    <string name="settings_refresh">Uddistõ stacijid</string>
-    <string name="settings_refresh_desc">Lēdõ uddistõd nimkīera</string>
-    <string name="settings_group_appearance">Väļīz nägimiz</string>
-    <string name="settings_grid_layout">Kanāl ruodūd</string>
-    <string name="settings_portrait">Pistiz</string>
-    <string name="settings_landscape">Kieriz</string>
-    <string name="settings_show_flags">Näyt lipūd</string>
-    <string name="settings_show_flags_desc">Näyt mō lippõ stacij jūres</string>
-    <string name="settings_group_general">Immiz</string>
-    <string name="settings_language">Kēļ</string>
-    <string name="settings_language_desc">Vaļī kēļ</string>
-    <string name="settings_group_help">Abi</string>
-    <string name="settings_send_log">Sōt log</string>
-    <string name="settings_send_log_desc">Jaga tehnilist informācij</string>
-    <string name="settings_test_data">Test aig</string>
-    <string name="settings_test_data_desc">Līsa test datā</string>
-    <string name="app_version">Versij %1$s</string>
-    <string name="toast_updated">Uddistõd!</string>
-    <string name="settings_clear_history">Kistūtõ aig</string>
-    <string name="settings_clear_history_desc">Kistūtõ amā kūldtõd aig</string>
-
-    <!-- Info Screen -->
-    <string name="info_title">Etsõ</string>
-    <string name="info_card_1_title">Sin igāpǟva rādij</string>
-    <string name="info_card_1_text">Kierarādij um lūodud jemīņ kuolamizoks.</string>
-    <string name="info_card_2_title">Kimmõz ārratõmiz</string>
-    <string name="info_card_2_text">Stacij hakkõb mäņgõ täpsõlt ōigõl ājol.</string>
-    <string name="info_card_3_title">Taustā heļ</string>
-    <string name="info_card_3_text">Mäņgõb ka sīz, kui kȭlbat tõizi äppõ.</string>
-    <string name="info_card_4_title">Tark kūlamiz aig</string>
-    <string name="info_card_4_text">Līdõ kiobõst, mis um kūldtõd.</string>
-    <string name="info_dev_location">Lūodud Eestimōl</string>
-
-    <!-- Station Actions -->
-    <string name="action_remove_favorite">Kistūtõ armstõdõst</string>
-    <string name="action_add_favorite">Līsa armstõdõ</string>
-    <string name="action_set_alarm">Sāddõ ārratõmiz</string>
-    <string name="action_edit_station">Mūot stacij</string>
-    <string name="action_delete_station">Kistūtõ stacij</string>
-    <string name="delete_station_confirm_title">Kistūtõ stacij?</string>
-    <string name="delete_station_confirm_text">Voi tōd kistūtõ stacij \'%1$s\'?</string>
-    <string name="station_toast_deleted">Stacij kistūtõd!</string>
-
-    <!-- Categories -->
-    <string name="cat_favorites">Armstõd</string>
-    <string name="cat_my_stations">Minnõn stacijõd</string>
-    <string name="cat_all">Amā</string>
-
-    <!-- Days of week -->
-    <string name="day_mon">Ežāmpǟva</string>
-    <string name="day_tue">Tuoizpǟva</string>
-    <string name="day_wed">Kuolmõzpäva</string>
-    <string name="day_thu">Nēļļõzpäva</string>
-    <string name="day_fri">Pīdapǟva</string>
-    <string name="day_sat">Lūgõrpǟva</string>
-    <string name="day_sun">Pivāpäva</string>
-
-    <!-- Week ranges -->
-    <string name="days_every_day">Igā pǟva</string>
-    <string name="days_weekdays">Ežāmpǟva–Pīdapǟva</string>
-    <string name="days_weekend">Lūgõrpǟva–Pivāpäva</string>
-    <string name="alarm_once">Ikš kõrd</string>
-
-    <!-- Song Info Sheet -->
-    <string name="info_lyrics">Loul sõnād</string>
-    <string name="info_album">Album</string>
-    <string name="info_year">Āigast</string>
-    <string name="info_genre">Žanr</string>
-    <string name="info_not_found">Līsa tiedõd äb līdõd.</string>
-    <string name="info_available">Līsa informācij līdõd</string>
+<string name="app_name">"RadioW"</string>
+<string name="nav_radio">"Rādij"</string>
+<string name="nav_alarms">"Āratõmizt"</string>
+<string name="nav_history">"Aig"</string>
+<string name="nav_add_channel">"Līsa kanāl"</string>
+<string name="nav_settings">"Sādimizt"</string>
+<string name="action_cancel">"Katkestõ"</string>
+<string name="action_save">"Tāļtõ"</string>
+<string name="action_delete">"Kistūtõ"</string>
+<string name="action_reset">"Tagāž"</string>
+<string name="action_close">"Pannõ kīņ"</string>
+<string name="action_search">"Vȯtš"</string>
+<string name="action_play">"Mäņgõ"</string>
+<string name="action_pause">"Piddõ"</string>
+<string name="action_stop">"Saisõ"</string>
+<string name="action_test">"Provõ"</string>
+<string name="status_playing">"Mäņgõb"</string>
+<string name="status_stopped">"Saisõb"</string>
+<string name="status_buffering">"Lēdõb..."</string>
+<string name="status_error">"Viga"</string>
+<string name="live_broadcast">"Otšõ"</string>
+<string name="select_station">"Vaļī stacij"</string>
+<string name="notification_playing">"Mäņgõb: %1$s"</string>
+<string name="notification_alarm">"Āratõmiz!"</string>
+<string name="error_station_not_found">"Stacij äb līdõd!"</string>
+<string name="error_invalid_url">"Vigā URL! (algõb http:// vai https://)"</string>
+<string name="alarm_title">"Āratõmizt"</string>
+<string name="alarm_no_alarms">"Āratõmizt äb ūo"</string>
+<string name="alarm_add_new">"Līsa āratõmiz"</string>
+<string name="alarm_set_title">"Sāddõ āratõmiz"</string>
+<string name="alarm_edit_title">"Mūot āratõmiz"</string>
+<string name="alarm_toast_saved">"Āratõmiz tāļtõd!"</string>
+<string name="alarm_toast_deleted">"Āratõmiz kistūtõd!"</string>
+<string name="timer_dialog_title">"Magāntaimer"</string>
+<string name="timer_minutes">"%1$d minūtõd"</string>
+<string name="timer_until">"Mäņgõb saņi kell %1$s"</string>
+<string name="timer_start">"Käivitõ"</string>
+<string name="history_title">"Aig"</string>
+<string name="history_empty">"Aig um tījā"</string>
+<string name="history_empty_day">"Säl pǟval äb ūo kūldtõd"</string>
+<string name="history_delete_confirm_title">"Kistūtõ aig"</string>
+<string name="history_delete_confirm_text">"Voi tōd kistūtõ amā kūldtõd aig?"</string>
+<string name="history_today">"Tämpõ"</string>
+<string name="history_yesterday">"Eilõ"</string>
+<string name="date_picker_title">"Vaļī pǟva"</string>
+<string name="search_title">"Līsa kanāl"</string>
+<string name="search_placeholder">"Vȯtš stacij..."</string>
+<string name="search_manual">"Līsa iž"</string>
+<string name="search_no_results">"Äb līdõd"</string>
+<string name="filter_country">"Mō"</string>
+<string name="filter_genre">"Žanr"</string>
+<string name="filter_all_countries">"Amād mōd"</string>
+<string name="filter_all_genres">"Amād žanrõd"</string>
+<string name="manual_dialog_title">"Līsa stacij iž"</string>
+<string name="station_name">"Stacij nim"</string>
+<string name="stream_url">"Strīmi URL"</string>
+<string name="station_added">"Līsatõd: %1$s"</string>
+<string name="settings_title">"Sādimizt"</string>
+<string name="settings_group_radio">"Rādij ja kanālõd"</string>
+<string name="settings_refresh">"Uddistõ stacijid"</string>
+<string name="settings_refresh_desc">"Lēdõ uddistõd nimkīerõ"</string>
+<string name="settings_reset_order">"Tagāž tūmiz armstõdõd jierdõ"</string>
+<string name="settings_reset_order_desc">"Tagāž tūmiz armstõdõd algõlīžõn jierdõ" </string>
+<string name="reset_order_confirm_title">"Tagāž tūmiz armstõdõd jierdõ?"</string>
+<string name="reset_order_confirm_text">"Voi tōd tagāž tūmiz armstõdõd jierdõ?"</string>
+<string name="settings_group_appearance">"Väļīž nägimiz"</string>
+<string name="settings_grid_layout">"Kanāl ruodūd"</string>
+<string name="settings_portrait">"Pistõz"</string>
+<string name="settings_landscape">"Kierõz"</string>
+<string name="settings_show_flags">"Näyt lipūd"</string>
+<string name="settings_show_flags_desc">"Näyt mō lippõ stacij jūres"</string>
+<string name="settings_group_general">"Üld"</string>
+<string name="settings_language">"Kēļ"</string>
+<string name="settings_language_desc">"Vaļī kēļ"</string>
+<string name="settings_group_help">"Abi"</string>
+<string name="settings_send_log">"Sōt log"</string>
+<string name="settings_send_log_desc">"Jaga tehnilist informācijõ"</string>
+<string name="settings_test_data">"Testaig"</string>
+<string name="settings_test_data_desc">"Līsa testdātõ"</string>
+<string name="app_version">"Versij %1$s"</string>
+<string name="toast_updated">"Uddistõd!"</string>
+<string name="toast_order_reset">"Armstõdõd jierdõ um tagāž!"</string>
+<string name="settings_clear_history">"Kistūtõ aig"</string>
+<string name="settings_clear_history_desc">"Kistūtõ amā kūldtõd aig"</string>
+<string name="info_title">"Tiedõ"</string>
+<string name="info_card_1_title">"Sin igāpǟva rādij"</string>
+<string name="info_card_1_text">"Kierarādij um lūodud jemīņ kuolamizõks"</string>
+<string name="info_card_2_title">"Kimmõz āratõmiz"</string>
+<string name="info_card_2_text">"Stacij hakkõb mäņgõ täpsõlt ōigõl ājol"</string>
+<string name="info_card_3_title">"Taustā heļ"</string>
+<string name="info_card_3_text">"Mäņgõb ka sīz, kui kȭlbat tõizi äppõ"</string>
+<string name="info_card_4_title">"Tark kūlamiz aig"</string>
+<string name="info_card_4_text">"Līdõ kīobõst, mis um kūldtõd"</string>
+<string name="info_dev_location">"Lūodud Eestimōl"</string>
+<string name="action_remove_favorite">"Kistūtõ armstõdõst"</string>
+<string name="action_add_favorite">"Līsa armstõdõ"</string>
+<string name="action_set_alarm">"Sāddõ āratõmiz"</string>
+<string name="action_edit_station">"Mūot stacij"</string>
+<string name="action_delete_station">"Kistūtõ stacij"</string>
+<string name="delete_station_confirm_title">"Kistūtõ stacij?"</string>
+<string name="delete_station_confirm_text">"Voi tōd kistūtõ stacij \'%1$s\'?"</string>
+<string name="station_toast_deleted">"Stacij kistūtõd!"</string>
+<string name="cat_favorites">"Armstõd"</string>
+<string name="cat_my_stations">"Minņõn stacijõd"</string>
+<string name="cat_all">"Amād"</string>
+<string name="day_mon">"Ežāmpǟva"</string>
+<string name="day_tue">"Tuoizpǟva"</string>
+<string name="day_wed">"Kuolmõzpǟva"</string>
+<string name="day_thu">"Nēļļõzpǟva"</string>
+<string name="day_fri">"Pīdapǟva"</string>
+<string name="day_sat">"Lūgõrpǟva"</string>
+<string name="day_sun">"Pivāpǟva"</string>
+<string name="days_every_day">"Igā pǟva"</string>
+<string name="days_weekdays">"Ežāmpǟva–Pīdapǟva"</string>
+<string name="days_weekend">"Lūgõrpǟva–Pivāpǟva"</string>
+<string name="alarm_once">"Ikš kõrd"</string>
+<string name="info_lyrics">"Loul sõnād"</string>
+<string name="info_album">"Album"</string>
+<string name="info_year">"Āigast"</string>
+<string name="info_genre">"Žanr"</string>
+<string name="info_not_found">"Līsa tiedõd äb līdõd"</string>
+<string name="info_available">"Līsa informācijõ līdõd"</string>
 </resources>

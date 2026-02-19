@@ -212,9 +212,10 @@ fun StationList(
             ) { pageIndex ->
                 val pageCategory = categories.getOrElse(pageIndex) { "" }
 
+                // --- PARANDUS: Sorteerime lemmikud ka portrait-vaates ---
                 val stationsForPage = remember(pageCategory, stations) {
                     when (pageCategory) {
-                        "Favorites" -> stations.filter { it.isFavorite }
+                        "Favorites" -> stations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
                         "All" -> stations
                         else -> stations.filter { it.category == pageCategory }
                     }
