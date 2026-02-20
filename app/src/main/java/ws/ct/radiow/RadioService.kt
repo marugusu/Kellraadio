@@ -147,10 +147,16 @@ class RadioService : Service() {
             val allStations = dao.getAllActiveStationsSync()
             if (allStations.isEmpty()) return@launch
 
+            // PARANDUS: Kasutame sama sorteerimist ja filtreerimist mis UI-s
             val navigationList = when (currentCategory) {
                 "Favorites" -> allStations.filter { it.isFavorite }
-                "" -> allStations
-                else -> allStations.filter { it.category == currentCategory }
+                    .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
+                "My" -> allStations.filter { it.isUserStation }
+                "All", "" -> allStations
+                else -> {
+                    // Kontrollime nii kategooriat kui riigikoodi, et ühtiks UI-ga (nt "EE")
+                    allStations.filter { it.category == currentCategory || it.countryCode == currentCategory }
+                }
             }
 
             val finalNavList = if (navigationList.isEmpty() || navigationList.none { it.name == currentStationName }) {

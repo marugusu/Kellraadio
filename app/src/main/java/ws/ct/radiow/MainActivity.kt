@@ -116,7 +116,10 @@ fun RaadioEkraan(
     }
 
     val categoriesData = remember(displayStations) {
-        val favs = displayStations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
+        // PARANDUS: Ühtne sorteerimine (favoriteOrder, siis priority, siis nimi)
+        val favs = displayStations.filter { it.isFavorite }
+            .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
+            
         val userStations = displayStations.filter { it.isUserStation }
         
         val countryCodes = displayStations
@@ -361,7 +364,7 @@ fun RaadioEkraan(
     }
     if (state.showActionSheetForStation != null) {
         val liveStation = displayStations.find { it.id == state.showActionSheetForStation!!.id } ?: state.showActionSheetForStation!!
-        val favorites = displayStations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
+        val favorites = displayStations.filter { it.isFavorite }.sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
         val index = favorites.indexOfFirst { it.id == liveStation.id }
         val displayOrder = if (index != -1) index + 1 else 0
         StationActionSheet(station = liveStation, favoritePosition = displayOrder, onDismiss = mainViewModel::closeStationActionSheet, onToggleFavorite = { mainViewModel.onToggleFavorite(liveStation); mainViewModel.closeStationActionSheet() }, onSetAlarm = { mainViewModel.openAlarmDialog(Alarm(hour = 7, minute = 0, days = emptySet(), stationName = liveStation.name, stationUrl = liveStation.url)) }, onEdit = { mainViewModel.openEditStationDialog(liveStation) }, onDelete = { mainViewModel.confirmDeleteStation(liveStation) }, onMoveUp = { mainViewModel.moveStationUp(liveStation) }, onMoveDown = { mainViewModel.moveStationDown(liveStation) }, onMoveToTop = { mainViewModel.moveStationToTop(liveStation) }, onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) })

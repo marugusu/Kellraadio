@@ -229,7 +229,9 @@ fun StationList(
                     filteredStations
                 } else {
                     when (pageCategory) {
-                        "Favorites" -> stations.filter { it.isFavorite }.sortedBy { it.favoriteOrder }
+                        // PARANDUS: Ühtne sorteerimine (favoriteOrder, siis priority, siis nimi)
+                        "Favorites" -> stations.filter { it.isFavorite }
+                            .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
                         "My" -> stations.filter { it.isUserStation }
                         "All" -> stations
                         else -> stations.filter { it.countryCode == pageCategory }
