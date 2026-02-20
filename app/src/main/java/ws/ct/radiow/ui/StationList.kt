@@ -213,7 +213,7 @@ fun StationList(
             LaunchedEffect(selectedStationId, stationsForThisPage) {
                 val index = stationsForThisPage.indexOfFirst { it.id == selectedStationId }
                 if (index >= 0) {
-                    gridState.animateScrollToItem(index = index, scrollOffset = -200)
+                    gridState.animateScrollToItem(index = index, scrollOffset = -400)
                 }
             }
 

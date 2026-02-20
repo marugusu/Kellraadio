@@ -210,6 +210,9 @@ class RadioService : Service() {
 
     private fun updateExternalDevices(title: String, artist: String) {
         if (!::player.isInitialized) return
+
+        // UUS: Väldi duplikaate
+        if (title == lastSentTitle && artist == lastSentArtist) return
         
         Log.d(TAG, "updateExternalDevices: SENDING TO CAR -> Title='$title', Artist='$artist', Album='$currentStationName'")
 
@@ -479,8 +482,8 @@ class RadioService : Service() {
         sendBitrateUpdate()
         wakeLock?.acquire(10 * 60 * 1000L)
 
-        lastSentTitle = ""
-        lastSentArtist = ""
+        // EEMALDATUD: lastSentTitle = ""
+        // EEMALDATUD: lastSentArtist = ""
 
         currentStreamUrl = streamUrl
         currentStationName = stationName ?: "Radio"
@@ -490,6 +493,10 @@ class RadioService : Service() {
         currentArtist = getString(R.string.live_broadcast)
         currentTitle = currentStationName
         currentExtra = ""
+        
+        // UUS: Salvestame saadetud oleku, et vältida duplikaate
+        lastSentTitle = currentTitle
+        lastSentArtist = currentArtist
 
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)

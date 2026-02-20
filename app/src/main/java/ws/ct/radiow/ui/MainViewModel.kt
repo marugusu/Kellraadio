@@ -472,7 +472,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             putExtra("STREAM_URL", station.url)
             putExtra("STATION_NAME", station.name)
             putExtra("TRIGGERED_BY", "USER")
-            putExtra("CATEGORY_NAME", station.category)
+            // UUS: Saadame aktiivse kategooria konteksti
+            putExtra("CATEGORY_NAME", _uiState.value.selectedCategory)
         }
         context.startForegroundService(i)
     }
