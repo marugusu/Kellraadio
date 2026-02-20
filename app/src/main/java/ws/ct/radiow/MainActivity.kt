@@ -259,12 +259,12 @@ fun RaadioEkraan(
                 if (songInfo != null) {
                     if (isLargeScreenHeight) {
                         val stationColor = ws.ct.radiow.ui.StationArtworkUtils.getStationColor(state.activeStationName)
-                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)))) {
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)))) {
                             SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
                         }
                     } else {
                         AnimatedVisibility(visible = !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                            SongInfoTeaser(info = songInfo!!, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 16.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black)))
+                            SongInfoTeaser(info = songInfo!!, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black)))
                         }
                     }
                 }

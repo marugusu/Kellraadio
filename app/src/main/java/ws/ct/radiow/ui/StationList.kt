@@ -107,102 +107,114 @@ fun StationList(
     val listPadding = if (isLandscape) PaddingValues(start = 4.dp, end = 16.dp) else PaddingValues(horizontal = 16.dp)
 
     Column(modifier = modifier.fillMaxSize().padding(listPadding)) {
-        Spacer(modifier = Modifier.height(8.dp))
+        // ÜLEMINE VAHE: Täpselt 12dp, et eraldada kiibid ülapaneelist
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+            Column {
+                // RIDA 1: PEAGRUPID - Fikseeritud kõrgus 32dp
+                androidx.compose.foundation.lazy.LazyRow(
+                    state = topRowListState,
+                    modifier = Modifier.fillMaxWidth().height(32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(categories.size) { index ->
+                        val categoryId = categories[index]
+                        val isSelected = (selectedCategory == categoryId)
+                        val isFavoritesChip = categoryId == "Favorites"
+                        val isMyStationsChip = categoryId == "My"
+                        val isAllChip = categoryId == "All"
 
-        // RIDA 1: PEAGRUPID
-        androidx.compose.foundation.lazy.LazyRow(
-            state = topRowListState,
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(categories.size) { index ->
-                val categoryId = categories[index]
-                val isSelected = (selectedCategory == categoryId)
-                val isFavoritesChip = categoryId == "Favorites"
-                val isMyStationsChip = categoryId == "My"
-                val isAllChip = categoryId == "All"
-
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onCategorySelect(categoryId) },
-                    label = { Text(getCategoryDisplayName(categoryId)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = when {
-                            isFavoritesChip -> MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.2f)
-                            isMyStationsChip -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-                            isAllChip -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
-                            else -> MaterialTheme.colorScheme.primaryContainer
-                        },
-                        selectedLabelColor = when {
-                            isFavoritesChip -> MaterialTheme.colorScheme.onSecondary
-                            isMyStationsChip -> MaterialTheme.colorScheme.tertiary
-                            isAllChip -> MaterialTheme.colorScheme.secondary
-                            else -> MaterialTheme.colorScheme.onPrimaryContainer
-                        }
-                    )
-                )
-            }
-        }
-
-        // RIDA 2: ALAMFILTRID
-        AnimatedVisibility(
-            visible = subCategories.isNotEmpty(),
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            androidx.compose.foundation.lazy.LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-4).dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { onCategorySelect(selectedCategory) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val isCountryCategory = selectedCategory.length == 2
-                        if (isCountryCategory) {
-                            Text(text = getFlagEmoji(selectedCategory), fontSize = 18.sp)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.FilterAlt,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onCategorySelect(categoryId) },
+                            label = { Text(getCategoryDisplayName(categoryId)) },
+                            modifier = Modifier.height(32.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = when {
+                                    isFavoritesChip -> MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.2f)
+                                    isMyStationsChip -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
+                                    isAllChip -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                                    else -> MaterialTheme.colorScheme.primaryContainer
+                                },
+                                selectedLabelColor = when {
+                                    isFavoritesChip -> MaterialTheme.colorScheme.onSecondary
+                                    isMyStationsChip -> MaterialTheme.colorScheme.tertiary
+                                    isAllChip -> MaterialTheme.colorScheme.secondary
+                                    else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                }
                             )
+                        )
+                    }
+                }
+
+                // RIDA 2: ALAMFILTRID
+                AnimatedVisibility(
+                    visible = subCategories.isNotEmpty(),
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    Column {
+                        // VAHE RIDADE VAHEL: Täpselt 12dp
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        androidx.compose.foundation.lazy.LazyRow(
+                            modifier = Modifier.fillMaxWidth().height(32.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .clickable { onCategorySelect(selectedCategory) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val isCountryCategory = selectedCategory.length == 2
+                                    if (isCountryCategory) {
+                                        Text(text = getFlagEmoji(selectedCategory), fontSize = 18.sp)
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.FilterAlt,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                            items(subCategories.size) { index ->
+                                val sub = subCategories[index]
+                                val isSelected = selectedSubCategories.contains(sub)
+                                
+                                val displayLabel = if (sub == "My") myFilterLabel else sub
+
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { onSubCategoryToggle(sub) },
+                                    label = { Text(displayLabel, fontSize = 12.sp) },
+                                    modifier = Modifier.height(32.dp),
+                                    leadingIcon = if (isSelected) {
+                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp)) }
+                                    } else null,
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                )
+                            }
                         }
                     }
                 }
-                items(subCategories.size) { index ->
-                    val sub = subCategories[index]
-                    val isSelected = selectedSubCategories.contains(sub)
-                    
-                    val displayLabel = if (sub == "My") myFilterLabel else sub
-
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onSubCategoryToggle(sub) },
-                        label = { Text(displayLabel, fontSize = 12.sp) },
-                        leadingIcon = if (isSelected) {
-                            { Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp)) }
-                        } else null,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    )
-                }
             }
         }
 
-        // Spacer eemaldatud siit
+        // VAHE RUUDUSTIKUNI: Täpselt 12dp
+        Spacer(modifier = Modifier.height(12.dp))
 
         HorizontalPager(
             state = pagerState,

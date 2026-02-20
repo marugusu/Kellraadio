@@ -69,14 +69,14 @@ fun PlayerControls(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 140.dp)
+                .heightIn(min = 130.dp)
                 .animateContentSize()
                 .clip(RoundedCornerShape(12.dp))
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             Color(0xFF252525),
-                            Color.Black
+                            Color(0xFF141414)
                         )
                     )
                 )
@@ -94,9 +94,7 @@ fun PlayerControls(
                     fontSize = 150.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.White.copy(alpha = 0.05f),
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Visible,
+                    maxLines = 1, softWrap = false, overflow = TextOverflow.Visible,
                     modifier = Modifier
                         .matchParentSize()
                         .wrapContentSize(align = Alignment.TopEnd, unbounded = true)
@@ -105,8 +103,8 @@ fun PlayerControls(
             }
 
             Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 if (parsedTitle.isNotBlank()) {
                     Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
@@ -163,7 +161,8 @@ fun PlayerControls(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // Gap 1: Nüüd täpselt 12dp
+        Spacer(modifier = Modifier.height(12.dp))
         val buttonShape = RoundedCornerShape(12.dp)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             val buttonModifier = Modifier
