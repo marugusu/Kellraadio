@@ -222,7 +222,8 @@ fun RaadioEkraan(
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
-            Column(modifier = Modifier.weight(playerWeight).fillMaxHeight().padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp)) {
+            // Landscape: Start, Top ja End vahed on nüüd 12.dp
+            Column(modifier = Modifier.weight(playerWeight).fillMaxHeight().padding(start = 12.dp, top = 12.dp, bottom = 16.dp, end = 12.dp)) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     PlayerControls(
                         selectedStation = displayStations.find { it.id == state.selectedStationId },
@@ -336,7 +337,7 @@ fun RaadioEkraan(
                             val currentStation = displayStations.find { it.id == state.selectedStationId }
                             if (currentStation != null) { mainViewModel.onToggleFavorite(currentStation) }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp)
+                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 0.dp)
                     )
                     ContentScreens(
                         state = state,

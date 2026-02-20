@@ -104,7 +104,8 @@ fun StationList(
         }
     }
 
-    val listPadding = if (isLandscape) PaddingValues(start = 4.dp, end = 16.dp) else PaddingValues(horizontal = 16.dp)
+    // Landscape: start = 0.dp, kuna MainActivity-s on juba end = 12.dp. Kokku 12.dp.
+    val listPadding = if (isLandscape) PaddingValues(start = 0.dp, end = 12.dp) else PaddingValues(horizontal = 16.dp)
 
     Column(modifier = modifier.fillMaxSize().padding(listPadding)) {
         // ÜLEMINE VAHE: Täpselt 12dp, et eraldada kiibid ülapaneelist
