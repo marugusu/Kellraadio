@@ -185,22 +185,30 @@ class RadioService : Service() {
 
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
         val parsed = metadataHelper.parse(trackTitleFromStream ?: "", currentStationName)
-        Log.d(TAG, "updatePlayerMetadata: RAW='$trackTitleFromStream' -> PARSED Title='${parsed.title}' Artist='${parsed.artist}'")
+        
+        // FILTEERIMINE: Kui info ei muutunud, siis me ei tee mitte midagi.
+        // See hoiab ära Bluetoothi spämmi ja kella asjatu nullimise.
+        if (parsed.artist == currentArtist && parsed.title == currentTitle) {
+            return
+        }
+
+        Log.d(TAG, "updatePlayerMetadata: RAW='$trackTitleFromStream' -> NEW PARSED Title='${parsed.title}' Artist='${parsed.artist}'")
 
         saveToHistory(parsed.artist, parsed.title)
         
-        // Progressi kella nullimine loo vahetusel (nii nagu loo vahetusel peabki)
+        // Progressi kella nullimine ainult siis, kui lugu päriselt vahetub
         player.streamStartTime = SystemClock.elapsedRealtime()
 
         currentArtist = parsed.artist
         currentTitle = parsed.title
         currentExtra = parsed.extra
+        
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
         updateNotification()
         updateWidget()
         
-        // REFAKTOR: Ära katkesta push-tööd siin. See garanteerib hilisema uue saatmise.
+        // Märkus: metadataPushJob jääb taustale ootama oma ühekordset sündmust.
     }
 
     private fun sendBitrateUpdate() {
@@ -221,9 +229,8 @@ class RadioService : Service() {
     private fun updateExternalDevices(title: String, artist: String) {
         if (!::player.isInitialized) return
 
-        // VÄLDI DUPLIKAATE: See on vajalik loo vahetusel
+        // VÄLDI DUPLIKAATE: See on vajalik loo vahetusel ja striimi spämi tõrjumiseks
         if (title == lastSentTitle && artist == lastSentArtist) {
-            Log.d(TAG, "updateExternalDevices: Skipping duplicate: '$title' - '$artist'")
             return
         }
         
@@ -247,9 +254,7 @@ class RadioService : Service() {
                 .setMediaMetadata(newMetadata)
                 .build()
             
-            // Kasutame praegust indeksit, et uuendus jõuaks õige üksuseni
             player.replaceMediaItem(player.currentMediaItemIndex, newItem)
-            Log.d(TAG, "updateExternalDevices: Replaced MediaItem with new metadata")
         }
 
         serviceScope.launch(Dispatchers.Main) {
@@ -281,7 +286,6 @@ class RadioService : Service() {
             for (i in 0 until metadata.length()) {
                 val entry = metadata.get(i)
                 if (entry is IcyInfo) {
-                    Log.d(TAG, "onMetadata: Received IcyInfo title='${entry.title}'")
                     updatePlayerMetadata(entry.title)
                 }
                 if (entry is IcyHeaders && entry.bitrate != C.RATE_UNSET_INT) {
@@ -322,13 +326,12 @@ class RadioService : Service() {
                 )
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 
-                // REFAKTOR: Üks korduv saatmine 5 sekundi pärast, et "sunniks" auto ekraani uuenema.
-                // See on "Push" loogika, mis toimib nagu loo vahetus.
+                // ÜHEKORDNE PUSH: 5 sekundi pärast, et "loo vahetusega" auto ekraan värskendada
                 metadataPushJob?.cancel()
                 metadataPushJob = sessionScope.launch {
-                    delay(5000) // Ootame 5 sekundit
-                    Log.d(TAG, "metadataPushJob: Forcing 15s metadata push")
-                    lastSentTitle = "" // Vabastame luku
+                    delay(5000) // Sinu poolt kinnitatud ja testitud 5s
+                    Log.d(TAG, "metadataPushJob: Forcing 5s metadata push (imulated song change)")
+                    lastSentTitle = "" // Vabastame luku, et info kindlasti läbi läheks
                     lastSentArtist = ""
                     // Progressi kella nullimine (loo vahetuse simuleerimine)
                     player.streamStartTime = SystemClock.elapsedRealtime()
