@@ -19,16 +19,12 @@ import java.util.concurrent.CopyOnWriteArraySet
 @OptIn(UnstableApi::class)
 class SkodaAwarePlayer(
     player: Player,
-
     private val internalListeners: CopyOnWriteArraySet<Player.Listener>
 ) : ForwardingPlayer(player) {
-    // UUS: Turvarežiim (kui true, saadame aega 0, et mitte autot ehmatada)
-    var isSafeMode: Boolean = false
 
-    // Seda muutujat muudab RadioService, kui uus laul algab
+    // Seda muutujat muudab RadioService, kui uus jaam algab
     var streamStartTime: Long = 0L
 
-    // UUS: Salvestame aja, mil pleier pandi pausile
     private var positionAtPause: Long = 0L
 
     override fun addListener(listener: Player.Listener) {
@@ -41,7 +37,6 @@ class SkodaAwarePlayer(
         super.removeListener(listener)
     }
 
-    // Lubame kerimise nupud (Eelmine/Järgmine), et saaks jaamu vahetada
     override fun getAvailableCommands(): Player.Commands {
         return super.getAvailableCommands().buildUpon()
             .add(Player.COMMAND_SEEK_TO_NEXT)
@@ -69,24 +64,15 @@ class SkodaAwarePlayer(
     }
 
     // --- SKODA FIX 2: Võlts-progress ---
-    // Arvutame aja ise, sest ExoPlayeri enda aeg striimi puhul ei sobi autodele
     override fun getCurrentPosition(): Long {
-        // Kui pleier mängib, arvuta aeg reaalajas
         if (super.isPlaying()) {
-            // KUI TURVAREŽIIM ON SEES -> Tagasta 0 (Staatiline)
-            if (isSafeMode) return 0L
-
             val elapsed = SystemClock.elapsedRealtime() - streamStartTime
-            // Salvestame jooksvalt viimase väärtuse, et see oleks pausi hetkel olemas
             positionAtPause = if (streamStartTime > 0) elapsed % 300000L else 0L
             return positionAtPause
         }
-        // Kui on pausil, tagasta viimane salvestatud aeg
         return positionAtPause
     }
 
-    // Tagame, et metaandmed liiguksid korrektselt läbi (ForwardingPlayer teeb seda vaikimisi,
-    // aga kindluse mõttes jätame selle nii, nagu see on)
     override fun getMediaMetadata(): MediaMetadata {
         return super.getMediaMetadata()
     }

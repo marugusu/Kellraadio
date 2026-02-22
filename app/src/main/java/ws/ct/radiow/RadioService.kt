@@ -188,7 +188,10 @@ class RadioService : Service() {
         Log.d(TAG, "updatePlayerMetadata: RAW='$trackTitleFromStream' -> PARSED Title='${parsed.title}' Artist='${parsed.artist}'")
 
         saveToHistory(parsed.artist, parsed.title)
+        
+        // Progressi kella nullimine loo vahetusel (nii nagu loo vahetusel peabki)
         player.streamStartTime = SystemClock.elapsedRealtime()
+
         currentArtist = parsed.artist
         currentTitle = parsed.title
         currentExtra = parsed.extra
@@ -196,7 +199,8 @@ class RadioService : Service() {
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
         updateNotification()
         updateWidget()
-        metadataPushJob?.cancel()
+        
+        // REFAKTOR: Ära katkesta push-tööd siin. See garanteerib hilisema uue saatmise.
     }
 
     private fun sendBitrateUpdate() {
@@ -217,8 +221,11 @@ class RadioService : Service() {
     private fun updateExternalDevices(title: String, artist: String) {
         if (!::player.isInitialized) return
 
-        // UUS: Väldi duplikaate
-        if (title == lastSentTitle && artist == lastSentArtist) return
+        // VÄLDI DUPLIKAATE: See on vajalik loo vahetusel
+        if (title == lastSentTitle && artist == lastSentArtist) {
+            Log.d(TAG, "updateExternalDevices: Skipping duplicate: '$title' - '$artist'")
+            return
+        }
         
         Log.d(TAG, "updateExternalDevices: SENDING TO CAR -> Title='$title', Artist='$artist', Album='$currentStationName'")
 
@@ -239,7 +246,9 @@ class RadioService : Service() {
              val newItem = currentItem.buildUpon()
                 .setMediaMetadata(newMetadata)
                 .build()
-            player.replaceMediaItem(0, newItem)
+            
+            // Kasutame praegust indeksit, et uuendus jõuaks õige üksuseni
+            player.replaceMediaItem(player.currentMediaItemIndex, newItem)
             Log.d(TAG, "updateExternalDevices: Replaced MediaItem with new metadata")
         }
 
@@ -304,13 +313,6 @@ class RadioService : Service() {
             updateWidget()
 
             if (isPlaying) {
-                player.isSafeMode = true
-                serviceScope.launch(Dispatchers.Main) {
-                    delay(10000)
-                    if (::player.isInitialized) {
-                        player.isSafeMode = false
-                    }
-                }
                 isChangingStation = false
                 saveToHistory(currentArtist, currentTitle)
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
@@ -319,8 +321,19 @@ class RadioService : Service() {
                     }
                 )
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
-                updateExternalDevices(currentTitle, currentArtist)
+                
+                // REFAKTOR: Üks korduv saatmine 5 sekundi pärast, et "sunniks" auto ekraani uuenema.
+                // See on "Push" loogika, mis toimib nagu loo vahetus.
                 metadataPushJob?.cancel()
+                metadataPushJob = sessionScope.launch {
+                    delay(5000) // Ootame 5 sekundit
+                    Log.d(TAG, "metadataPushJob: Forcing 15s metadata push")
+                    lastSentTitle = "" // Vabastame luku
+                    lastSentArtist = ""
+                    // Progressi kella nullimine (loo vahetuse simuleerimine)
+                    player.streamStartTime = SystemClock.elapsedRealtime()
+                    updateExternalDevices(currentTitle, currentArtist)
+                }
 
             } else {
                 if (!player.playWhenReady && !isChangingStation) {
@@ -488,9 +501,6 @@ class RadioService : Service() {
         sendBitrateUpdate()
         wakeLock?.acquire(10 * 60 * 1000L)
 
-        // EEMALDATUD: lastSentTitle = ""
-        // EEMALDATUD: lastSentArtist = ""
-
         currentStreamUrl = streamUrl
         currentStationName = stationName ?: "Radio"
         isAlarmMode = triggeredBy == "ALARM"
@@ -500,9 +510,10 @@ class RadioService : Service() {
         currentTitle = currentStationName
         currentExtra = ""
         
-        // UUS: Salvestame saadetud oleku, et vältida duplikaate
-        lastSentTitle = currentTitle
-        lastSentArtist = currentArtist
+        // PARANDUS: Ära märgi infot "saadetuks" kohe alguses. 
+        // See garanteerib, et esimene striimist tulev info läbib kontrolli ja jõuab autoni.
+        lastSentTitle = ""
+        lastSentArtist = ""
 
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)
@@ -529,6 +540,7 @@ class RadioService : Service() {
 
         updateNotification()
 
+        // Puhas algus Bluetoothi jaoks
         if (player.isPlaying) player.stop()
         player.clearMediaItems()
 
@@ -539,7 +551,7 @@ class RadioService : Service() {
             artworkData = getArtworkBytes()
         )
 
-        // LOG: Algse info saatmine (näitab ka Albumit)
+        // LOG: Algse info saatmine
         Log.d(TAG, "playStation: Sending INITIAL metadata: Title='$currentTitle', Artist='$currentArtist', Album='$currentStationName'")
 
         player.setMediaItem(
