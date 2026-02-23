@@ -82,6 +82,7 @@ fun RaadioEkraan(
 
     val state by mainViewModel.uiState.collectAsState()
     val songInfo by playerViewModel.songInfo.collectAsState()
+    val isFetchingInfo by playerViewModel.isFetching.collectAsState()
 
     LaunchedEffect(state.parsedArtist, state.parsedTitle) {
         playerViewModel.fetchSongInfo(state.parsedArtist, state.parsedTitle)
@@ -260,15 +261,15 @@ fun RaadioEkraan(
                     )
                 }
 
-                if (songInfo != null) {
-                    if (isLargeScreenHeight) {
+                if (songInfo != null || isFetchingInfo) {
+                    if (isLargeScreenHeight && songInfo != null) {
                         val stationColor = ws.ct.radiow.ui.StationArtworkUtils.getStationColor(state.activeStationName)
                         Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)))) {
                             SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
                         }
                     } else {
                         AnimatedVisibility(visible = !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                            SongInfoTeaser(info = songInfo!!, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black)))
+                            SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black)))
                         }
                     }
                 }
@@ -291,10 +292,10 @@ fun RaadioEkraan(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             bottomBar = {
                 Column(modifier = Modifier.background(Color.Black)) {
-                    AnimatedVisibility(visible = state.currentTab == 0 && songInfo != null && !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                        songInfo?.let { info -> SongInfoTeaser(info = info, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo) }
+                    AnimatedVisibility(visible = state.currentTab == 0 && (songInfo != null || isFetchingInfo) && !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                        SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo)
                     }
-                    if (state.currentTab == 0 && songInfo != null && !state.showSongInfoSheet) {
+                    if (state.currentTab == 0 && (songInfo != null || isFetchingInfo) && !state.showSongInfoSheet) {
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(brush = Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), Color.Transparent))))
                     } else {
                         HorizontalDivider(thickness = 1.dp, color = Color(0xFF222222))

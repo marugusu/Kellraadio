@@ -1,5 +1,6 @@
 package ws.ct.radiow.ui
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,7 +32,8 @@ import ws.ct.radiow.SongAdditionalInfo
 
 @Composable
 fun SongInfoTeaser(
-    info: SongAdditionalInfo,
+    info: SongAdditionalInfo?,
+    isLoading: Boolean,
     artist: String,
     title: String,
     stationName: String,
@@ -40,7 +42,10 @@ fun SongInfoTeaser(
     modifier: Modifier = Modifier,
     backgroundBrush: Brush? = null
 ) {
-    val infoParts = listOfNotNull(info.album, info.year, info.genre).filter { it.isNotEmpty() }
+    val infoParts = if (info != null) {
+        listOfNotNull(info.album, info.year, info.genre).filter { it.isNotEmpty() }
+    } else emptyList()
+
     val displayText = if (infoParts.isNotEmpty()) {
         infoParts.joinToString(" • ")
     } else {
@@ -54,7 +59,7 @@ fun SongInfoTeaser(
     Surface(
         modifier = modifier
             .height(64.dp)
-            .clickable(onClick = onClick),
+            .clickable(enabled = info != null || isLoading, onClick = onClick),
         color = Color.Transparent,
         contentColor = Color.White,
         shape = shape
@@ -79,7 +84,7 @@ fun SongInfoTeaser(
                     fontSize = 14.sp
                 )
 
-                if (!info.coverArtUrl.isNullOrEmpty()) {
+                if (info?.coverArtUrl != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(info.coverArtUrl)
@@ -99,7 +104,7 @@ fun SongInfoTeaser(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = displayText,
+                    text = if (info == null && isLoading) stringResource(R.string.info_searching) else displayText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -107,27 +112,36 @@ fun SongInfoTeaser(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = stringResource(R.string.info_available),
+                    text = if (isLoading) stringResource(R.string.info_searching) else stringResource(R.string.info_available),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (isLoading) Color.Gray else MaterialTheme.colorScheme.primary,
                     maxLines = 1
                 )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            val icon = if (!info.lyrics.isNullOrEmpty()) {
-                painterResource(R.drawable.ic_lyrics)
-            } else {
-                rememberVectorPainter(Icons.Default.Image)
+            Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    )
+                } else {
+                    val icon = if (info?.lyrics != null) {
+                        painterResource(R.drawable.ic_lyrics)
+                    } else {
+                        rememberVectorPainter(Icons.Default.Image)
+                    }
+                    Icon(
+                        painter = icon,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
-
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(24.dp)
-            )
         }
     }
 }

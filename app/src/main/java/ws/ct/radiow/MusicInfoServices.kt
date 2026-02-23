@@ -8,7 +8,6 @@ import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.Protocol
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -103,29 +102,25 @@ object MusicInfoRepository {
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
     private val contentType = "application/json".toMediaType()
 
-    // Brauseri User-Agent, et serverid ei blokeeriks meid robotina
-    private const val BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-
     private val commonInterceptor = Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .header("User-Agent", BROWSER_USER_AGENT)
+            .header("User-Agent", AppConfig.Api.USER_AGENT)
             .header("Accept", "application/json")
             .build()
         chain.proceed(request)
     }
 
-    // Standardne klient iTunes ja MusicBrainz jaoks
+    // Kiirete API-de klient (iTunes, MusicBrainz)
     private val fastClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
         .addInterceptor(commonInterceptor)
         .build()
 
-    // Spetsiaalne klient LRCLIB jaoks (lisatud HTTP/1.1 sundimine)
+    // Aeglase API klient (LRCLIB) - TAASTATUD HTTP/2 tugi
     private val slowClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
-        .protocols(listOf(Protocol.HTTP_1_1)) // Sundime HTTP/1.1, et vältida HTTP/2 probleeme
         .addInterceptor(commonInterceptor)
         .retryOnConnectionFailure(true)
         .build()

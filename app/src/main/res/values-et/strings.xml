@@ -156,5 +156,5 @@
     <string name="info_genre">ŽANR</string>
     <string name="info_not_found">Lisainfot ei leitud.</string>
     <string name="info_available">Lisainfo leitud</string>
-
+    <string name="info_searching">Otsin lisainfot...</string>
 </resources>

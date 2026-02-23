@@ -156,6 +156,5 @@
     <string name="info_genre">장르</string>
     <string name="info_not_found">추가 정보를 찾을 수 없습니다.</string>
     <string name="info_available">추가 정보 있음</string>
-
-
+    <string name="info_searching">정보 검색 중...</string>
 </resources>

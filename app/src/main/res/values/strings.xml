@@ -156,4 +156,5 @@
     <string name="info_genre">GENRE</string>
     <string name="info_not_found">No additional info found.</string>
     <string name="info_available">Info available</string>
+    <string name="info_searching">Searching info...</string>
 </resources>
