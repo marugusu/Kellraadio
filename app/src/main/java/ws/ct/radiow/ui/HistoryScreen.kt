@@ -183,13 +183,15 @@ fun HistoryScreen(
                                 onInfoClick = {
                                     scope.launch {
                                         loadingItemId = item.id
-                                        val info = MusicInfoRepository.fetchInfo(item.artist, item.title)
-                                        loadingItemId = null
-
-                                        if (info != null) {
+                                        var foundAny = false
+                                        MusicInfoRepository.fetchInfo(item.artist, item.title).collect { info ->
+                                            foundAny = true
                                             selectedSongInfo = info
                                             selectedHistoryItem = item
-                                        } else {
+                                            loadingItemId = null
+                                        }
+                                        if (!foundAny) {
+                                            loadingItemId = null
                                             Toast.makeText(context, context.getString(R.string.info_not_found), Toast.LENGTH_SHORT).show()
                                         }
                                     }

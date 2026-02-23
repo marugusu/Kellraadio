@@ -47,8 +47,10 @@ class PlayerViewModel : ViewModel() {
             // kui kasutaja klõpsib kiiresti lugusid edasi-tagasi
             delay(500)
 
-            val info = MusicInfoRepository.fetchInfo(artist, title)
-            _songInfo.value = info
+            // Kogume infot järk-järgult (Flow kaudu)
+            MusicInfoRepository.fetchInfo(artist, title).collect { info ->
+                _songInfo.value = info
+            }
         }
     }
 }

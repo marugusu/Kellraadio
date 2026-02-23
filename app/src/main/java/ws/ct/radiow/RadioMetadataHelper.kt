@@ -75,45 +75,54 @@ class RadioMetadataHelper(private val context: Context) {
             if (parts.size >= 3) {
                 extrasList.add(parts.subList(2, parts.size).joinToString(" • "))
             }
+
+            // REVERSED STATIONS (Star FM) - Teeme vahetuse kohe siin, enne puhastamist
+            if (AppConfig.Metadata.REVERSED_STATIONS.contains(stationName)) {
+                val temp = artist
+                artist = title
+                title = temp
+            }
         }
 
-        // 5. PEALKIRJA PUHASTUS
+        // NÜÜD RAKENDAME PUHASTUST REAALSETELE VÄLJADELE (Olenemata jaamast)
 
-        // a) UUS LISA: Kontrollime " * Aasta" mustrit (nt "Fast Car * 1988")
-        // Otsime tärni, mille ees ja järel on tühik, ning võtame kõik, mis järgneb.
+        // a) Poolitame esitaja, kui seal on [+] märk
+        if (artist.contains("[+]")) {
+            val artistParts = artist.split("[+]").map { it.trim() }
+            if (artistParts.size >= 2) {
+                artist = artistParts[0]
+                // Lisame kaas-esitajad lisainfosse (extra) esimeseks
+                extrasList.add(0, artistParts.subList(1, artistParts.size).joinToString(" • "))
+            }
+        }
+
+        // b) Kontrollime pealkirjas " * Aasta" mustrit (nt "Fast Car * 1988")
         val starRegex = Regex("""\s+\*\s+(.*)$""")
         val starMatch = starRegex.find(title)
         if (starMatch != null) {
             val content = starMatch.groupValues[1].trim()
-            // Lisame listi (lõppu või algusesse, siin pole vahet, sest see on tavaliselt ainus lisa)
-            extrasList.add(0, content)
-            // Eemaldame selle osa pealkirjast
+            extrasList.add(content)
             title = title.substring(0, starMatch.range.first).trim()
         }
 
-        // b) Kontrollime sulgudes lisasid tsükliga (Jonas Brothers fix)
+        // c) Kontrollime sulgudes lisasid pealkirja lõpus tsükliga
         val titleEndRegex = Regex("""\s*\(([^()]+(?:\([^()]*\)[^()]*)*)\)\s*$""")
-
         while (true) {
             val match = titleEndRegex.find(title) ?: break
             val content = match.groupValues[1].trim()
-            extrasList.add(0, content) // Lisame ettepoole, et "Remix * 1988" järjekord oleks ilus
+            extrasList.add(0, content) 
             title = title.substring(0, match.range.first).trim()
         }
 
-        // 6. EXTRA LÕPLIK VORMISTUS
+        // d) Eemaldame pealkirja ümbritsevad ülakomad (nt 'La Lucina')
+        title = title.removeSurrounding("'")
+
+        // 5. EXTRA LÕPLIK VORMISTUS
         var extra = extrasList.filter { it.isNotBlank() }.joinToString(" • ")
 
         // Asendame "Esitaja (Pill)" -> "Esitaja • Pill"
         if (extra.isNotBlank() && !isSoundtrackFormat) {
             extra = extra.replace(Regex("""\s*\(([^()]+)\)"""), " • $1")
-        }
-
-        // 7. REVERSED STATIONS
-        if (AppConfig.Metadata.REVERSED_STATIONS.contains(stationName) && !isSoundtrackFormat) {
-            val temp = artist
-            artist = title
-            title = temp
         }
 
         return ParsedMetadata(artist.trim(), title.trim(), extra.trim())
