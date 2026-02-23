@@ -16,7 +16,7 @@ class PlayerViewModel : ViewModel() {
     private val _songInfo = MutableStateFlow<SongAdditionalInfo?>(null)
     val songInfo = _songInfo.asStateFlow()
 
-    // UUS: Näitab, kas hetkel käib taustal otsing
+    // Näitab, kas hetkel käib taustal otsing
     private val _isFetching = MutableStateFlow(false)
     val isFetching = _isFetching.asStateFlow()
 

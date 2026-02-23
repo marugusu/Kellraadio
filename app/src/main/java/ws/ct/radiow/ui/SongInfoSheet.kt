@@ -234,9 +234,9 @@ fun SongInfoContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // 4. LAULUSÕNAD
         if (!info.lyrics.isNullOrEmpty()) {
@@ -260,7 +260,7 @@ fun SongInfoContent(
                         style = MaterialTheme.typography.bodyLarge,
                         lineHeight = 28.sp,
                         color = Color.White.copy(alpha = 0.9f),
-                        textAlign = TextAlign.Start,
+                        textAlign = TextAlign.Center,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
