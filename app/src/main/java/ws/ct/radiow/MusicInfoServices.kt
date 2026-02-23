@@ -5,9 +5,12 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.ConnectionSpec
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -109,20 +112,34 @@ object MusicInfoRepository {
             .build()
         chain.proceed(request)
     }
+    
+    // Logimise Interceptor, mis näitab URL-i ja päiseid
+    private val loggingInterceptor = HttpLoggingInterceptor { message ->
+        Log.d(TAG, message)
+    }.apply {
+        level = HttpLoggingInterceptor.Level.BASIC
+    }
 
-    // Kiirete API-de klient (iTunes, MusicBrainz)
+
+    // Kiirete API-de klient (iTunes, MusicBrainz) - MUUDETUD ROBUSTSEMAKS
     private val fastClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
         .addInterceptor(commonInterceptor)
+        .addInterceptor(loggingInterceptor)
+        .protocols(listOf(Protocol.HTTP_1_1))
+        .connectionSpecs(listOf(ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.MODERN_TLS))
         .build()
 
-    // Aeglase API klient (LRCLIB) - TAASTATUD HTTP/2 tugi
+    // Aeglase API klient (LRCLIB) - MUUDETUD ROBUSTSEMAKS
     private val slowClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .addInterceptor(commonInterceptor)
+        .addInterceptor(loggingInterceptor)
         .retryOnConnectionFailure(true)
+        .protocols(listOf(Protocol.HTTP_1_1))
+        .connectionSpecs(listOf(ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.MODERN_TLS))
         .build()
 
     private val lrcApi = Retrofit.Builder()
@@ -174,7 +191,7 @@ object MusicInfoRepository {
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.e(TAG, "❌ iTunes viga: ${e.message}")
+            Log.e(TAG, "❌ iTunes viga", e)
         }
 
         if (foundCover == null) {
@@ -194,7 +211,7 @@ object MusicInfoRepository {
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.e(TAG, "❌ MusicBrainz viga: ${e.message}")
+                Log.e(TAG, "❌ MusicBrainz viga", e)
             }
         }
 
@@ -227,7 +244,7 @@ object MusicInfoRepository {
                 break
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.e(TAG, "❌ LRCLIB viga (Katse ${lrcAttempt + 1}): ${e.message}")
+                Log.e(TAG, "❌ LRCLIB viga (Katse ${lrcAttempt + 1})", e)
                 lrcAttempt++
                 if (lrcAttempt < 2) delay(1000) // Ootame sekund enne uut katset
             }

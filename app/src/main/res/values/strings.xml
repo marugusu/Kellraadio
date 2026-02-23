@@ -24,6 +24,7 @@
     <string name="action_pause">Pause</string>
     <string name="action_stop">Stop</string>
     <string name="action_test">Test</string>
+    <string name="action_share">Share</string>
 
     <!-- Player & Service -->
     <string name="status_playing">Playing</string>
@@ -157,4 +158,13 @@
     <string name="info_not_found">No additional info found.</string>
     <string name="info_available">Info available</string>
     <string name="info_searching">Searching info...</string>
+
+    <!-- Share Content -->
+    <string name="share_title">Share song</string>
+    <string name="share_artist">Artist</string>
+    <string name="share_track">Track</string>
+    <string name="share_album">Album</string>
+    <string name="share_genre">Genre</string>
+    <string name="share_source">Source</string>
+    <string name="share_listen">Listen</string>
 </resources>

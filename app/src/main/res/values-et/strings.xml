@@ -24,6 +24,7 @@
     <string name="action_pause">Paus</string>
     <string name="action_stop">Stopp</string>
     <string name="action_test">Testi</string>
+    <string name="action_share">Jaga</string>
 
     <!-- Player & Service -->
     <string name="status_playing">Mängib</string>
@@ -157,4 +158,13 @@
     <string name="info_not_found">Lisainfot ei leitud.</string>
     <string name="info_available">Lisainfo leitud</string>
     <string name="info_searching">Otsin lisainfot...</string>
+
+    <!-- Share Content -->
+    <string name="share_title">Jaga lugu</string>
+    <string name="share_artist">Esitaja</string>
+    <string name="share_track">Pealkiri</string>
+    <string name="share_album">Album</string>
+    <string name="share_genre">Žanr</string>
+    <string name="share_source">Allikas</string>
+    <string name="share_listen">Kuula</string>
 </resources>

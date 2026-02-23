@@ -263,7 +263,7 @@ fun RaadioEkraan(
 
                 if (songInfo != null || isFetchingInfo) {
                     if (isLargeScreenHeight && songInfo != null) {
-                        val stationColor = ws.ct.radiow.ui.StationArtworkUtils.getStationColor(state.activeStationName)
+                        val stationColor = StationArtworkUtils.getStationColor(state.activeStationName)
                         Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)))) {
                             SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
                         }
@@ -387,7 +387,7 @@ fun RaadioEkraan(
             onSave = { newName, newUrl, newCountry, newCategory -> mainViewModel.updateUserStation(newName, newUrl, newCountry, newCategory) }
         )
     }
-    if (state.showSongInfoSheet && songInfo != null) { ModalBottomSheet(onDismissRequest = mainViewModel::closeSongInfo, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) { SongInfoSheet(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!, onDismiss = mainViewModel::closeSongInfo) } }
+    if (state.showSongInfoSheet && songInfo != null) { ModalBottomSheet(onDismissRequest = mainViewModel::closeSongInfo, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) { SongInfoSheet(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, bitrate = state.bitrate, streamUrl = displayStations.find { it.name == state.activeStationName }?.url ?: "", info = songInfo!!, onDismiss = mainViewModel::closeSongInfo) } }
 }
 
 @Composable

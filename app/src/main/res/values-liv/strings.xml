@@ -129,4 +129,14 @@
 <string name="info_not_found">"Līsa tiedõd äb līdõd"</string>
 <string name="info_available">"Līsa informācijõ līdõd"</string>
 <string name="info_searching">"Vȯtšub līsa tiedõ..."</string>
+
+    <!-- Share Content -->
+    <string name="action_share">Jaga</string>
+    <string name="share_title">Jaga lūol</string>
+    <string name="share_artist">Lūoliji</string>
+    <string name="share_track">Nimi</string>
+    <string name="share_album">Album</string>
+    <string name="share_genre">Žanr</string>
+    <string name="share_source">Allik</string>
+    <string name="share_listen">Kūliz</string>
 </resources>

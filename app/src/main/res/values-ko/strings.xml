@@ -19,6 +19,7 @@
     <string name="action_pause">일시정지</string>
     <string name="action_stop">정지</string>
     <string name="action_test">테스트</string>
+    <string name="action_share">공유</string>
 
     <!-- Player & Service -->
     <string name="status_playing">재생 중</string>
@@ -157,4 +158,13 @@
     <string name="info_not_found">추가 정보를 찾을 수 없습니다.</string>
     <string name="info_available">추가 정보 있음</string>
     <string name="info_searching">정보 검색 중...</string>
+
+    <!-- Share Content -->
+    <string name="share_title">노래 공유</string>
+    <string name="share_artist">아티스트</string>
+    <string name="share_track">트랙</string>
+    <string name="share_album">앨범</string>
+    <string name="share_genre">장르</string>
+    <string name="share_source">출처</string>
+    <string name="share_listen">듣기</string>
 </resources>
