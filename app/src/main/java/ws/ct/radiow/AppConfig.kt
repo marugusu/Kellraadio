@@ -16,7 +16,7 @@ object AppConfig {
         const val MUSICBRAINZ_BASE_URL = "https://musicbrainz.org/ws/2/"
 
         // Viisakas on öelda API-le, kes me oleme
-        const val USER_AGENT = "radiow/1.0 ( minumeil@example.com )"
+        const val USER_AGENT = "radiow/1.0 ( radiow.ct.ws@gmail.com )"
     }
 
     // --- 2. METAANDMETE FILTREERIMINE ---
@@ -32,7 +32,10 @@ object AppConfig {
             "Uudised",        // ERR
             "Reklaam",        // Üldine
             "Sport",
+            "Lil Saade",
+            "Lill Slim",
             "Ilmateade"
+
         )
 
         // Jaamad, mis saadavad infot valepidi: "Pealkiri - Esitaja" (mitte "Esitaja - Pealkiri")
@@ -67,7 +70,9 @@ object AppConfig {
             "retro love" to "LOVE",
             "ida" to "IDA",
             "star fm 80s" to "80",
-            "star fm 90s" to "90"
+            "star fm 90s" to "90",
+            "talksport 2" to "SPOR",
+            "talksport" to "SPOR"
         )
 
         // Sõnad, mida me lühendite tegemisel ignoreerime

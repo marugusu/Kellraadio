@@ -71,7 +71,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val title = intent.getStringExtra("PARSED_TITLE") ?: ""
                     val artist = intent.getStringExtra("PARSED_ARTIST") ?: ""
                     val extra = intent.getStringExtra("PARSED_EXTRA") ?: ""
-                    _uiState.update { it.copy(isPlaying = true, playerStatus = getString(R.string.status_playing), parsedTitle = title, parsedArtist = artist, parsedExtra = extra) }
+                    // PARANDUS: Uuendame ainult metaandmeid, mitte mängimise staatust
+                    _uiState.update { it.copy(parsedTitle = title, parsedArtist = artist, parsedExtra = extra) }
                 }
                 RadioService.ACTION_BITRATE_UPDATED -> {
                     val bitrate = intent.getStringExtra("BITRATE_INFO") ?: ""
@@ -502,10 +503,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedStationId = -1,
             isPlaying = true
         )}
+        // PARANDUS: Kui testkanal juba mängib (URL on sama ja isPlaying on true), siis pane PAUSILE, mitte STOP
         val i = Intent(context, RadioService::class.java).apply {
-            putExtra("STREAM_URL", url)
-            putExtra("STATION_NAME", name)
-            putExtra("TRIGGERED_BY", "USER")
+            if (url == _uiState.value.activeStreamUrl && _uiState.value.isPlaying) {
+                action = RadioService.ACTION_PAUSE
+            } else {
+                putExtra("STREAM_URL", url)
+                putExtra("STATION_NAME", name)
+                putExtra("TRIGGERED_BY", "USER")
+            }
         }
         context.startForegroundService(i)
     }

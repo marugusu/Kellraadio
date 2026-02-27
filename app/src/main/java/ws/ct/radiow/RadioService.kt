@@ -66,6 +66,7 @@ class RadioService : Service() {
 
     private var lastSentArtist: String = ""
     private var lastSentTitle: String = ""
+    private var lastSentTime: Long = 0
 
     private var isAlarmMode: Boolean = false
     private var currentStreamUrl: String = ""
@@ -203,6 +204,12 @@ class RadioService : Service() {
         currentTitle = parsed.title
         currentExtra = parsed.extra
         
+        // UUS: Salvestame viimase info püsivalt
+        prefs.edit()
+            .putString("last_artist", currentArtist)
+            .putString("last_title", currentTitle)
+            .apply()
+        
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
         updateNotification()
@@ -229,6 +236,13 @@ class RadioService : Service() {
     private fun updateExternalDevices(title: String, artist: String) {
         if (!::player.isInitialized) return
 
+        val currentTime = SystemClock.elapsedRealtime()
+        // DEBOUNCING: Väldi liiga tihedat uuendamist (nt vähem kui 500ms vahega)
+        if (currentTime - lastSentTime < 500) {
+            Log.d(TAG, "updateExternalDevices: SKIPPED (Too fast updates)")
+            return
+        }
+
         // VÄLDI DUPLIKAATE: See on vajalik loo vahetusel ja striimi spämi tõrjumiseks
         if (title == lastSentTitle && artist == lastSentArtist) {
             return
@@ -238,6 +252,7 @@ class RadioService : Service() {
 
         lastSentTitle = title
         lastSentArtist = artist
+        lastSentTime = currentTime
 
         val newMetadata = metadataHelper.buildMediaMetadata(
             title = title,
@@ -333,6 +348,7 @@ class RadioService : Service() {
                     Log.d(TAG, "metadataPushJob: Forcing 5s metadata push (imulated song change)")
                     lastSentTitle = "" // Vabastame luku, et info kindlasti läbi läheks
                     lastSentArtist = ""
+                    lastSentTime = 0 // Vabastame ka ajapiirangu
                     // Progressi kella nullimine (loo vahetuse simuleerimine)
                     player.streamStartTime = SystemClock.elapsedRealtime()
                     updateExternalDevices(currentTitle, currentArtist)
@@ -384,14 +400,25 @@ class RadioService : Service() {
 
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (player.isPlaying) {
-                LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(
+            // 1. Saada alati jaama nimi, kui see on teada
+            if (currentStationName != "Radio" && currentStationName.isNotEmpty()) {
+                 LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(
                     Intent(ACTION_STATION_CHANGED).apply { putExtra("STATION_NAME", currentStationName) }
                 )
+            }
+
+            // 2. Saada alati metaandmed (artist, lugu), kui need on teada
+            if (currentTitle.isNotEmpty() || currentArtist.isNotEmpty()) {
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
+            }
+
+            // 3. Saada staatus (mängib/seisab)
+            if (player.isPlaying) {
                 sendBitrateUpdate()
                 sendTimerTick(sleepTimerRemainingMillis)
-            } else { LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(Intent(ACTION_PLAYER_STOPPED)) }
+            } else { 
+                LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(Intent(ACTION_PLAYER_STOPPED)) 
+            }
         }
     }
 
@@ -416,6 +443,56 @@ class RadioService : Service() {
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
         wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "radiow::RadioWakeLock")
         wakeLock?.setReferenceCounted(false)
+        
+        restoreLastState() // UUS: Taasta viimane seis
+    }
+    
+    // UUS FUNKTSIOON: Taastab viimati mängitud jaama info mälust
+    private fun restoreLastState() {
+        val lastId = prefs.getInt("last_selected_id", -1)
+        val lastName = prefs.getString("last_name", "Radio") ?: "Radio"
+        val lastUrl = prefs.getString("last_url", "") ?: ""
+        val lastCat = prefs.getString("last_category", "") ?: ""
+        
+        // UUS: Loeme salvestatud artisti ja pealkirja
+        val lastArtist = prefs.getString("last_artist", getString(R.string.live_broadcast)) ?: getString(R.string.live_broadcast)
+        val lastTitle = prefs.getString("last_title", lastName) ?: lastName
+
+        currentStationName = lastName
+        currentStreamUrl = lastUrl
+        currentCategory = lastCat
+        currentArtist = lastArtist
+        currentTitle = lastTitle
+        currentStationBitmap = ws.ct.radiow.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+
+        // Kui meil on URL, valmistame mängija ette (aga ei alusta mängimist)
+        if (currentStreamUrl.isNotEmpty()) {
+            val initialMeta = metadataHelper.buildMediaMetadata(
+                title = currentTitle,
+                artist = currentArtist,
+                stationName = currentStationName,
+                artworkData = getArtworkBytes()
+            )
+            
+            player.playlistMetadata = initialMeta
+            player.setMediaItem(
+                MediaItem.Builder()
+                    .setUri(currentStreamUrl)
+                    .setMediaId("Raadio")
+                    .setMediaMetadata(initialMeta)
+                    .build()
+            )
+            // player.prepare() <-- EEMALDATUD: Et ei hakkaks puhverdama
+        }
+
+        // Saada info kohe UI-le, et see ei oleks tühi
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
+            Intent(ACTION_STATION_CHANGED).apply {
+                putExtra("STATION_NAME", currentStationName)
+            }
+        )
+        // Saadame ka metaandmed, et "Live Broadcast" jne oleks näha
+        sendMetadataUpdate(currentTitle, currentArtist, "")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -513,10 +590,9 @@ class RadioService : Service() {
         currentTitle = currentStationName
         currentExtra = ""
         
-        // PARANDUS: Ära märgi infot "saadetuks" kohe alguses. 
-        // See garanteerib, et esimene striimist tulev info läbib kontrolli ja jõuab autoni.
         lastSentTitle = ""
         lastSentArtist = ""
+        lastSentTime = 0 // Reset
 
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)
@@ -525,6 +601,8 @@ class RadioService : Service() {
                 prefs.edit()
                     .putInt("last_selected_id", station.id)
                     .putString("last_category", station.category)
+                    .putString("last_name", currentStationName)
+                    .putString("last_url", currentStreamUrl)
                     .apply()
             } else {
                 prefs.edit()
@@ -543,9 +621,9 @@ class RadioService : Service() {
 
         updateNotification()
 
-        // Puhas algus Bluetoothi jaoks
+        // Puhas algus
         if (player.isPlaying) player.stop()
-        player.clearMediaItems()
+        // player.clearMediaItems() // VÄLDI SEDA - see saadab autole tühja signaali
 
         val initialMeta = metadataHelper.buildMediaMetadata(
             title = currentTitle,
@@ -554,7 +632,6 @@ class RadioService : Service() {
             artworkData = getArtworkBytes()
         )
 
-        // LOG: Algse info saatmine
         Log.d(TAG, "playStation: Sending INITIAL metadata: Title='$currentTitle', Artist='$currentArtist', Album='$currentStationName'")
 
         player.setMediaItem(
@@ -644,7 +721,9 @@ class RadioService : Service() {
     private fun getArtworkBytes(): ByteArray? {
         return currentStationBitmap?.let { bmp ->
             val stream = java.io.ByteArrayOutputStream()
-            bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+            // PARANDUS: Vähenda kvaliteeti ja suurust, et vältida Bluetoothi hangumist
+            val scaled = android.graphics.Bitmap.createScaledBitmap(bmp, 300, 300, true)
+            scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream) // PNG -> JPEG (väiksem fail)
             stream.toByteArray()
         }
     }
