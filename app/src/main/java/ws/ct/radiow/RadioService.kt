@@ -581,6 +581,9 @@ class RadioService : Service() {
         sendBitrateUpdate()
         wakeLock?.acquire(10 * 60 * 1000L)
 
+        // KIIRPARANDUS: Start foreground immediately
+        updateNotification()
+
         currentStreamUrl = streamUrl
         currentStationName = stationName ?: "Radio"
         isAlarmMode = triggeredBy == "ALARM"
@@ -619,6 +622,7 @@ class RadioService : Service() {
             notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
         }
 
+        // Värskenda uuesti õige nime ja pildiga
         updateNotification()
 
         // Puhas algus
@@ -651,7 +655,9 @@ class RadioService : Service() {
 
     private fun updateNotification() {
         val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
-        if (player.isPlaying || isAlarmMode) {
+        // Kui me just alustame (player ei pruugi veel mängida, aga me valmistume), siis peame alustama teenust
+        // Kui isChangingStation on true, siis me ilmselt just alustasime uut kanalit
+        if (player.isPlaying || isAlarmMode || isChangingStation) {
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
             } else {

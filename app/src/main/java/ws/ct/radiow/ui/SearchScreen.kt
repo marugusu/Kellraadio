@@ -48,6 +48,7 @@ fun SearchScreen(
     val filterType by viewModel.filterType.collectAsState()
     val filterItems by viewModel.filterItems.collectAsState()
     val showManualDialog by viewModel.showManualDialog.collectAsState()
+    val manualDialogInitialData by viewModel.manualDialogInitialData.collectAsState()
     val listState = viewModel.listState
 
     val savedIdentifiers = remember(allStations) {
@@ -193,7 +194,8 @@ fun SearchScreen(
                             isSaved = isAlreadySaved,
                             onPlay = { onPlayTest(station.name, station.urlResolved, isAlreadySaved) },
                             onAdd = {
-                                onSaveStation(station.name, station.urlResolved, station.countryCode, "")
+                                // UUENDATUD: Avab dialoogi eeltäidetud andmetega
+                                viewModel.openManualAddDialog(station)
                             }
                         )
                     }
@@ -224,6 +226,7 @@ fun SearchScreen(
 
     if (showManualDialog) {
         ManualAddDialog(
+            initialData = manualDialogInitialData, // UUS PARAMEETER
             allCountries = viewModel.countryListForManual(),
             allCategories = allCategories,
             onDismiss = { viewModel.closeManualAddDialog() },
@@ -304,17 +307,24 @@ fun SearchResultItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualAddDialog(
+    initialData: SearchViewModel.ManualDialogData, // UUS
     allCountries: List<RadioFilterItem>,
     allCategories: List<String>,
     onDismiss: () -> Unit,
     onTest: (String, String) -> Unit,
     onSave: (String, String, String, String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var countryCode by remember { mutableStateOf("") }
+    // Initsialiseerime väärtused algandmetest
+    var name by remember { mutableStateOf(initialData.name) }
+    var url by remember { mutableStateOf(initialData.url) }
+    var countryCode by remember { mutableStateOf(initialData.country) }
     var category by remember { mutableStateOf("") }
-    var countryName by remember { mutableStateOf("") }
+    
+    // Leiame riigi nime koodi järgi, kui võimalik
+    var countryName by remember { 
+        mutableStateOf(allCountries.find { it.isoCode == initialData.country }?.name ?: "") 
+    }
+    
     var showCountryPicker by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 

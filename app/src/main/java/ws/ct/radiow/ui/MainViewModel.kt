@@ -497,23 +497,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
-        _uiState.update { it.copy(
-            activeStationName = name,
-            activeStreamUrl = url,
-            selectedStationId = -1,
-            isPlaying = true
-        )}
-        // PARANDUS: Kui testkanal juba mängib (URL on sama ja isPlaying on true), siis pane PAUSILE, mitte STOP
-        val i = Intent(context, RadioService::class.java).apply {
-            if (url == _uiState.value.activeStreamUrl && _uiState.value.isPlaying) {
-                action = RadioService.ACTION_PAUSE
-            } else {
+
+        // PARANDUS: Kontrollime olekut ENNE uuendamist
+        val isAlreadyPlayingThis = url == _uiState.value.activeStreamUrl && _uiState.value.isPlaying
+
+        if (isAlreadyPlayingThis) {
+            // Kui juba mängib, siis pausile (kasutades startService)
+            _uiState.update { it.copy(isPlaying = false) }
+            val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
+            context.startService(i)
+        } else {
+            // Kui ei mängi, siis mängima (kasutades startForegroundService)
+            _uiState.update { it.copy(
+                activeStationName = name,
+                activeStreamUrl = url,
+                selectedStationId = -1,
+                isPlaying = true
+            )}
+            val i = Intent(context, RadioService::class.java).apply {
                 putExtra("STREAM_URL", url)
                 putExtra("STATION_NAME", name)
                 putExtra("TRIGGERED_BY", "USER")
             }
+            context.startForegroundService(i)
         }
-        context.startForegroundService(i)
     }
 
     private fun isValidUrl(url: String): Boolean {

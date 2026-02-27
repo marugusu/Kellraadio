@@ -46,6 +46,11 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
     private val _showManualDialog = MutableStateFlow(false)
     val showManualDialog = _showManualDialog.asStateFlow()
 
+    // UUS: Hoiab andmeid dialoogi eeltäitmiseks
+    data class ManualDialogData(val name: String = "", val url: String = "", val country: String = "")
+    private val _manualDialogInitialData = MutableStateFlow(ManualDialogData())
+    val manualDialogInitialData = _manualDialogInitialData.asStateFlow()
+
     private var cachedCountries: List<RadioFilterItem> = emptyList()
 
     // Kerimise asukoha meelespidamiseks
@@ -108,9 +113,21 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
         _showFilterSheet.value = false
     }
 
-    fun openManualAddDialog() {
+    // UUENDATUD: Võtab nüüd valikulise parameetri
+    fun openManualAddDialog(station: RadioBrowserStation? = null) {
+        if (station != null) {
+            _manualDialogInitialData.value = ManualDialogData(
+                name = station.name,
+                url = station.urlResolved,
+                country = station.countryCode
+            )
+        } else {
+            _manualDialogInitialData.value = ManualDialogData()
+        }
+        
         _showManualDialog.value = true
-        // Tagame, et riigid on olemas
+        
+        // Tagame, et riigid on olemas (nimekirja jaoks dialoogis)
         if (cachedCountries.isEmpty()) {
             viewModelScope.launch {
                 cachedCountries = repository.getCountries()
