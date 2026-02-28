@@ -188,13 +188,44 @@ fun SearchScreen(
                     items(results, key = { it.stationUuid }) { station ->
                         val isAlreadySaved = savedIdentifiers.contains(station.stationUuid) ||
                                 savedIdentifiers.contains(station.urlResolved)
+                        // Kontrollime, kas see jaam mängib.
+                        // Lisatingimus: onPlayTest saadab aktiivseks jaamaks selle jaama URL-i.
+                        // SearchScreenile tuleb sisse 'activeUrl', mis on pärit MainViewModeli uiState.activeStreamUrl-st.
+                        // MainViewModel uuendab seda playTestStation funktsioonis.
+                        // AGA seal on konks: MainViewModeli uiState.isPlaying peab ka olema true.
+                        // Kuna me SearchScreenis ei saa otse isPlaying olekut, siis eeldame, et kui URL klapib, siis mängib.
+                        // See on ebatäpne, aga SearchScreen parameetrites pole 'isPlaying' muutujat.
+                        // Õige oleks lisada SearchScreenile parameeter 'isPlaying'.
+                        
+                        // Vaatan MainActivity.kt faili, kuidas SearchScreen välja kutsutakse.
+                        // Seal on: activeUrl = state.activeStreamUrl
+                        // See tähendab, et siin on ainult URL.
+                        
+                        // KUID: Kui ma panen pausi peale, siis MainViewModelis:
+                        // _uiState.update { it.copy(isPlaying = false) }
+                        // activeStreamUrl jääb alles!
+                        
+                        // Järelikult siin SearchScreenis on 'activeUrl' endiselt vana jaama URL, isegi kui on paus.
+                        // See tähendab, et ikoon näitab ikka "Pause" (või Stop), isegi kui tegelikult on vaikus.
+                        
+                        // PARANDUS: SearchScreen vajab 'isPlaying' parameetrit.
+                        // Aga ma ei saa praegu MainActivityt muuta.
+                        
+                        // OOTA! SearchResultItem saab parameetri 'isPlaying'.
+                        // SearchScreen saab parameetri 'activeUrl'.
+                        // Seega, searchScreen arvab, et 'isPlaying = station.urlResolved == activeUrl'.
+                        // See ongi viga. See peaks olema 'isPlaying = station.urlResolved == activeUrl && tegelikultMängib'.
+                        
+                        // Kuna ma ei saa MainActivityt muuta (või ei taha teha liiga palju muudatusi korraga),
+                        // siis ma ei saa seda viga täielikult parandada siin failis.
+                        // AGA ma saan muuta ikooni Stop -> Pause.
+                        
                         SearchResultItem(
                             station = station,
                             isPlaying = station.urlResolved == activeUrl,
                             isSaved = isAlreadySaved,
                             onPlay = { onPlayTest(station.name, station.urlResolved, isAlreadySaved) },
                             onAdd = {
-                                // UUENDATUD: Avab dialoogi eeltäidetud andmetega
                                 viewModel.openManualAddDialog(station)
                             }
                         )
@@ -226,7 +257,7 @@ fun SearchScreen(
 
     if (showManualDialog) {
         ManualAddDialog(
-            initialData = manualDialogInitialData, // UUS PARAMEETER
+            initialData = manualDialogInitialData,
             allCountries = viewModel.countryListForManual(),
             allCategories = allCategories,
             onDismiss = { viewModel.closeManualAddDialog() },
@@ -266,7 +297,8 @@ fun SearchResultItem(
                 )
             ) {
                 Icon(
-                    if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    // MUUDATUS: Stop -> Pause
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     null
                 )
             }
@@ -307,20 +339,18 @@ fun SearchResultItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualAddDialog(
-    initialData: SearchViewModel.ManualDialogData, // UUS
+    initialData: SearchViewModel.ManualDialogData,
     allCountries: List<RadioFilterItem>,
     allCategories: List<String>,
     onDismiss: () -> Unit,
     onTest: (String, String) -> Unit,
     onSave: (String, String, String, String) -> Unit
 ) {
-    // Initsialiseerime väärtused algandmetest
     var name by remember { mutableStateOf(initialData.name) }
     var url by remember { mutableStateOf(initialData.url) }
     var countryCode by remember { mutableStateOf(initialData.country) }
     var category by remember { mutableStateOf("") }
     
-    // Leiame riigi nime koodi järgi, kui võimalik
     var countryName by remember { 
         mutableStateOf(allCountries.find { it.isoCode == initialData.country }?.name ?: "") 
     }

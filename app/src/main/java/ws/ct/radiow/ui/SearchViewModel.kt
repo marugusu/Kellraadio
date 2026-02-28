@@ -100,8 +100,16 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
     fun openFilter(type: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            val items = if (type == "COUNTRY") repository.getCountries() else repository.getTags()
-            if (type == "COUNTRY") cachedCountries = items
+            var items = if (type == "COUNTRY") repository.getCountries() else repository.getTags()
+            
+            // PARANDUS: Tõstame Eesti esimeseks, säilitades muu järjekorra
+            if (type == "COUNTRY") {
+                items = items.sortedBy { 
+                    if (it.isoCode == "EE" || it.name.equals("Estonia", ignoreCase = true)) 0 else 1 
+                }
+                cachedCountries = items
+            }
+            
             _filterItems.value = items
             _filterType.value = type
             _isLoading.value = false
@@ -130,7 +138,10 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
         // Tagame, et riigid on olemas (nimekirja jaoks dialoogis)
         if (cachedCountries.isEmpty()) {
             viewModelScope.launch {
-                cachedCountries = repository.getCountries()
+                // Laeme ja sorteerime (Eesti esimeseks)
+                cachedCountries = repository.getCountries().sortedBy { 
+                    if (it.isoCode == "EE" || it.name.equals("Estonia", ignoreCase = true)) 0 else 1 
+                }
             }
         }
     }

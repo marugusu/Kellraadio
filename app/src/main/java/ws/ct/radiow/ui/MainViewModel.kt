@@ -63,6 +63,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         isPlaying = true,
                         playerStatus = getString(R.string.status_playing),
                         activeStationName = name,
+                        // UUS: Kui leiame jaama, uuendame ka URL-i, et test-nupud teaksid
+                        activeStreamUrl = foundStation?.url ?: it.activeStreamUrl,
                         selectedStationId = newId,
                         selectedCategory = newCat
                     )}
@@ -71,7 +73,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val title = intent.getStringExtra("PARSED_TITLE") ?: ""
                     val artist = intent.getStringExtra("PARSED_ARTIST") ?: ""
                     val extra = intent.getStringExtra("PARSED_EXTRA") ?: ""
-                    // PARANDUS: Uuendame ainult metaandmeid, mitte mängimise staatust
                     _uiState.update { it.copy(parsedTitle = title, parsedArtist = artist, parsedExtra = extra) }
                 }
                 RadioService.ACTION_BITRATE_UPDATED -> {
@@ -220,6 +221,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         updateSelectedStationLocal(freshStation.id)
         _uiState.update { it.copy(
             activeStationName = freshStation.name,
+            // UUS: Uuendame ka URL-i, et otsinguvaade teaks, mis mängib
+            activeStreamUrl = freshStation.url,
             isPlaying = true,
             playerStatus = getString(R.string.status_buffering)
         )}
@@ -249,6 +252,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _uiState.update { it.copy(
                 activeStationName = station.name,
+                // UUS: Uuendame URL-i ka siin
+                activeStreamUrl = station.url,
                 isPlaying = true,
                 playerStatus = getString(R.string.status_buffering)
             )}
