@@ -194,6 +194,15 @@ class HomeWidget : GlanceAppWidget() {
                 )
             }
 
+            if (status.isNotBlank()) {
+                Text(
+                    text = status,
+                    modifier = GlanceModifier.padding(start = 22.dp),
+                    style = TextStyle(color = colorStatus, fontSize = 11.sp, textAlign = textAlign),
+                    maxLines = 1
+                )
+            }
+
             val displayTitle = if (title.isBlank() && artist.isBlank()) "..." else title
             if (displayTitle.isNotBlank()) {
                 Text(
@@ -222,14 +231,6 @@ class HomeWidget : GlanceAppWidget() {
                 )
             }
 
-            if (status.isNotBlank()) {
-                Text(
-                    text = status,
-                    modifier = GlanceModifier.padding(start = 22.dp),
-                    style = TextStyle(color = colorStatus, fontSize = 11.sp, textAlign = textAlign),
-                    maxLines = 1
-                )
-            }
 
             Spacer(modifier = GlanceModifier.defaultWeight())
 
