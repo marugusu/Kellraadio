@@ -258,7 +258,7 @@ class RadioService : Service() {
             title = title,
             artist = artist,
             stationName = currentStationName,
-            artworkData = getArtworkBytes()
+            artworkData = null
         )
 
         player.playlistMetadata = newMetadata
@@ -471,7 +471,7 @@ class RadioService : Service() {
                 title = currentTitle,
                 artist = currentArtist,
                 stationName = currentStationName,
-                artworkData = getArtworkBytes()
+                artworkData = null
             )
             
             player.playlistMetadata = initialMeta
@@ -633,7 +633,7 @@ class RadioService : Service() {
             title = currentTitle,
             artist = currentArtist,
             stationName = currentStationName,
-            artworkData = getArtworkBytes()
+            artworkData = null
         )
 
         Log.d(TAG, "playStation: Sending INITIAL metadata: Title='$currentTitle', Artist='$currentArtist', Album='$currentStationName'")

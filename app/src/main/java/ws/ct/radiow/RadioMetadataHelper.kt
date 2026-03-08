@@ -154,7 +154,7 @@ class RadioMetadataHelper(private val context: Context) {
             .setTotalTrackCount(1)
             .setIsPlayable(true)
             .setExtras(extras)
-            .setArtworkData(artworkData, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            .setArtworkData(null, MediaMetadata.PICTURE_TYPE_FRONT_COVER) // Pilt asendatud NULL-iga
             .build()
     }
 }
