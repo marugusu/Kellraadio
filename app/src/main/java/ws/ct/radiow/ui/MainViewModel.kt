@@ -48,22 +48,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             when (intent.action) {
                 RadioService.ACTION_STATION_CHANGED -> {
                     val name = intent.getStringExtra("STATION_NAME") ?: ""
+                    val serviceCategory = intent.getStringExtra("CATEGORY_NAME")
+                    
                     var newId = _uiState.value.selectedStationId
                     var newCat = _uiState.value.selectedCategory
+                    
                     val foundStation = _uiState.value.stations.find { it.name == name }
                     if (foundStation != null) {
                         newId = foundStation.id
-                        if (newCat != "Favorites" && newCat != "My" && newCat != "All" && newCat != foundStation.countryCode) {
-                            newCat = if (foundStation.countryCode.isEmpty()) "All" else foundStation.countryCode
+                        
+                        // PARANDUS: Kui service ütleb, mis kategoorias me oleme, siis usume seda.
+                        // See lahendab vea, kus äpp "unustas" et me olime Favorites all.
+                        if (!serviceCategory.isNullOrEmpty()) {
+                            newCat = serviceCategory
+                        } else {
+                            // Tagavaravariant, kui service ei saatnud kategooriat (nt vana kood)
+                            if (newCat != "Favorites" && newCat != "My" && newCat != "All" && newCat != foundStation.countryCode) {
+                                newCat = if (foundStation.countryCode.isEmpty()) "All" else foundStation.countryCode
+                            }
+                        }
+                        
+                        // Kui kategooria muutus, kutsume esile ka vajalikud laadimised
+                        if (newCat != _uiState.value.selectedCategory) {
                             onCategorySelected(newCat)
                         }
+                        
                         prefs.edit().putInt("last_selected_id", newId).apply()
                     }
+                    
                     _uiState.update { it.copy(
                         isPlaying = true,
                         playerStatus = getString(R.string.status_playing),
                         activeStationName = name,
-                        // UUS: Kui leiame jaama, uuendame ka URL-i, et test-nupud teaksid
                         activeStreamUrl = foundStation?.url ?: it.activeStreamUrl,
                         selectedStationId = newId,
                         selectedCategory = newCat
@@ -221,7 +237,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         updateSelectedStationLocal(freshStation.id)
         _uiState.update { it.copy(
             activeStationName = freshStation.name,
-            // UUS: Uuendame ka URL-i, et otsinguvaade teaks, mis mängib
             activeStreamUrl = freshStation.url,
             isPlaying = true,
             playerStatus = getString(R.string.status_buffering)
@@ -252,7 +267,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _uiState.update { it.copy(
                 activeStationName = station.name,
-                // UUS: Uuendame URL-i ka siin
                 activeStreamUrl = station.url,
                 isPlaying = true,
                 playerStatus = getString(R.string.status_buffering)
@@ -393,7 +407,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     selectedStationId = newId,
                     activeStationName = name
                 )}
-                prefs.edit().putInt("last_selected_id", newId).putString("last_selected_name", name).apply()
+                prefs.edit().putInt("last_selected_id", newId).apply()
                 val i = Intent(RadioService.ACTION_STATION_CHANGED).apply {
                     putExtra("STATION_NAME", name)
                 }
@@ -478,7 +492,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             putExtra("STREAM_URL", station.url)
             putExtra("STATION_NAME", station.name)
             putExtra("TRIGGERED_BY", "USER")
-            // UUS: Saadame aktiivse kategooria konteksti
             putExtra("CATEGORY_NAME", _uiState.value.selectedCategory)
         }
         context.startForegroundService(i)
@@ -503,16 +516,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        // PARANDUS: Kontrollime olekut ENNE uuendamist
         val isAlreadyPlayingThis = url == _uiState.value.activeStreamUrl && _uiState.value.isPlaying
 
         if (isAlreadyPlayingThis) {
-            // Kui juba mängib, siis pausile (kasutades startService)
             _uiState.update { it.copy(isPlaying = false) }
             val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
             context.startService(i)
         } else {
-            // Kui ei mängi, siis mängima (kasutades startForegroundService)
             _uiState.update { it.copy(
                 activeStationName = name,
                 activeStreamUrl = url,

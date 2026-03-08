@@ -142,13 +142,17 @@ class RadioService : Service() {
 
     private fun changeStation(offset: Int) {
         isChangingStation = true
+        
+        // PARANDUS: Värskendame kategooriat mälust, juhuks kui UI on seda vahepeal muutnud
+        currentCategory = prefs.getString("last_category", currentCategory) ?: currentCategory
+        
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)
             val dao = db.radioStationDao()
             val allStations = dao.getAllActiveStationsSync()
             if (allStations.isEmpty()) return@launch
 
-            // PARANDUS: Kasutame sama sorteerimist ja filtreerimist mis UI-s
+            // Kasutame sama sorteerimist ja filtreerimist mis UI-s
             val navigationList = when (currentCategory) {
                 "Favorites" -> allStations.filter { it.isFavorite }
                     .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
@@ -188,7 +192,6 @@ class RadioService : Service() {
         val parsed = metadataHelper.parse(trackTitleFromStream ?: "", currentStationName)
         
         // FILTEERIMINE: Kui info ei muutunud, siis me ei tee mitte midagi.
-        // See hoiab ära Bluetoothi spämmi ja kella asjatu nullimise.
         if (parsed.artist == currentArtist && parsed.title == currentTitle) {
             return
         }
@@ -204,7 +207,7 @@ class RadioService : Service() {
         currentTitle = parsed.title
         currentExtra = parsed.extra
         
-        // UUS: Salvestame viimase info püsivalt
+        // Salvestame viimase info püsivalt
         prefs.edit()
             .putString("last_artist", currentArtist)
             .putString("last_title", currentTitle)
@@ -214,8 +217,6 @@ class RadioService : Service() {
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
         updateNotification()
         updateWidget()
-        
-        // Märkus: metadataPushJob jääb taustale ootama oma ühekordset sündmust.
     }
 
     private fun sendBitrateUpdate() {
@@ -237,13 +238,13 @@ class RadioService : Service() {
         if (!::player.isInitialized) return
 
         val currentTime = SystemClock.elapsedRealtime()
-        // DEBOUNCING: Väldi liiga tihedat uuendamist (nt vähem kui 500ms vahega)
+        // DEBOUNCING: Väldi liiga tihedat uuendamist
         if (currentTime - lastSentTime < 500) {
             Log.d(TAG, "updateExternalDevices: SKIPPED (Too fast updates)")
             return
         }
 
-        // VÄLDI DUPLIKAATE: See on vajalik loo vahetusel ja striimi spämi tõrjumiseks
+        // VÄLDI DUPLIKAATE
         if (title == lastSentTitle && artist == lastSentArtist) {
             return
         }
@@ -337,19 +338,19 @@ class RadioService : Service() {
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
                     Intent(ACTION_STATION_CHANGED).apply {
                         putExtra("STATION_NAME", currentStationName)
+                        putExtra("CATEGORY_NAME", currentCategory)
                     }
                 )
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 
-                // ÜHEKORDNE PUSH: 5 sekundi pärast, et "loo vahetusega" auto ekraan värskendada
+                // ÜHEKORDNE PUSH: 5 sekundi pärast
                 metadataPushJob?.cancel()
                 metadataPushJob = sessionScope.launch {
-                    delay(5000) // Sinu poolt kinnitatud ja testitud 5s
-                    Log.d(TAG, "metadataPushJob: Forcing 5s metadata push (imulated song change)")
-                    lastSentTitle = "" // Vabastame luku, et info kindlasti läbi läheks
+                    delay(5000)
+                    Log.d(TAG, "metadataPushJob: Forcing 5s metadata push")
+                    lastSentTitle = ""
                     lastSentArtist = ""
-                    lastSentTime = 0 // Vabastame ka ajapiirangu
-                    // Progressi kella nullimine (loo vahetuse simuleerimine)
+                    lastSentTime = 0
                     player.streamStartTime = SystemClock.elapsedRealtime()
                     updateExternalDevices(currentTitle, currentArtist)
                 }
@@ -400,19 +401,19 @@ class RadioService : Service() {
 
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            // 1. Saada alati jaama nimi, kui see on teada
             if (currentStationName != "Radio" && currentStationName.isNotEmpty()) {
                  LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(
-                    Intent(ACTION_STATION_CHANGED).apply { putExtra("STATION_NAME", currentStationName) }
+                    Intent(ACTION_STATION_CHANGED).apply { 
+                        putExtra("STATION_NAME", currentStationName)
+                        putExtra("CATEGORY_NAME", currentCategory)
+                    }
                 )
             }
 
-            // 2. Saada alati metaandmed (artist, lugu), kui need on teada
             if (currentTitle.isNotEmpty() || currentArtist.isNotEmpty()) {
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
             }
 
-            // 3. Saada staatus (mängib/seisab)
             if (player.isPlaying) {
                 sendBitrateUpdate()
                 sendTimerTick(sleepTimerRemainingMillis)
@@ -444,17 +445,15 @@ class RadioService : Service() {
         wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "radiow::RadioWakeLock")
         wakeLock?.setReferenceCounted(false)
         
-        restoreLastState() // UUS: Taasta viimane seis
+        restoreLastState()
     }
     
-    // UUS FUNKTSIOON: Taastab viimati mängitud jaama info mälust
     private fun restoreLastState() {
         val lastId = prefs.getInt("last_selected_id", -1)
         val lastName = prefs.getString("last_name", "Radio") ?: "Radio"
         val lastUrl = prefs.getString("last_url", "") ?: ""
         val lastCat = prefs.getString("last_category", "") ?: ""
         
-        // UUS: Loeme salvestatud artisti ja pealkirja
         val lastArtist = prefs.getString("last_artist", getString(R.string.live_broadcast)) ?: getString(R.string.live_broadcast)
         val lastTitle = prefs.getString("last_title", lastName) ?: lastName
 
@@ -465,7 +464,6 @@ class RadioService : Service() {
         currentTitle = lastTitle
         currentStationBitmap = ws.ct.radiow.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
 
-        // Kui meil on URL, valmistame mängija ette (aga ei alusta mängimist)
         if (currentStreamUrl.isNotEmpty()) {
             val initialMeta = metadataHelper.buildMediaMetadata(
                 title = currentTitle,
@@ -482,16 +480,14 @@ class RadioService : Service() {
                     .setMediaMetadata(initialMeta)
                     .build()
             )
-            // player.prepare() <-- EEMALDATUD: Et ei hakkaks puhverdama
         }
 
-        // Saada info kohe UI-le, et see ei oleks tühi
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
             Intent(ACTION_STATION_CHANGED).apply {
                 putExtra("STATION_NAME", currentStationName)
+                putExtra("CATEGORY_NAME", currentCategory)
             }
         )
-        // Saadame ka metaandmed, et "Live Broadcast" jne oleks näha
         sendMetadataUpdate(currentTitle, currentArtist, "")
     }
 
@@ -556,7 +552,11 @@ class RadioService : Service() {
             val stationName = intent.getStringExtra("STATION_NAME")
             val triggeredBy = intent.getStringExtra("TRIGGERED_BY")
             val category = intent.getStringExtra("CATEGORY_NAME")
-            if (category != null) currentCategory = category
+            if (category != null) {
+                currentCategory = category
+                // PARANDUS: Salvestame kohe uue kategooria, et see püsiks
+                prefs.edit().putString("last_category", category).apply()
+            }
 
             if (currentStreamUrl == streamUrl && player.isPlaying && triggeredBy != "USER_RESUME") {
                 if (triggeredBy == "ALARM") {
@@ -573,7 +573,6 @@ class RadioService : Service() {
     }
 
     private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?) {
-        // LOG: Start
         Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy'")
 
         isChangingStation = true
@@ -581,7 +580,6 @@ class RadioService : Service() {
         sendBitrateUpdate()
         wakeLock?.acquire(10 * 60 * 1000L)
 
-        // KIIRPARANDUS: Start foreground immediately
         updateNotification()
 
         currentStreamUrl = streamUrl
@@ -595,7 +593,7 @@ class RadioService : Service() {
         
         lastSentTitle = ""
         lastSentArtist = ""
-        lastSentTime = 0 // Reset
+        lastSentTime = 0
 
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)
@@ -603,7 +601,7 @@ class RadioService : Service() {
             if (station != null) {
                 prefs.edit()
                     .putInt("last_selected_id", station.id)
-                    .putString("last_category", station.category)
+                    .putString("last_category", currentCategory) // PARANDUS: Salvesta sirvimiskategooria, mitte jaama oma
                     .putString("last_name", currentStationName)
                     .putString("last_url", currentStreamUrl)
                     .apply()
@@ -622,12 +620,9 @@ class RadioService : Service() {
             notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
         }
 
-        // Värskenda uuesti õige nime ja pildiga
         updateNotification()
 
-        // Puhas algus
         if (player.isPlaying) player.stop()
-        // player.clearMediaItems() // VÄLDI SEDA - see saadab autole tühja signaali
 
         val initialMeta = metadataHelper.buildMediaMetadata(
             title = currentTitle,
@@ -655,8 +650,6 @@ class RadioService : Service() {
 
     private fun updateNotification() {
         val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
-        // Kui me just alustame (player ei pruugi veel mängida, aga me valmistume), siis peame alustama teenust
-        // Kui isChangingStation on true, siis me ilmselt just alustasime uut kanalit
         if (player.isPlaying || isAlarmMode || isChangingStation) {
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -724,18 +717,7 @@ class RadioService : Service() {
         }
     }
 
-    private fun getArtworkBytes(): ByteArray? {
-        return currentStationBitmap?.let { bmp ->
-            val stream = java.io.ByteArrayOutputStream()
-            // PARANDUS: Vähenda kvaliteeti ja suurust, et vältida Bluetoothi hangumist
-            val scaled = android.graphics.Bitmap.createScaledBitmap(bmp, 300, 300, true)
-            scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream) // PNG -> JPEG (väiksem fail)
-            stream.toByteArray()
-        }
-    }
-
     private fun updateWidget() {
-        // UUS: Loeb värsket läbipaistvust
         val bgTransparency = prefs.getFloat("widget_transparency", 0.25f)
         
         val isPlaying = if (::player.isInitialized) player.isPlaying else false
@@ -781,7 +763,6 @@ class RadioService : Service() {
                         prefs[ws.ct.radiow.widget.HomeWidget.Prefs.status] = extraInfo
                         prefs[ws.ct.radiow.widget.HomeWidget.Prefs.alarm] = nextAlarmString
                         prefs[ws.ct.radiow.widget.HomeWidget.Prefs.isPlaying] = isPlaying
-                        // UUS: Salvesta läbipaistvus vidina olekusse
                         prefs[ws.ct.radiow.widget.HomeWidget.Prefs.bgTransparency] = bgTransparency
                     }
                     widget.update(context, glanceId)
