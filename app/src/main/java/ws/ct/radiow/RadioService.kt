@@ -143,7 +143,6 @@ class RadioService : Service() {
     private fun changeStation(offset: Int) {
         isChangingStation = true
         
-        // PARANDUS: Värskendame kategooriat mälust, juhuks kui UI on seda vahepeal muutnud
         currentCategory = prefs.getString("last_category", currentCategory) ?: currentCategory
         
         serviceScope.launch {
@@ -152,14 +151,12 @@ class RadioService : Service() {
             val allStations = dao.getAllActiveStationsSync()
             if (allStations.isEmpty()) return@launch
 
-            // Kasutame sama sorteerimist ja filtreerimist mis UI-s
             val navigationList = when (currentCategory) {
                 "Favorites" -> allStations.filter { it.isFavorite }
                     .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
                 "My" -> allStations.filter { it.isUserStation }
                 "All", "" -> allStations
                 else -> {
-                    // Kontrollime nii kategooriat kui riigikoodi, et ühtiks UI-ga (nt "EE")
                     allStations.filter { it.category == currentCategory || it.countryCode == currentCategory }
                 }
             }
@@ -191,7 +188,6 @@ class RadioService : Service() {
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
         val parsed = metadataHelper.parse(trackTitleFromStream ?: "", currentStationName)
         
-        // FILTEERIMINE: Kui info ei muutunud, siis me ei tee mitte midagi.
         if (parsed.artist == currentArtist && parsed.title == currentTitle) {
             return
         }
@@ -200,14 +196,12 @@ class RadioService : Service() {
 
         saveToHistory(parsed.artist, parsed.title)
         
-        // Progressi kella nullimine ainult siis, kui lugu päriselt vahetub
         player.streamStartTime = SystemClock.elapsedRealtime()
 
         currentArtist = parsed.artist
         currentTitle = parsed.title
         currentExtra = parsed.extra
         
-        // Salvestame viimase info püsivalt
         prefs.edit()
             .putString("last_artist", currentArtist)
             .putString("last_title", currentTitle)
@@ -238,13 +232,11 @@ class RadioService : Service() {
         if (!::player.isInitialized) return
 
         val currentTime = SystemClock.elapsedRealtime()
-        // DEBOUNCING: Väldi liiga tihedat uuendamist
         if (currentTime - lastSentTime < 500) {
             Log.d(TAG, "updateExternalDevices: SKIPPED (Too fast updates)")
             return
         }
 
-        // VÄLDI DUPLIKAATE
         if (title == lastSentTitle && artist == lastSentArtist) {
             return
         }
@@ -343,7 +335,6 @@ class RadioService : Service() {
                 )
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 
-                // ÜHEKORDNE PUSH: 5 sekundi pärast
                 metadataPushJob?.cancel()
                 metadataPushJob = sessionScope.launch {
                     delay(5000)
@@ -489,6 +480,9 @@ class RadioService : Service() {
             }
         )
         sendMetadataUpdate(currentTitle, currentArtist, "")
+        
+        // PARANDUS: Uuenda vidinat kohe pärast seisu taastamist
+        updateWidget()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -554,7 +548,6 @@ class RadioService : Service() {
             val category = intent.getStringExtra("CATEGORY_NAME")
             if (category != null) {
                 currentCategory = category
-                // PARANDUS: Salvestame kohe uue kategooria, et see püsiks
                 prefs.edit().putString("last_category", category).apply()
             }
 
@@ -601,7 +594,7 @@ class RadioService : Service() {
             if (station != null) {
                 prefs.edit()
                     .putInt("last_selected_id", station.id)
-                    .putString("last_category", currentCategory) // PARANDUS: Salvesta sirvimiskategooria, mitte jaama oma
+                    .putString("last_category", currentCategory)
                     .putString("last_name", currentStationName)
                     .putString("last_url", currentStreamUrl)
                     .apply()
@@ -720,6 +713,7 @@ class RadioService : Service() {
     private fun updateWidget() {
         val bgTransparency = prefs.getFloat("widget_transparency", 0.25f)
         
+        // PARANDUS: Kui player on null või initialize-imata, siis isPlaying = false
         val isPlaying = if (::player.isInitialized) player.isPlaying else false
         val stationName = currentStationName
         val title = currentTitle
