@@ -639,6 +639,7 @@ class RadioService : Service() {
 
         player.prepare()
         player.play()
+        updateExternalDevices(currentTitle, currentArtist)
     }
 
     private fun updateNotification() {
