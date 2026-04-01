@@ -112,7 +112,20 @@ class RadioService : Service() {
 
     private val mediaSessionCallback = object : MediaSession.Callback {
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
-            return MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
+            val result = MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
+            
+            // Kui auto ühendub, saadame talle kohe jõuga viimati teadaolevad andmed (tervitus)
+            if (currentTitle.isNotEmpty() && currentStationName.isNotEmpty()) {
+                Log.d(TAG, "onConnect: Auto ühendus! Saadame ekraanile info: Title='$currentTitle', Artist='$currentArtist'")
+                
+                // Nullime kaitsed samamoodi nagu uue jaama laadimisel, et info kindlasti läbi läheks
+                lastSentTitle = ""
+                lastSentArtist = ""
+                lastSentTime = 0
+                updateExternalDevices(currentTitle, currentArtist)
+            }
+            
+            return result
         }
 
         override fun onPlayerCommandRequest(session: MediaSession, controller: MediaSession.ControllerInfo, playerCommand: Int): Int {
@@ -335,6 +348,13 @@ class RadioService : Service() {
                 )
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 
+                // KOHE KUI HELI MÄNGIMA HAKKAB, SAADAME INFO AUTOSSE!
+                // Siin on auto ekraan valmis uut teksti vastu võtma (pärast laadimise viivet).
+                lastSentTitle = ""
+                lastSentArtist = ""
+                lastSentTime = 0
+                updateExternalDevices(currentTitle, currentArtist)
+
                 metadataPushJob?.cancel()
                 metadataPushJob = sessionScope.launch {
                     delay(5000)

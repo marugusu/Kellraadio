@@ -22,10 +22,16 @@ class SkodaAwarePlayer(
     private val internalListeners: CopyOnWriteArraySet<Player.Listener>
 ) : ForwardingPlayer(player) {
 
+    private var positionAtPause: Long = 0L
+
     // Seda muutujat muudab RadioService, kui uus jaam algab
     var streamStartTime: Long = 0L
-
-    private var positionAtPause: Long = 0L
+        set(value) {
+            field = value
+            // NULLIME ASUKOHA UUE JAAMA LAADIMISEL, 
+            // et auto saaks aru: algas täiesti uus lugu!
+            positionAtPause = 0L
+        }
 
     override fun addListener(listener: Player.Listener) {
         internalListeners.add(listener)
