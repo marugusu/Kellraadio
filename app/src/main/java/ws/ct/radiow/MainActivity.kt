@@ -63,6 +63,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    override fun onStop() {
+        super.onStop()
+        // Kui on TV ja äpp läheb taustale, peatame raadio
+        if (isTv(this) && !isChangingConfigurations) {
+            val intent = Intent(this, RadioService::class.java).apply {
+                action = RadioService.ACTION_STOP
+            }
+            startService(intent)
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
