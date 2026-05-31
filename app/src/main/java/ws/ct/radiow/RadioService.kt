@@ -44,6 +44,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.LoadControl
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import java.util.concurrent.CopyOnWriteArraySet
 import ws.ct.radiow.R
 
@@ -72,6 +80,13 @@ class RadioService : Service() {
     private var currentStreamUrl: String = ""
 
     private var metadataPushJob: kotlinx.coroutines.Job? = null
+    private var bufferingWatchdogJob: kotlinx.coroutines.Job? = null
+    private var activeDataSource: RetryingHttpDataSource? = null
+
+    private var lastDefaultNetwork: android.net.Network? = null
+    private var consecutiveErrorCount = 0
+    private var lastErrorTime = 0L
+    private var hasSuccessfullyStartedPlaying = false
 
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -85,6 +100,37 @@ class RadioService : Service() {
 
     private val listeners = CopyOnWriteArraySet<Player.Listener>()
     private var wakeLock: android.os.PowerManager.WakeLock? = null
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            Log.d(TAG, "VÕRK: Default ühendus saadaval ($network)")
+            if (lastDefaultNetwork != null && lastDefaultNetwork != network) {
+                Log.w(TAG, "VÕRK: Vaikimisi võrk muutus: $lastDefaultNetwork -> $network. Tühistame aktiivse ühenduse.")
+                activeDataSource?.invalidateConnection()
+            }
+            lastDefaultNetwork = network
+            
+            serviceScope.launch(Dispatchers.Main) {
+                if (::player.isInitialized && player.playWhenReady && !player.isPlaying && !isChangingStation) {
+                    Log.d(TAG, "VÕRK: Ühendus taastus ja raadio ei mängi. Proovin uuesti ühendada...")
+                    if (currentStreamUrl.isNotEmpty()) {
+                        playStation(currentStreamUrl, currentStationName, "NETWORK_RESTORED")
+                    }
+                }
+            }
+        }
+        override fun onLost(network: Network) {
+            Log.w(TAG, "VÕRK: Ühendus kadunud! ($network)")
+            if (lastDefaultNetwork == network) {
+                lastDefaultNetwork = null
+            }
+        }
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+            val hasInternet = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            val isCellular = caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+            Log.d(TAG, "VÕRK: Parameetrid muutusid ($network). Mobiilne=$isCellular, Internet=$hasInternet")
+        }
+    }
 
     companion object {
         const val ACTION_UPDATE_STATION_NAME = "ws.ct.radiow.UPDATE_NAME"
@@ -328,8 +374,51 @@ class RadioService : Service() {
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            val stateName = when(playbackState) {
+                Player.STATE_IDLE -> "IDLE"
+                Player.STATE_BUFFERING -> "BUFFERING"
+                Player.STATE_READY -> "READY"
+                Player.STATE_ENDED -> "ENDED"
+                else -> "UNKNOWN"
+            }
+            Log.d(TAG, "Player olek muutus: $stateName (playWhenReady=${player.playWhenReady})")
+
+            if (playbackState == Player.STATE_READY) {
+                hasSuccessfullyStartedPlaying = true
+                consecutiveErrorCount = 0
+            }
+
             if (playbackState == Player.STATE_IDLE && player.playWhenReady) {
                 player.prepare()
+            }
+            
+            // LAHENDUS: Kui striim saab otsa (server paneb toru ära), proovi kiiresti uuesti valmistada (seek + prepare)
+            if (playbackState == Player.STATE_ENDED && player.playWhenReady) {
+                Log.w(TAG, "Striim lõppes ootamatult (ENDED). Teeme kiire kordusettevalmistuse...")
+                player.seekToDefaultPosition()
+                player.prepare()
+            }
+
+            // Watchdog: Kui jääb pikalt puhverdama, tee taaskäivitus
+            if (playbackState == Player.STATE_BUFFERING && player.playWhenReady) {
+                if (bufferingWatchdogJob == null || bufferingWatchdogJob?.isActive == false) {
+                    Log.d(TAG, "onPlaybackStateChanged: Alustan puhverdamise valvurit (15s)...")
+                    bufferingWatchdogJob = serviceScope.launch(Dispatchers.Main) {
+                        delay(15000)
+                        if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady) {
+                            Log.w(TAG, "Valvur: Mängija on kestnud BUFFERING olekus üle 15 sekundi. Taaskäivitan striimi...")
+                            if (currentStreamUrl.isNotEmpty()) {
+                                playStation(currentStreamUrl, currentStationName, "WATCHDOG_RECONNECT")
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (bufferingWatchdogJob != null) {
+                    Log.d(TAG, "onPlaybackStateChanged: Peatan puhverdamise valvuri (olek=$stateName).")
+                    bufferingWatchdogJob?.cancel()
+                    bufferingWatchdogJob = null
+                }
             }
         }
 
@@ -386,8 +475,13 @@ class RadioService : Service() {
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Log.e(TAG, "PLAYER VIGA: ${error.message}", error)
+            Log.e(TAG, "Vea tüüp: ${error.errorCodeName} (kood: ${error.errorCode})")
+            
             LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_ERROR))
             val cause = error.cause
+            Log.e(TAG, "Vea põhjus (cause): ${cause?.message}")
+            
             val isFatalError = when {
                 cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException -> cause.responseCode in 400..499
                 cause is androidx.media3.exoplayer.source.UnrecognizedInputFormatException -> true
@@ -395,15 +489,42 @@ class RadioService : Service() {
                 else -> false
             }
             if (isFatalError) {
+                Log.e(TAG, "Kriitiline viga, peatame raadio.")
                 stopRadio(isError = true)
                 return
             }
             isChangingStation = false
+
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val activeNetwork = cm.activeNetwork
+            val caps = cm.getNetworkCapabilities(activeNetwork)
+            val hasInternet = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+            if (!hasInternet) {
+                Log.w(TAG, "Mängija viga, kuid internet puudub. Ootame võrgu taastumist.")
+                return
+            }
+
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastErrorTime > 10000) {
+                consecutiveErrorCount = 0
+            }
+            consecutiveErrorCount++
+            lastErrorTime = now
+
             serviceScope.launch {
-                delay(2000)
+                val delayTime = if (consecutiveErrorCount > 3) {
+                    Log.w(TAG, "Liiga palju järjestikuseid vigu ($consecutiveErrorCount). Ootame 5 sekundit enne kordusühendust...")
+                    5000L
+                } else {
+                    Log.d(TAG, "Võrgu viga tuvastatud. Teeme kiire taaskäivituse 200ms pärast...")
+                    200L
+                }
+                delay(delayTime)
                 withContext(Dispatchers.Main) {
-                    if (currentStreamUrl.isNotEmpty()) {
-                        playStation(currentStreamUrl, currentStationName, "RECONNECT")
+                    if (currentStreamUrl.isNotEmpty() && player.playWhenReady) {
+                        player.seekToDefaultPosition()
+                        player.prepare()
                     }
                 }
             }
@@ -437,14 +558,56 @@ class RadioService : Service() {
     override fun onCreate() {
         super.onCreate()
         val dataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("Mozilla/5.0")
-            .setAllowCrossProtocolRedirects(false)
+            .setUserAgent("ExoPlayer/2.19.1 (Linux;Android 14)") // Standardne ja anonüümne tunnuse
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(10000) // Suurendatud 2s -> 10s mobiilivõrgu toeks
+            .setReadTimeoutMs(5000)     // Vähendatud 10s -> 5s kiiremaks hangumise tuvastamiseks
             .setTransferListener(httpTransferListener)
 
+        // Suurem puhver, et elada üle võrgu kõikumised
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                30_000, // Min puhver (30s)
+                60_000, // Max puhver (60s)
+                2_000,  // Kiire käivitus (2s)
+                2_000   // Taaskäivitus (2s)
+            )
+            .setPrioritizeTimeOverSizeThresholds(true) // Prioritiseeri aega, mitte mahtu
+            .build()
+
         val trackSelector = DefaultTrackSelector(this).apply { setParameters(buildUponParameters().setForceHighestSupportedBitrate(true)) }
+        
+        // Kohandatud kordusviivituse poliitika koos eksponentsiaalse kasvuga
+        val loadErrorHandlingPolicy = object : DefaultLoadErrorHandlingPolicy() {
+            override fun getMinimumLoadableRetryCount(dataType: Int): Int = 99
+            override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+                if (hasSuccessfullyStartedPlaying) {
+                    Log.w(TAG, "Võrgu viga keset esitust. Katkestame kohe taustal taastamise, et teha puhas reprepare.")
+                    return C.TIME_UNSET
+                }
+                val retryCount = loadErrorInfo.errorCount
+                return when {
+                    retryCount <= 1 -> 1000L   // 1s
+                    retryCount <= 2 -> 2000L   // 2s
+                    retryCount <= 3 -> 5000L   // 5s
+                    else -> 10000L             // Max 10s
+                }
+            }
+        }
+
+        val customDataSourceFactory = DataSource.Factory {
+            val ds = RetryingHttpDataSource(dataSourceFactory.createDataSource())
+            activeDataSource = ds
+            ds
+        }
+
         val realPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this)
+                .setDataSourceFactory(customDataSourceFactory)
+                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+            )
             .setTrackSelector(trackSelector)
+            .setLoadControl(loadControl)
             .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             .setHandleAudioBecomingNoisy(true).build()
 
@@ -456,6 +619,17 @@ class RadioService : Service() {
         wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "radiow::RadioWakeLock")
         wakeLock?.setReferenceCounted(false)
         
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        try {
+            connectivityManager.registerDefaultNetworkCallback(networkCallback)
+        } catch (e: Exception) {
+            Log.e(TAG, "DefaultNetworkCallback registreerimise viga: ${e.message}")
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            connectivityManager.registerNetworkCallback(request, networkCallback)
+        }
+
         restoreLastState()
     }
     
@@ -588,6 +762,7 @@ class RadioService : Service() {
     private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?) {
         Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy'")
 
+        hasSuccessfullyStartedPlaying = false
         isChangingStation = true
         lastBitrateInfo = ""
         sendBitrateUpdate()
@@ -680,6 +855,8 @@ class RadioService : Service() {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         stopSleepTimer()
         metadataPushJob?.cancel()
+        bufferingWatchdogJob?.cancel()
+        bufferingWatchdogJob = null
         player.stop()
         player.clearMediaItems()
         isAlarmMode = false
@@ -790,8 +967,23 @@ class RadioService : Service() {
 
     override fun onDestroy() {
         if (wakeLock?.isHeld == true) wakeLock?.release()
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (e: Exception) {}
         LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver)
+        activeDataSource = null
         player.release(); mediaSession?.release(); super.onDestroy()
     }
     override fun onBind(intent: Intent?): IBinder? = null
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+private class RetryingHttpDataSource(private val delegate: HttpDataSource) : HttpDataSource by delegate {
+    fun invalidateConnection() {
+        Log.w("RetryingDataSource", "Tühistan aktiivse ühenduse sokli sulgemisega...")
+        try {
+            delegate.close()
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
 }
