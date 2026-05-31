@@ -180,4 +180,15 @@
     <string name="recording_empty">No recordings yet</string>
     <string name="recording_playing">Playing recording</string>
     <string name="recording_failed">Recording failed!</string>
+
+    <!-- Backup & Restore -->
+    <string name="settings_group_backup">Backup and Migration</string>
+    <string name="settings_export">Export data</string>
+    <string name="settings_export_desc">Save favorites and alarms to a file</string>
+    <string name="settings_import">Import data</string>
+    <string name="settings_import_desc">Restore favorites and alarms from a file</string>
+    <string name="backup_success">Data successfully exported!</string>
+    <string name="backup_failed">Export failed: %1$s</string>
+    <string name="restore_success">Data successfully restored!</string>
+    <string name="restore_failed">Restore failed: %1$s</string>
 </resources>

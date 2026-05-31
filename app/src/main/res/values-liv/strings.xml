@@ -152,4 +152,15 @@
     <string name="recording_empty">"Tāļtõmizt äb ūo"</string>
     <string name="recording_playing">"Mäņgõb tāļtõmiz"</string>
     <string name="recording_failed">"Tāļtõmiz äb õņnistud!"</string>
+
+    <!-- Backup & Restore -->
+    <string name="settings_group_backup">"Tāļtõks ja koltšimi"</string>
+    <string name="settings_export">"Eksporti andmõd"</string>
+    <string name="settings_export_desc">"Tāļtõ lemmigõd ja seadmi failõ"</string>
+    <string name="settings_import">"Importi andmõd"</string>
+    <string name="settings_import_desc">"Taasta lemmigõd ja seadmi failõst"</string>
+    <string name="backup_success">"Andmõd õņnistud eksportõd!"</string>
+    <string name="backup_failed">"Eksport äb õņnistud: %1$s"</string>
+    <string name="restore_success">"Andmõd õņnistud taastõd!"</string>
+    <string name="restore_failed">"Taastõks äb õņnistud: %1$s"</string>
 </resources>

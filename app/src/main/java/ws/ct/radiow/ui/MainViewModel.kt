@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -602,4 +605,161 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun getString(resId: Int): String {
         return getApplication<Application>().getString(resId)
     }
+
+    fun exportDataToUri(uri: android.net.Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 1. Fetch alarms
+                val alarms = alarmDao.getAllAlarmsList().map {
+                    BackupAlarm(
+                        hour = it.hour,
+                        minute = it.minute,
+                        days = it.days.toList(),
+                        stationName = it.stationName,
+                        stationUrl = it.stationUrl,
+                        isEnabled = it.isEnabled
+                    )
+                }
+
+                // 2. Fetch stations
+                val allStations = database.radioStationDao().getAllActiveStationsSync()
+                val customStations = allStations.filter { it.isUserStation }.map {
+                    BackupStation(
+                        name = it.name,
+                        url = it.url,
+                        category = it.category,
+                        countryCode = it.countryCode,
+                        favoriteOrder = it.favoriteOrder
+                    )
+                }
+                val favoriteUrls = allStations.filter { it.isFavorite && !it.isUserStation }.map {
+                    BackupFavorite(
+                        url = it.url,
+                        favoriteOrder = it.favoriteOrder
+                    )
+                }
+
+                // 3. Serialize
+                val backupData = BackupData(alarms = alarms, customStations = customStations, favoriteUrls = favoriteUrls)
+                val jsonText = Json.encodeToString(BackupData.serializer(), backupData)
+
+                // 4. Write to URI
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(jsonText.toByteArray(Charsets.UTF_8))
+                }
+
+                viewModelScope.launch(Dispatchers.Main) {
+                    Toast.makeText(context, getString(R.string.backup_success), Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainViewModel", "Backup export error: ${e.message}", e)
+                viewModelScope.launch(Dispatchers.Main) {
+                    Toast.makeText(context, getString(R.string.backup_failed).format(e.message ?: "Unknown"), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun importDataFromUri(uri: android.net.Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 1. Read from URI
+                val jsonText = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    inputStream.bufferedReader().readText()
+                } ?: throw Exception("Fail on tühi või kättesaamatu")
+
+                // 2. Deserialize
+                val backupData = Json.decodeFromString(BackupData.serializer(), jsonText)
+
+                // 3. Restore custom stations
+                val stationDao = database.radioStationDao()
+                val existingStations = stationDao.getAllActiveStationsSync()
+                
+                var maxId = stationDao.getMaxId() ?: 1000
+                backupData.customStations.forEach { backupStation ->
+                    val exists = existingStations.any { it.url == backupStation.url }
+                    if (!exists) {
+                        maxId++
+                        val newStation = RadioStation(
+                            id = maxId,
+                            name = backupStation.name,
+                            url = backupStation.url,
+                            category = backupStation.category,
+                            countryCode = backupStation.countryCode,
+                            isFavorite = true,
+                            isUserStation = true,
+                            favoriteOrder = backupStation.favoriteOrder
+                        )
+                        stationDao.insert(newStation)
+                    }
+                }
+
+                // 4. Restore standard favorites
+                backupData.favoriteUrls.forEach { backupFavorite ->
+                    val station = existingStations.find { it.url == backupFavorite.url }
+                    if (station != null) {
+                        stationDao.updateFavoriteStatus(station.id, true)
+                        stationDao.update(station.copy(favoriteOrder = backupFavorite.favoriteOrder))
+                    }
+                }
+
+                // 5. Restore alarms
+                backupData.alarms.forEach { backupAlarm ->
+                    val newAlarm = Alarm(
+                        hour = backupAlarm.hour,
+                        minute = backupAlarm.minute,
+                        days = backupAlarm.days.toSet(),
+                        stationName = backupAlarm.stationName,
+                        stationUrl = backupAlarm.stationUrl,
+                        isEnabled = backupAlarm.isEnabled
+                    )
+                    val newId = alarmDao.insert(newAlarm).toInt()
+                    if (newAlarm.isEnabled) {
+                        AlarmUtils.reScheduleRepeatingAlarm(context, newAlarm.copy(id = newId))
+                    }
+                }
+
+                viewModelScope.launch(Dispatchers.Main) {
+                    Toast.makeText(context, getString(R.string.restore_success), Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainViewModel", "Backup restore error: ${e.message}", e)
+                viewModelScope.launch(Dispatchers.Main) {
+                    Toast.makeText(context, getString(R.string.restore_failed).format(e.message ?: "Unknown"), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 }
+
+@Serializable
+data class BackupData(
+    val alarms: List<BackupAlarm>,
+    val customStations: List<BackupStation>,
+    val favoriteUrls: List<BackupFavorite>
+)
+
+@Serializable
+data class BackupAlarm(
+    val hour: Int,
+    val minute: Int,
+    val days: List<Int>,
+    val stationName: String,
+    val stationUrl: String,
+    val isEnabled: Boolean
+)
+
+@Serializable
+data class BackupStation(
+    val name: String,
+    val url: String,
+    val category: String,
+    val countryCode: String,
+    val favoriteOrder: Int
+)
+
+@Serializable
+data class BackupFavorite(
+    val url: String,
+    val favoriteOrder: Int
+)

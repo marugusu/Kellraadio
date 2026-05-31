@@ -180,4 +180,15 @@
     <string name="recording_empty">Salvestisi pole.</string>
     <string name="recording_playing">Mängib salvestist</string>
     <string name="recording_failed">Salvestamine ebaõnnestus!</string>
+
+    <!-- Backup & Restore -->
+    <string name="settings_group_backup">Varundus ja kolimine</string>
+    <string name="settings_export">Eksporti andmed</string>
+    <string name="settings_export_desc">Salvesta lemmikud ja äratused faili</string>
+    <string name="settings_import">Importi andmed</string>
+    <string name="settings_import_desc">Taasta lemmikud ja äratused failist</string>
+    <string name="backup_success">Andmed edukalt eksportitud!</string>
+    <string name="backup_failed">Eksport ebaõnnestus: %1$s</string>
+    <string name="restore_success">Andmed edukalt taastatud!</string>
+    <string name="restore_failed">Taastamine ebaõnnestus: %1$s</string>
 </resources>

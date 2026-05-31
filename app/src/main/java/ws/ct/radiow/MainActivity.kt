@@ -464,22 +464,46 @@ fun ContentScreens(
             onSaveStation = { name, url, country, category -> viewModel.saveUserStation(name, url, country, category) },
             viewModel = searchViewModel
         )
-        4 -> SettingsScreen(
-            isRefreshing = state.isRefreshing,
-            colsPortrait = state.colsPortrait,
-            colsLandscape = state.colsLandscape,
-            showFlags = state.showFlags,
-            hideRemoteStations = state.hideRemoteStations,
-            widgetTransparency = state.widgetTransparency,
-            onToggleShowFlags = viewModel::toggleFlags,
-            onToggleHideRemoteStations = viewModel::toggleHideRemoteStations,
-            onColsPortraitChange = viewModel::setColsPortrait,
-            onColsLandscapeChange = viewModel::setColsLandscape,
-            onRefresh = viewModel::refreshStations,
-            onClearHistory = viewModel::clearHistory,
-            onResetOrder = viewModel::openResetOrderDialog,
-            onWidgetTransparencyChange = viewModel::setWidgetTransparency
-        )
+        4 -> {
+            val exportLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/json")
+            ) { uri ->
+                if (uri != null) {
+                    viewModel.exportDataToUri(uri)
+                }
+            }
+            val importLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument()
+            ) { uri ->
+                if (uri != null) {
+                    viewModel.importDataFromUri(uri)
+                }
+            }
+
+            SettingsScreen(
+                isRefreshing = state.isRefreshing,
+                colsPortrait = state.colsPortrait,
+                colsLandscape = state.colsLandscape,
+                showFlags = state.showFlags,
+                hideRemoteStations = state.hideRemoteStations,
+                widgetTransparency = state.widgetTransparency,
+                onToggleShowFlags = viewModel::toggleFlags,
+                onToggleHideRemoteStations = viewModel::toggleHideRemoteStations,
+                onColsPortraitChange = viewModel::setColsPortrait,
+                onColsLandscapeChange = viewModel::setColsLandscape,
+                onRefresh = viewModel::refreshStations,
+                onClearHistory = viewModel::clearHistory,
+                onResetOrder = viewModel::openResetOrderDialog,
+                onWidgetTransparencyChange = viewModel::setWidgetTransparency,
+                onExportData = {
+                    val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+                    exportLauncher.launch("RadioW_Backup_$timestamp.json")
+                },
+                onImportData = {
+                    importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                }
+            )
+        }
     }
 }
 

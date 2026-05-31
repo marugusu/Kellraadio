@@ -180,4 +180,15 @@
     <string name="recording_empty">녹음된 파일이 없습니다</string>
     <string name="recording_playing">녹음 재생 중</string>
     <string name="recording_failed">녹음 실패!</string>
+
+    <!-- Backup & Restore -->
+    <string name="settings_group_backup">백업 및 마이그레이션</string>
+    <string name="settings_export">데이터 내보내기</string>
+    <string name="settings_export_desc">즐겨찾기 및 알람을 파일로 저장</string>
+    <string name="settings_import">데이터 가져오기</string>
+    <string name="settings_import_desc">파일에서 즐겨찾기 및 알람 복원</string>
+    <string name="backup_success">데이터 내보내기 성공!</string>
+    <string name="backup_failed">내보내기 실패: %1$s</string>
+    <string name="restore_success">데이터 복원 성공!</string>
+    <string name="restore_failed">복원 실패: %1$s</string>
 </resources>

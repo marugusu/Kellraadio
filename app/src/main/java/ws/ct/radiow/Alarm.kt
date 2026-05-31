@@ -5,6 +5,9 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 
 // See @Entity ütleb Room'ile, et sellest klassist tuleb andmebaasi tabel nimega "alarms"
+import kotlinx.serialization.Serializable
+
+@Serializable
 @Entity(tableName = "alarms")
 data class Alarm(
     // @PrimaryKey teeb sellest väljast unikaalse võtme.

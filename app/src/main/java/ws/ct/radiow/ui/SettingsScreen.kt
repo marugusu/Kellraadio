@@ -55,6 +55,8 @@ fun SettingsScreen(
     onClearHistory: () -> Unit,
     onResetOrder: () -> Unit,
     onWidgetTransparencyChange: (Float) -> Unit,
+    onExportData: () -> Unit,
+    onImportData: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -275,6 +277,21 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
+
+            SettingsGroup(title = stringResource(R.string.settings_group_backup)) {
+                SettingsCardItem(
+                    headline = stringResource(R.string.settings_export),
+                    supporting = stringResource(R.string.settings_export_desc),
+                    icon = Icons.Default.Backup,
+                    onClick = onExportData
+                )
+                SettingsCardItem(
+                    headline = stringResource(R.string.settings_import),
+                    supporting = stringResource(R.string.settings_import_desc),
+                    icon = Icons.Default.Restore,
+                    onClick = onImportData
+                )
             }
 
             SettingsGroup(title = stringResource(R.string.settings_group_help)) {
