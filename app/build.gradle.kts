@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "ws.ct.radiow"
+    namespace = "app.radiorecalarm"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "ws.ct.radiow"
+        applicationId = "app.radiorecalarm"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
