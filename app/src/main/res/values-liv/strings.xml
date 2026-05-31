@@ -139,4 +139,17 @@
     <string name="share_genre">Žanr</string>
     <string name="share_source">Allik</string>
     <string name="share_listen">Kūliz</string>
+
+    <!-- Recordings -->
+    <string name="history_subtab_songs">"Loulõd aig"</string>
+    <string name="history_subtab_recordings">"Tāļtõmizt"</string>
+    <string name="action_record">"Tāļtõ"</string>
+    <string name="action_recording">"Tāļtõb"</string>
+    <string name="recording_toast_saved">"Tāļtõmiz tāļtõd: %1$s"</string>
+    <string name="recording_toast_deleted">"Tāļtõmiz kistūtõd!"</string>
+    <string name="recording_delete_confirm_title">"Kistūtõ tāļtõmiz?"</string>
+    <string name="recording_delete_confirm_text">"Voi tōd kistūtõ tāļtõmiz '%1$s'?"</string>
+    <string name="recording_empty">"Tāļtõmizt äb ūo"</string>
+    <string name="recording_playing">"Mäņgõb tāļtõmiz"</string>
+    <string name="recording_failed">"Tāļtõmiz äb õņnistud!"</string>
 </resources>

@@ -256,6 +256,8 @@ fun RaadioEkraan(
                         sleepTimerMillis = state.sleepTimerRemaining,
                         isFavorite = displayStations.find { it.id == state.selectedStationId }?.isFavorite ?: false,
                         songInfo = songInfo,
+                        isRecording = state.isRecording,
+                        recordingDuration = state.recordingDuration,
                         onInfoClick = mainViewModel::openSongInfo,
                         onPlayPause = mainViewModel::onPlayPauseClicked,
                         onPlayStation = mainViewModel::onStationClicked,
@@ -270,6 +272,7 @@ fun RaadioEkraan(
                             val currentStation = displayStations.find { it.id == state.selectedStationId }
                             if (currentStation != null) { mainViewModel.onToggleFavorite(currentStation) }
                         },
+                        onRecordClick = mainViewModel::onRecordClicked,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -340,6 +343,8 @@ fun RaadioEkraan(
                         sleepTimerMillis = state.sleepTimerRemaining,
                         isFavorite = displayStations.find { it.id == state.selectedStationId }?.isFavorite ?: false,
                         songInfo = songInfo,
+                        isRecording = state.isRecording,
+                        recordingDuration = state.recordingDuration,
                         onInfoClick = mainViewModel::openSongInfo,
                         onPlayPause = mainViewModel::onPlayPauseClicked,
                         onPlayStation = mainViewModel::onStationClicked,
@@ -354,6 +359,7 @@ fun RaadioEkraan(
                             val currentStation = displayStations.find { it.id == state.selectedStationId }
                             if (currentStation != null) { mainViewModel.onToggleFavorite(currentStation) }
                         },
+                        onRecordClick = mainViewModel::onRecordClicked,
                         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 0.dp)
                     )
                     ContentScreens(
@@ -435,7 +441,12 @@ fun ContentScreens(
             onStationLongClick = viewModel::openStationActionSheet
         )
         1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })
-        2 -> HistoryScreen(repository = viewModel.stationRepository, onPlayStationByName = viewModel::onHistoryStationClicked)
+        2 -> HistoryScreen(
+            repository = viewModel.stationRepository,
+            onPlayStationByName = viewModel::onHistoryStationClicked,
+            onPlayRecording = viewModel::onPlayRecordingClicked,
+            onDeleteRecording = viewModel::onDeleteRecording
+        )
         3 -> SearchScreen(
             repository = viewModel.stationRepository,
             allStations = allStations,

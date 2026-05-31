@@ -167,4 +167,17 @@
     <string name="share_genre">Žanr</string>
     <string name="share_source">Allikas</string>
     <string name="share_listen">Kuula</string>
+
+    <!-- Recordings -->
+    <string name="history_subtab_songs">Laulude ajalugu</string>
+    <string name="history_subtab_recordings">Salvestised</string>
+    <string name="action_record">Salvesta</string>
+    <string name="action_recording">Salvestab</string>
+    <string name="recording_toast_saved">Salvestis salvestatud: %1$s</string>
+    <string name="recording_toast_deleted">Salvestis kustutatud!</string>
+    <string name="recording_delete_confirm_title">Kustuta salvestis?</string>
+    <string name="recording_delete_confirm_text">Kas oled kindel, et soovid salvestise \'%1$s\' jäädavalt kustutada?</string>
+    <string name="recording_empty">Salvestisi pole.</string>
+    <string name="recording_playing">Mängib salvestist</string>
+    <string name="recording_failed">Salvestamine ebaõnnestus!</string>
 </resources>

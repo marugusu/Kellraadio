@@ -54,6 +54,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import java.util.concurrent.CopyOnWriteArraySet
 import ws.ct.radiow.R
+import android.widget.Toast
 
 @Suppress("DEPRECATION")
 class RadioService : Service() {
@@ -87,6 +88,12 @@ class RadioService : Service() {
     private var consecutiveErrorCount = 0
     private var lastErrorTime = 0L
     private var hasSuccessfullyStartedPlaying = false
+
+    private var isRecording = false
+    private var recordingFile: java.io.File? = null
+    private var recordingOutputStream: java.io.FileOutputStream? = null
+    private var recordingStartMillis = 0L
+    private var recordingTimerJob: kotlinx.coroutines.Job? = null
 
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -137,6 +144,9 @@ class RadioService : Service() {
         const val ACTION_FORCE_WIDGET_UPDATE = "ws.ct.radiow.FORCE_WIDGET_UPDATE"
 
         const val ACTION_STATION_SELECTED_BY_SERVICE = "ws.ct.radiow.STATION_SELECTED"
+        const val ACTION_START_RECORDING = "ws.ct.radiow.ACTION_START_RECORDING"
+        const val ACTION_STOP_RECORDING = "ws.ct.radiow.ACTION_STOP_RECORDING"
+        const val ACTION_RECORDING_STATUS = "ws.ct.radiow.RECORDING_STATUS"
         const val ACTION_PAUSE = "ws.ct.radiow.ACTION_PAUSE"
         const val ACTION_RESUME = "ws.ct.radiow.ACTION_RESUME"
         const val ACTION_STOP = "ws.ct.radiow.ACTION_STOP"
@@ -552,7 +562,104 @@ class RadioService : Service() {
             } else { 
                 LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(Intent(ACTION_PLAYER_STOPPED)) 
             }
+            sendRecordingStatus()
         }
+    }
+
+    private fun sendRecordingStatus() {
+        val intent = Intent(ACTION_RECORDING_STATUS).apply {
+            putExtra("IS_RECORDING", isRecording)
+            putExtra("RECORDING_DURATION", if (isRecording) android.os.SystemClock.elapsedRealtime() - recordingStartMillis else 0L)
+            putExtra("RECORDING_STATION", currentStationName)
+        }
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
+    }
+
+    private fun startRecording() {
+        if (isRecording || !::player.isInitialized || !player.isPlaying || currentStreamUrl.isEmpty() || currentStreamUrl.startsWith("file:")) {
+            return
+        }
+
+        try {
+            val folder = java.io.File(getExternalFilesDir(null), "Recordings")
+            if (!folder.exists()) {
+                folder.mkdirs()
+            }
+
+            val cleanStation = currentStationName.replace("[\\\\/:*?\"<>|]".toRegex(), "_")
+            
+            val artistTitlePart = if (currentArtist.isNotEmpty() && currentArtist != getString(R.string.live_broadcast) && currentArtist != currentStationName) {
+                val cleanArtist = currentArtist.replace("[\\\\/:*?\"<>|]".toRegex(), "_").trim()
+                val cleanTitle = currentTitle.replace("[\\\\/:*?\"<>|]".toRegex(), "_").trim()
+                "_${cleanArtist}_$cleanTitle"
+            } else {
+                ""
+            }
+
+            val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+            
+            val ext = if (currentStreamUrl.contains(".aac", ignoreCase = true) || currentStreamUrl.contains("aac", ignoreCase = true)) {
+                "aac"
+            } else {
+                "mp3"
+            }
+
+            val filename = "Recording_${cleanStation}${artistTitlePart}_$timestamp.$ext"
+            val file = java.io.File(folder, filename)
+            
+            recordingOutputStream = java.io.FileOutputStream(file)
+            recordingFile = file
+            recordingStartMillis = android.os.SystemClock.elapsedRealtime()
+            isRecording = true
+            
+            Log.i(TAG, "Alustati salvestamist faili: ${file.absolutePath}")
+            sendRecordingStatus()
+
+            recordingTimerJob?.cancel()
+            recordingTimerJob = serviceScope.launch(Dispatchers.Main) {
+                while (isRecording) {
+                    delay(1000)
+                    sendRecordingStatus()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Salvestamise alustamise viga: ${e.message}", e)
+            Toast.makeText(applicationContext, getString(R.string.recording_failed), Toast.LENGTH_SHORT).show()
+            stopRecording(failed = true)
+        }
+    }
+
+    private fun stopRecording(failed: Boolean = false) {
+        if (!isRecording) return
+
+        isRecording = false
+        recordingTimerJob?.cancel()
+        recordingTimerJob = null
+
+        val fileToSave = recordingFile
+        try {
+            recordingOutputStream?.flush()
+            recordingOutputStream?.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Salvestise sulgemise viga: ${e.message}")
+        }
+        recordingOutputStream = null
+        recordingFile = null
+
+        Log.i(TAG, "Salvestamine peatatud. Fail: ${fileToSave?.absolutePath}")
+
+        if (fileToSave != null) {
+            if (failed || fileToSave.length() < 10240) {
+                Log.w(TAG, "Salvestis on liiga väike (${fileToSave.length()} baiti) või ebaõnnestus, kustutame.")
+                fileToSave.delete()
+            } else {
+                serviceScope.launch(Dispatchers.Main) {
+                    Toast.makeText(applicationContext, getString(R.string.recording_toast_saved, fileToSave.name), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        sendRecordingStatus()
     }
 
     override fun onCreate() {
@@ -596,14 +703,27 @@ class RadioService : Service() {
         }
 
         val customDataSourceFactory = DataSource.Factory {
-            val ds = RetryingHttpDataSource(dataSourceFactory.createDataSource())
+            val ds = RetryingHttpDataSource(dataSourceFactory.createDataSource()) { buffer, offset, length ->
+                if (isRecording) {
+                    try {
+                        recordingOutputStream?.write(buffer, offset, length)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Kirjutamise viga salvestamisel: ${e.message}")
+                        serviceScope.launch(Dispatchers.Main) {
+                            stopRecording(failed = true)
+                        }
+                    }
+                }
+            }
             activeDataSource = ds
             ds
         }
 
+        val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(this, customDataSourceFactory)
+
         val realPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this)
-                .setDataSourceFactory(customDataSourceFactory)
+                .setDataSourceFactory(defaultDataSourceFactory)
                 .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
             )
             .setTrackSelector(trackSelector)
@@ -684,6 +804,14 @@ class RadioService : Service() {
         val action = intent?.action
 
         when(action) {
+            ACTION_START_RECORDING -> {
+                startRecording()
+                return START_STICKY
+            }
+            ACTION_STOP_RECORDING -> {
+                stopRecording()
+                return START_STICKY
+            }
             ACTION_PAUSE -> {
                 player.pause()
                 if (wakeLock?.isHeld == true) wakeLock?.release()
@@ -762,6 +890,7 @@ class RadioService : Service() {
     private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?) {
         Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy'")
 
+        stopRecording()
         hasSuccessfullyStartedPlaying = false
         isChangingStation = true
         lastBitrateInfo = ""
@@ -854,6 +983,7 @@ class RadioService : Service() {
     private fun stopRadio(isError: Boolean = false) {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         stopSleepTimer()
+        stopRecording()
         metadataPushJob?.cancel()
         bufferingWatchdogJob?.cancel()
         bufferingWatchdogJob = null
@@ -970,6 +1100,7 @@ class RadioService : Service() {
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (e: Exception) {}
         LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver)
+        stopRecording()
         activeDataSource = null
         player.release(); mediaSession?.release(); super.onDestroy()
     }
@@ -977,7 +1108,10 @@ class RadioService : Service() {
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private class RetryingHttpDataSource(private val delegate: HttpDataSource) : HttpDataSource by delegate {
+private class RetryingHttpDataSource(
+    private val delegate: HttpDataSource,
+    private val onBytesRead: (ByteArray, Int, Int) -> Unit
+) : HttpDataSource by delegate {
     fun invalidateConnection() {
         Log.w("RetryingDataSource", "Tühistan aktiivse ühenduse sokli sulgemisega...")
         try {
@@ -985,5 +1119,13 @@ private class RetryingHttpDataSource(private val delegate: HttpDataSource) : Htt
         } catch (e: Exception) {
             // ignore
         }
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        val result = delegate.read(buffer, offset, length)
+        if (result > 0) {
+            onBytesRead(buffer, offset, result)
+        }
+        return result
     }
 }

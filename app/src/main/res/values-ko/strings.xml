@@ -167,4 +167,17 @@
     <string name="share_genre">장르</string>
     <string name="share_source">출처</string>
     <string name="share_listen">듣기</string>
+
+    <!-- Recordings -->
+    <string name="history_subtab_songs">노래 기록</string>
+    <string name="history_subtab_recordings">녹음 목록</string>
+    <string name="action_record">녹음</string>
+    <string name="action_recording">녹음 중</string>
+    <string name="recording_toast_saved">녹음 저장됨: %1$s</string>
+    <string name="recording_toast_deleted">녹음 삭제됨!</string>
+    <string name="recording_delete_confirm_title">녹음 삭제?</string>
+    <string name="recording_delete_confirm_text">\'%1$s\' 녹음 파일을 영구적으로 삭제하시겠습니까?</string>
+    <string name="recording_empty">녹음된 파일이 없습니다</string>
+    <string name="recording_playing">녹음 재생 중</string>
+    <string name="recording_failed">녹음 실패!</string>
 </resources>

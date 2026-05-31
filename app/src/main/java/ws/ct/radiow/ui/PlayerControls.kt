@@ -1,6 +1,7 @@
 package ws.ct.radiow.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +51,8 @@ fun PlayerControls(
     sleepTimerMillis: Long,
     isFavorite: Boolean,
     songInfo: SongAdditionalInfo?,
+    isRecording: Boolean,
+    recordingDuration: Long,
     onInfoClick: () -> Unit,
     onPlayPause: () -> Unit,
     onPlayStation: (RadioStation) -> Unit,
@@ -56,6 +60,7 @@ fun PlayerControls(
     onAlarmClick: () -> Unit,
     onAlarmLongClick: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onRecordClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
@@ -124,8 +129,36 @@ fun PlayerControls(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 val stationPrefix = if (activeStationName.isNotEmpty()) "$activeStationName • " else ""
-                val statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
-                Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                var statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
+                if (isRecording) {
+                    val recMin = (recordingDuration / 1000) / 60
+                    val recSec = (recordingDuration / 1000) % 60
+                    val recTimeStr = String.format("%02d:%02d", recMin, recSec)
+                    statusText += " • REC $recTimeStr"
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isRecording) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "rec_dot")
+                        val alpha by infiniteTransition.animateFloat(
+                            initialValue = 0.2f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(500, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "rec_dot_alpha"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(Color.Red.copy(alpha = alpha))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = if (isRecording) Color.Red else Color.Gray)
+                }
 
 
                 if (alarmInfo != null || sleepTimerMillis > 0) {
@@ -175,6 +208,24 @@ fun PlayerControls(
             }
             FilledTonalIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onToggleFavorite() }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape,
                 colors = if (isFavorite) { IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onSecondary, contentColor = Color.Black) } else { IconButtonDefaults.filledTonalIconButtonColors() }) { Icon(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, null, modifier = Modifier.size(28.dp)) }
+            FilledTonalIconButton(
+                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onRecordClick() },
+                enabled = isPlaying && selectedStation != null,
+                modifier = buttonModifier,
+                shape = buttonShape,
+                colors = if (isRecording) {
+                    IconButtonDefaults.filledIconButtonColors(containerColor = Color.Red, contentColor = Color.White)
+                } else {
+                    IconButtonDefaults.filledTonalIconButtonColors()
+                }
+            ) {
+                Icon(
+                    imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                    contentDescription = stringResource(R.string.action_record),
+                    tint = if (isRecording) Color.White else if (isPlaying) Color.Red else Color.Gray,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
             val isTimerSet = sleepTimerMillis > 0
             FilledTonalIconButton(
                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSleepClick() },

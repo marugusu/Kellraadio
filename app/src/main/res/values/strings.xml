@@ -167,4 +167,17 @@
     <string name="share_genre">Genre</string>
     <string name="share_source">Source</string>
     <string name="share_listen">Listen</string>
+
+    <!-- Recordings -->
+    <string name="history_subtab_songs">Song History</string>
+    <string name="history_subtab_recordings">Recordings</string>
+    <string name="action_record">Record</string>
+    <string name="action_recording">Recording</string>
+    <string name="recording_toast_saved">Recording saved: %1$s</string>
+    <string name="recording_toast_deleted">Recording deleted!</string>
+    <string name="recording_delete_confirm_title">Delete recording?</string>
+    <string name="recording_delete_confirm_text">Are you sure you want to permanently delete recording \'%1$s\'?</string>
+    <string name="recording_empty">No recordings yet</string>
+    <string name="recording_playing">Playing recording</string>
+    <string name="recording_failed">Recording failed!</string>
 </resources>

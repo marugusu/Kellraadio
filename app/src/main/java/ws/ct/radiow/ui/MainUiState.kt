@@ -12,6 +12,9 @@ data class MainUiState(
     val bitrate: String = "",
     val activeStationName: String = "",
     val activeStreamUrl: String = "",
+    val isRecording: Boolean = false,
+    val recordingDuration: Long = 0L,
+    val recordingStation: String = "",
 
     // --- METAANDMED ---
     val parsedArtist: String = "",

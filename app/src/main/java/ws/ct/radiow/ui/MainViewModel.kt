@@ -115,6 +115,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val stationId = intent.getIntExtra("STATION_ID", -1)
                     if (stationId != -1) updateSelectedStationLocal(stationId)
                 }
+                "ws.ct.radiow.RECORDING_STATUS" -> {
+                    val isRec = intent.getBooleanExtra("IS_RECORDING", false)
+                    val dur = intent.getLongExtra("RECORDING_DURATION", 0L)
+                    val station = intent.getStringExtra("RECORDING_STATION") ?: ""
+                    _uiState.update { it.copy(
+                        isRecording = isRec,
+                        recordingDuration = dur,
+                        recordingStation = station
+                    )}
+                }
             }
         }
     }
@@ -128,6 +138,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addAction(RadioService.ACTION_PLAYER_ERROR)
             addAction(RadioService.ACTION_PLAYER_STOPPED)
             addAction(RadioService.ACTION_TIMER_TICK)
+            addAction("ws.ct.radiow.RECORDING_STATUS")
         }
         LocalBroadcastManager.getInstance(context).registerReceiver(radioReceiver, filter)
 
@@ -255,6 +266,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    fun onRecordClicked() {
+        val action = if (_uiState.value.isRecording) {
+            "ws.ct.radiow.ACTION_STOP_RECORDING"
+        } else {
+            "ws.ct.radiow.ACTION_START_RECORDING"
+        }
+        val i = Intent(context, RadioService::class.java).apply { this.action = action }
+        context.startService(i)
+    }
+
+    fun onPlayRecordingClicked(file: java.io.File) {
+        val fileUri = android.net.Uri.fromFile(file).toString()
+        val displayName = file.name.removePrefix("Recording_").substringBeforeLast("_202").replace("_", " ")
+        val finalName = if (displayName.isNotBlank()) "Salvestis: $displayName" else "Salvestis"
+        _uiState.update { it.copy(
+            activeStationName = finalName,
+            activeStreamUrl = fileUri,
+            selectedStationId = -1,
+            isPlaying = true,
+            playerStatus = getString(R.string.status_buffering)
+        )}
+        val i = Intent(context, RadioService::class.java).apply {
+            putExtra("STREAM_URL", fileUri)
+            putExtra("STATION_NAME", finalName)
+            putExtra("TRIGGERED_BY", "USER")
+        }
+        context.startForegroundService(i)
+    }
+
+    fun onDeleteRecording(file: java.io.File) {
+        try {
+            if (file.exists()) {
+                file.delete()
+                Toast.makeText(context, getString(R.string.recording_toast_deleted), Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: java.lang.Exception) {
+            android.util.Log.e("MainViewModel", "Faili kustutamise viga: ${e.message}")
         }
     }
 
