@@ -1112,6 +1112,11 @@ private class RetryingHttpDataSource(
     private val delegate: HttpDataSource,
     private val onBytesRead: (ByteArray, Int, Int) -> Unit
 ) : HttpDataSource by delegate {
+
+    private var metaInt: Int = -1
+    private var bytesUntilMeta = -1
+    private var metaLengthBytesRemaining = 0
+
     fun invalidateConnection() {
         Log.w("RetryingDataSource", "Tühistan aktiivse ühenduse sokli sulgemisega...")
         try {
@@ -1121,11 +1126,59 @@ private class RetryingHttpDataSource(
         }
     }
 
+    override fun open(dataSpec: DataSpec): Long {
+        val result = delegate.open(dataSpec)
+        val headers = delegate.responseHeaders
+        var metaIntStr: String? = null
+        for ((key, value) in headers) {
+            if (key.equals("icy-metaint", ignoreCase = true)) {
+                metaIntStr = value.firstOrNull()
+                break
+            }
+        }
+        metaInt = metaIntStr?.toIntOrNull() ?: -1
+        bytesUntilMeta = metaInt
+        metaLengthBytesRemaining = 0
+        Log.i("RetryingDataSource", "Ühendus avatud. icy-metaint: $metaInt")
+        return result
+    }
+
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
         val result = delegate.read(buffer, offset, length)
         if (result > 0) {
-            onBytesRead(buffer, offset, result)
+            feedStrippedBytes(buffer, offset, result)
         }
         return result
+    }
+
+    private fun feedStrippedBytes(buffer: ByteArray, offset: Int, length: Int) {
+        if (metaInt <= 0) {
+            onBytesRead(buffer, offset, length)
+            return
+        }
+
+        var curr = offset
+        val end = offset + length
+
+        while (curr < end) {
+            if (metaLengthBytesRemaining > 0) {
+                val chunk = Math.min(end - curr, metaLengthBytesRemaining)
+                curr += chunk
+                metaLengthBytesRemaining -= chunk
+            } else if (bytesUntilMeta == 0) {
+                val lengthByte = buffer[curr].toInt() and 0xFF
+                curr++
+                val metaLength = lengthByte * 16
+                if (metaLength > 0) {
+                    metaLengthBytesRemaining = metaLength
+                }
+                bytesUntilMeta = metaInt
+            } else {
+                val chunk = Math.min(end - curr, bytesUntilMeta)
+                onBytesRead(buffer, curr, chunk)
+                curr += chunk
+                bytesUntilMeta -= chunk
+            }
+        }
     }
 }
