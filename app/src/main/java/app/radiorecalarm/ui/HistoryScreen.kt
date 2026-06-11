@@ -57,6 +57,7 @@ fun HistoryScreen(
     var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
     var activeSubTab by remember { mutableStateOf(0) }
+    var isLyricsLoading by remember { mutableStateOf(false) }
 
     val activeDatesUTC = remember(historyItems) {
         val localFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -202,12 +203,11 @@ fun HistoryScreen(
                                 HistoryRow(
                                     item = item,
                                     isLoading = (loadingItemId == item.id),
-                                    onSearchClick = { openSearch(context, "${item.artist} ${item.title}") },
-                                    onSpotifyClick = { openSpotify(context, "${item.artist} ${item.title}") },
                                     onPlayStationClick = { onPlayStationByName(item.stationName) },
-                                    onInfoClick = {
+                                     onInfoClick = {
                                         scope.launch {
                                             loadingItemId = item.id
+                                            isLyricsLoading = true
                                             var foundAny = false
                                             MusicInfoRepository.fetchInfo(item.artist, item.title).collect { info ->
                                                 foundAny = true
@@ -215,6 +215,7 @@ fun HistoryScreen(
                                                 selectedHistoryItem = item
                                                 loadingItemId = null
                                             }
+                                            isLyricsLoading = false
                                             if (!foundAny) {
                                                 loadingItemId = null
                                                 Toast.makeText(context, context.getString(R.string.info_not_found), Toast.LENGTH_SHORT).show()
@@ -253,6 +254,7 @@ fun HistoryScreen(
                 bitrate = "",
                 streamUrl = "",
                 info = selectedSongInfo!!,
+                isLoadingLyrics = isLyricsLoading,
                 onDismiss = {
                     selectedSongInfo = null
                     selectedHistoryItem = null
@@ -319,8 +321,6 @@ fun HistoryScreen(
 fun HistoryRow(
     item: HistoryItem,
     isLoading: Boolean,
-    onSearchClick: () -> Unit,
-    onSpotifyClick: () -> Unit,
     onPlayStationClick: () -> Unit,
     onInfoClick: () -> Unit
 ) {
@@ -330,7 +330,9 @@ fun HistoryRow(
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onInfoClick() }
     ) {
         ListItem(
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -376,28 +378,17 @@ fun HistoryRow(
                 )
             },
             trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isLoading) {
-                        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        }
-                    } else {
-                        IconButton(onClick = onInfoClick, modifier = Modifier.size(36.dp)) { 
-                            Icon(
-                                imageVector = Icons.Outlined.Info,
-                                contentDescription = "Info",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                if (isLoading) {
+                    Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     }
-
-                    IconButton(onClick = onSearchClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Search, "YouTube", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(22.dp))
-                    }
-                    IconButton(onClick = onSpotifyClick, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.MusicNote, "Spotify", tint = Color(0xFF1DB954).copy(alpha = 0.8f), modifier = Modifier.size(22.dp))
-                    }
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         )

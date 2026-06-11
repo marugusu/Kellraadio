@@ -44,6 +44,7 @@ fun SongInfoSheet(
     bitrate: String,      // UUS
     streamUrl: String,    // UUS
     info: SongAdditionalInfo,
+    isLoadingLyrics: Boolean = false,
     onDismiss: () -> Unit
 ) {
     val stationColor = StationArtworkUtils.getStationColor(stationName)
@@ -89,6 +90,7 @@ fun SongInfoSheet(
             bitrate = bitrate,
             streamUrl = streamUrl,
             info = info,
+            isLoadingLyrics = isLoadingLyrics,
             onImageStateChange = { state -> imageState = state }
         )
     }
@@ -103,6 +105,7 @@ fun SongInfoContent(
     bitrate: String,
     streamUrl: String,
     info: SongAdditionalInfo,
+    isLoadingLyrics: Boolean = false,
     modifier: Modifier = Modifier,
     onImageStateChange: ((AsyncImagePainter.State) -> Unit)? = null
 ) {
@@ -264,6 +267,19 @@ fun SongInfoContent(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
+            }
+        } else if (isLoadingLyrics) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.info_searching),
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         } else if (info.coverArtUrl.isNullOrEmpty() || localImageState is AsyncImagePainter.State.Error) {
             Text(
