@@ -55,4 +55,7 @@ interface AlarmDao {
 
     @Query("SELECT * FROM alarms ORDER BY hour ASC, minute ASC")
     suspend fun getAllAlarmsList(): List<Alarm>
+
+    @Query("DELETE FROM alarms")
+    suspend fun deleteAllAlarms()
 }

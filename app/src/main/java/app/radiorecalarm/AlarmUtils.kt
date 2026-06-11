@@ -110,6 +110,10 @@ object AlarmUtils {
         }
     }
 
+    fun cancelAlarms(context: Context, alarms: List<Alarm>) {
+        alarms.forEach { cancelSystemAlarm(context, it) }
+    }
+
     fun reScheduleRepeatingAlarm(context: Context, alarm: Alarm) {
         val timeInMillis = findNextAlarmTime(alarm.hour, alarm.minute, alarm.days)
         setSystemAlarm(context, alarm, timeInMillis)

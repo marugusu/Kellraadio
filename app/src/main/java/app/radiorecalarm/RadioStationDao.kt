@@ -45,4 +45,10 @@ interface RadioStationDao {
     // UUS: Nulli lemmikute järjekord
     @Query("UPDATE stations SET favoriteOrder = 0")
     suspend fun resetFavoriteOrders()
+
+    @Query("DELETE FROM stations WHERE isUserStation = 1")
+    suspend fun deleteAllUserStations()
+
+    @Query("UPDATE stations SET isFavorite = 0, favoriteOrder = 0")
+    suspend fun resetAllFavorites()
 }

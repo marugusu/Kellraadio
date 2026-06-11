@@ -16,6 +16,7 @@ import app.radiorecalarm.AlarmUtils
 import app.radiorecalarm.AppDatabase
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioBrowserApiService
+import androidx.room.withTransaction
 import app.radiorecalarm.RadioFilterItem
 import app.radiorecalarm.RadioService
 import app.radiorecalarm.RadioStation
@@ -629,6 +630,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         url = it.url,
                         category = it.category,
                         countryCode = it.countryCode,
+                        isFavorite = it.isFavorite,
                         favoriteOrder = it.favoriteOrder
                     )
                 }
@@ -640,7 +642,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 // 3. Serialize
-                val backupData = BackupData(alarms = alarms, customStations = customStations, favoriteUrls = favoriteUrls)
+                val backupData = BackupData(customStations = customStations, favoriteUrls = favoriteUrls, alarms = alarms)
                 val jsonText = Json.encodeToString(BackupData.serializer(), backupData)
 
                 // 4. Write to URI
@@ -671,51 +673,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // 2. Deserialize
                 val backupData = Json.decodeFromString(BackupData.serializer(), jsonText)
 
-                // 3. Restore custom stations
                 val stationDao = database.radioStationDao()
-                val existingStations = stationDao.getAllActiveStationsSync()
                 
-                var maxId = stationDao.getMaxId() ?: 1000
-                backupData.customStations.forEach { backupStation ->
-                    val exists = existingStations.any { it.url == backupStation.url }
-                    if (!exists) {
-                        maxId++
+                database.withTransaction {
+                    // 3. Reset standard favorites
+                    stationDao.resetAllFavorites()
+
+                    // 4. Delete all existing user/custom stations
+                    stationDao.deleteAllUserStations()
+
+                    // 5. Restore custom stations
+                    val maxId = stationDao.getMaxId() ?: 9999
+                    var nextCustomId = if (maxId < 10000) 10000 else maxId + 1
+                    backupData.customStations.forEach { backupStation ->
                         val newStation = RadioStation(
-                            id = maxId,
+                            id = nextCustomId,
                             name = backupStation.name,
                             url = backupStation.url,
                             category = backupStation.category,
                             countryCode = backupStation.countryCode,
-                            isFavorite = true,
+                            isFavorite = backupStation.isFavorite,
                             isUserStation = true,
-                            favoriteOrder = backupStation.favoriteOrder
+                            favoriteOrder = backupStation.favoriteOrder,
+                            uuid = java.util.UUID.randomUUID().toString()
                         )
                         stationDao.insert(newStation)
+                        nextCustomId++
                     }
-                }
 
-                // 4. Restore standard favorites
-                backupData.favoriteUrls.forEach { backupFavorite ->
-                    val station = existingStations.find { it.url == backupFavorite.url }
-                    if (station != null) {
-                        stationDao.updateFavoriteStatus(station.id, true)
-                        stationDao.update(station.copy(favoriteOrder = backupFavorite.favoriteOrder))
+                    // 6. Restore standard favorites
+                    val existingStations = stationDao.getAllActiveStationsSync()
+                    backupData.favoriteUrls.forEach { backupFavorite ->
+                        val station = existingStations.find { it.url == backupFavorite.url }
+                        if (station != null) {
+                            stationDao.update(station.copy(isFavorite = true, favoriteOrder = backupFavorite.favoriteOrder))
+                        }
                     }
-                }
 
-                // 5. Restore alarms
-                backupData.alarms.forEach { backupAlarm ->
-                    val newAlarm = Alarm(
-                        hour = backupAlarm.hour,
-                        minute = backupAlarm.minute,
-                        days = backupAlarm.days.toSet(),
-                        stationName = backupAlarm.stationName,
-                        stationUrl = backupAlarm.stationUrl,
-                        isEnabled = backupAlarm.isEnabled
-                    )
-                    val newId = alarmDao.insert(newAlarm).toInt()
-                    if (newAlarm.isEnabled) {
-                        AlarmUtils.reScheduleRepeatingAlarm(context, newAlarm.copy(id = newId))
+                    // 7. Restore alarms
+                    // First cancel existing scheduled system alarms and delete them from DB
+                    val existingAlarms = alarmDao.getAllAlarmsList()
+                    AlarmUtils.cancelAlarms(context, existingAlarms)
+                    alarmDao.deleteAllAlarms()
+
+                    // Then restore imported alarms
+                    backupData.alarms.forEach { backupAlarm ->
+                        val newAlarm = Alarm(
+                            hour = backupAlarm.hour,
+                            minute = backupAlarm.minute,
+                            days = backupAlarm.days.toSet(),
+                            stationName = backupAlarm.stationName,
+                            stationUrl = backupAlarm.stationUrl,
+                            isEnabled = backupAlarm.isEnabled
+                        )
+                        val newId = alarmDao.insert(newAlarm).toInt()
+                        if (newAlarm.isEnabled) {
+                            AlarmUtils.reScheduleRepeatingAlarm(context, newAlarm.copy(id = newId))
+                        }
                     }
                 }
 
@@ -734,9 +748,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
 @Serializable
 data class BackupData(
-    val alarms: List<BackupAlarm>,
     val customStations: List<BackupStation>,
-    val favoriteUrls: List<BackupFavorite>
+    val favoriteUrls: List<BackupFavorite>,
+    val alarms: List<BackupAlarm> = emptyList()
 )
 
 @Serializable
@@ -755,6 +769,7 @@ data class BackupStation(
     val url: String,
     val category: String,
     val countryCode: String,
+    val isFavorite: Boolean = true,
     val favoriteOrder: Int
 )
 

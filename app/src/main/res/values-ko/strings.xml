@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">RadioW</string> <!-- Raadio Äratus -->
+    <string name="app_name">라디오</string> <!-- Raadio Äratus -->
 
     <!-- Navigation -->
     <string name="nav_radio">라디오</string>
