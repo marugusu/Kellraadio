@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -44,6 +45,11 @@ fun HistoryScreen(
     onPlayStationByName: (String) -> Unit,
     onPlayRecording: (java.io.File) -> Unit,
     onDeleteRecording: (java.io.File) -> Unit,
+    activeStreamUrl: String = "",
+    isPlaying: Boolean = false,
+    playbackPosition: Long = 0L,
+    playbackDuration: Long = 0L,
+    onSeek: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val historyItems by repository.historyItems.collectAsState(initial = emptyList())
@@ -231,7 +237,12 @@ fun HistoryScreen(
                 RecordingsView(
                     context = context,
                     onPlayRecording = onPlayRecording,
-                    onDeleteRecording = onDeleteRecording
+                    onDeleteRecording = onDeleteRecording,
+                    activeStreamUrl = activeStreamUrl,
+                    isPlaying = isPlaying,
+                    playbackPosition = playbackPosition,
+                    playbackDuration = playbackDuration,
+                    onSeek = onSeek
                 )
             }
         }
@@ -449,11 +460,28 @@ private fun openSpotify(context: Context, query: String) {
     }
 }
 
+private fun formatTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val seconds = totalSeconds % 60
+    val minutes = (totalSeconds / 60) % 60
+    val hours = totalSeconds / 3600
+    return if (hours > 0) {
+        String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
+}
+
 @Composable
 fun RecordingsView(
     context: Context,
     onPlayRecording: (java.io.File) -> Unit,
     onDeleteRecording: (java.io.File) -> Unit,
+    activeStreamUrl: String = "",
+    isPlaying: Boolean = false,
+    playbackPosition: Long = 0L,
+    playbackDuration: Long = 0L,
+    onSeek: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var fileList by remember { mutableStateOf<List<java.io.File>>(emptyList()) }
@@ -481,11 +509,18 @@ fun RecordingsView(
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
             items(fileList, key = { it.absolutePath }) { file ->
+                val fileUri = android.net.Uri.fromFile(file).toString()
+                val isCurrent = activeStreamUrl == fileUri
                 RecordingRow(
                     file = file,
                     onPlay = { onPlayRecording(file) },
                     onDelete = { recordingToDelete = file },
-                    onShare = { shareFile(context, file) }
+                    onShare = { shareFile(context, file) },
+                    isCurrent = isCurrent,
+                    isPlaying = isPlaying && isCurrent,
+                    playbackPosition = if (isCurrent) playbackPosition else 0L,
+                    playbackDuration = if (isCurrent) playbackDuration else 0L,
+                    onSeek = onSeek
                 )
             }
         }
@@ -522,7 +557,12 @@ fun RecordingRow(
     file: java.io.File,
     onPlay: () -> Unit,
     onDelete: () -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    playbackPosition: Long,
+    playbackDuration: Long,
+    onSeek: (Long) -> Unit
 ) {
     val nameWithoutPrefix = file.name.removePrefix("Recording_")
     val extension = file.extension
@@ -552,60 +592,126 @@ fun RecordingRow(
     val sizeStr = String.format("%.2f MB", sizeInMb)
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isCurrent && isPlaying) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        ),
+        border = if (isCurrent && isPlaying) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+        } else {
+            null
+        },
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        ListItem(
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            leadingContent = {
-                IconButton(onClick = onPlay, modifier = Modifier.size(48.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = stringResource(R.string.action_play),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            },
-            headlineContent = {
-                Text(
-                    text = displayName,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            supportingContent = {
-                Text(
-                    text = "$timestampStr • $sizeStr • ${extension.uppercase()}",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = Color.Gray
-                )
-            },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            ListItem(
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                leadingContent = {
+                    IconButton(onClick = onPlay, modifier = Modifier.size(48.dp)) {
                         Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = stringResource(R.string.action_share),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp)
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) stringResource(R.string.action_pause) else stringResource(R.string.action_play),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
                         )
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.action_delete),
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
-                            modifier = Modifier.size(22.dp)
+                },
+                headlineContent = {
+                    Text(
+                        text = displayName,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isCurrent && isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                supportingContent = {
+                    val statusText = if (isCurrent && isPlaying) {
+                        " • " + stringResource(R.string.recording_playing)
+                    } else {
+                        ""
+                    }
+                    Text(
+                        text = "$timestampStr • $sizeStr • ${extension.uppercase()}$statusText",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.Gray
+                    )
+                },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = stringResource(R.string.action_share),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.action_delete),
+                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+            )
+
+            if (isCurrent && (isPlaying || playbackPosition > 0L)) {
+                var sliderPosition by remember { mutableStateOf<Float?>(null) }
+                val currentPosition = sliderPosition ?: playbackPosition.toFloat()
+                val safeDuration = if (playbackDuration > 0) playbackDuration else 1L
+                val finalSliderValue = currentPosition.coerceIn(0f, safeDuration.toFloat())
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp)
+                ) {
+                    Slider(
+                        value = finalSliderValue,
+                        onValueChange = { sliderPosition = it },
+                        onValueChangeFinished = {
+                            sliderPosition?.let {
+                                onSeek(it.toLong())
+                            }
+                            sliderPosition = null
+                        },
+                        valueRange = 0f..safeDuration.toFloat(),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(24.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = formatTime(finalSliderValue.toLong()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = formatTime(playbackDuration),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
                         )
                     }
                 }
             }
-        )
+        }
     }
 }
 

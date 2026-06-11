@@ -100,7 +100,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.update { it.copy(bitrate = bitrate) }
                 }
                 RadioService.ACTION_PLAYER_ERROR -> {
-                    _uiState.update { it.copy(isPlaying = false, playerStatus = getString(R.string.status_error), bitrate = "") }
+                    _uiState.update { it.copy(
+                        isPlaying = false,
+                        playerStatus = getString(R.string.status_error),
+                        bitrate = "",
+                        playbackPosition = 0L,
+                        playbackDuration = 0L
+                    ) }
                     Toast.makeText(context, getString(R.string.error_station_not_found), Toast.LENGTH_LONG).show()
                 }
                 RadioService.ACTION_PLAYER_STOPPED -> {
@@ -108,8 +114,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         isPlaying = false,
                         playerStatus = getString(R.string.status_stopped),
                         bitrate = "",
-                        activeStreamUrl = ""
+                        activeStreamUrl = "",
+                        playbackPosition = 0L,
+                        playbackDuration = 0L
                     )}
+                }
+                RadioService.ACTION_PLAYER_PAUSED -> {
+                    _uiState.update { it.copy(
+                        isPlaying = false,
+                        playerStatus = getString(R.string.status_stopped)
+                    )}
+                }
+                RadioService.ACTION_PLAYBACK_PROGRESS -> {
+                    val position = intent.getLongExtra("PLAYBACK_POSITION", 0L)
+                    val duration = intent.getLongExtra("PLAYBACK_DURATION", 0L)
+                    _uiState.update { it.copy(playbackPosition = position, playbackDuration = duration) }
                 }
                 RadioService.ACTION_TIMER_TICK -> {
                     val remaining = intent.getLongExtra("REMAINING_MILLIS", 0L)
@@ -143,6 +162,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addAction(RadioService.ACTION_PLAYER_STOPPED)
             addAction(RadioService.ACTION_TIMER_TICK)
             addAction("app.radiorecalarm.RECORDING_STATUS")
+            addAction(RadioService.ACTION_PLAYBACK_PROGRESS)
+            addAction(RadioService.ACTION_PLAYER_PAUSED)
         }
         LocalBroadcastManager.getInstance(context).registerReceiver(radioReceiver, filter)
 
@@ -264,11 +285,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
             context.startService(i)
         } else {
-            val station = _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
-            if (station != null) {
-                startRadioService(station)
+            val isLocal = _uiState.value.activeStreamUrl.startsWith("file://") || _uiState.value.activeStreamUrl.startsWith("file:/")
+            if (isLocal) {
+                val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }
+                context.startService(i)
             } else {
-                Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
+                val station = _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
+                if (station != null) {
+                    startRadioService(station)
+                } else {
+                    Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -302,7 +329,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         context.startForegroundService(i)
     }
 
+    fun seekTo(positionMs: Long) {
+        _uiState.update { it.copy(playbackPosition = positionMs) }
+        val i = Intent(context, RadioService::class.java).apply {
+            action = RadioService.ACTION_SEEK
+            putExtra(RadioService.EXTRA_SEEK_POSITION, positionMs)
+        }
+        context.startService(i)
+    }
+
     fun onDeleteRecording(file: java.io.File) {
+        val fileUri = android.net.Uri.fromFile(file).toString()
+        if (_uiState.value.activeStreamUrl == fileUri) {
+            val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
+            context.startService(i)
+            _uiState.update { it.copy(
+                isPlaying = false,
+                playerStatus = getString(R.string.status_stopped),
+                bitrate = "",
+                activeStreamUrl = "",
+                playbackPosition = 0L,
+                playbackDuration = 0L
+            )}
+        }
         try {
             if (file.exists()) {
                 file.delete()

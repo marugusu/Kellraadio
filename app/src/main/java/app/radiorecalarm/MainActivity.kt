@@ -444,8 +444,20 @@ fun ContentScreens(
         2 -> HistoryScreen(
             repository = viewModel.stationRepository,
             onPlayStationByName = viewModel::onHistoryStationClicked,
-            onPlayRecording = viewModel::onPlayRecordingClicked,
-            onDeleteRecording = viewModel::onDeleteRecording
+            onPlayRecording = { file ->
+                val fileUri = android.net.Uri.fromFile(file).toString()
+                if (state.activeStreamUrl == fileUri) {
+                    viewModel.onPlayPauseClicked()
+                } else {
+                    viewModel.onPlayRecordingClicked(file)
+                }
+            },
+            onDeleteRecording = viewModel::onDeleteRecording,
+            activeStreamUrl = state.activeStreamUrl,
+            isPlaying = state.isPlaying,
+            playbackPosition = state.playbackPosition,
+            playbackDuration = state.playbackDuration,
+            onSeek = viewModel::seekTo
         )
         3 -> SearchScreen(
             repository = viewModel.stationRepository,

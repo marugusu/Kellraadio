@@ -94,6 +94,7 @@ class RadioService : Service() {
     private var recordingOutputStream: java.io.FileOutputStream? = null
     private var recordingStartMillis = 0L
     private var recordingTimerJob: kotlinx.coroutines.Job? = null
+    private var progressJob: kotlinx.coroutines.Job? = null
 
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -156,6 +157,7 @@ class RadioService : Service() {
         const val ACTION_BITRATE_UPDATED = "app.radiorecalarm.BITRATE_UPDATED"
         const val ACTION_METADATA_UPDATED = "app.radiorecalarm.METADATA_UPDATED"
         const val ACTION_PLAYER_STOPPED = "app.radiorecalarm.PLAYER_STOPPED"
+        const val ACTION_PLAYER_PAUSED = "app.radiorecalarm.PLAYER_PAUSED"
         const val ACTION_PLAYER_ERROR = "app.radiorecalarm.PLAYER_ERROR"
         const val ACTION_GET_STATUS = "app.radiorecalarm.GET_STATUS"
         const val TAG = "RadioService"
@@ -163,6 +165,9 @@ class RadioService : Service() {
         const val ACTION_TIMER_TICK = "app.radiorecalarm.TIMER_TICK"
         const val EXTRA_TIMER_DURATION = "TIMER_DURATION_MINUTES"
         const val ACTION_PLAY_PAUSE_TOGGLE = "app.radiorecalarm.ACTION_PLAY_PAUSE_TOGGLE"
+        const val ACTION_PLAYBACK_PROGRESS = "app.radiorecalarm.ACTION_PLAYBACK_PROGRESS"
+        const val ACTION_SEEK = "app.radiorecalarm.ACTION_SEEK"
+        const val EXTRA_SEEK_POSITION = "SEEK_POSITION"
 
     }
 
@@ -404,9 +409,14 @@ class RadioService : Service() {
             
             // LAHENDUS: Kui striim saab otsa (server paneb toru ära), proovi kiiresti uuesti valmistada (seek + prepare)
             if (playbackState == Player.STATE_ENDED && player.playWhenReady) {
-                Log.w(TAG, "Striim lõppes ootamatult (ENDED). Teeme kiire kordusettevalmistuse...")
-                player.seekToDefaultPosition()
-                player.prepare()
+                val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
+                if (isLocal) {
+                    stopRadio()
+                } else {
+                    Log.w(TAG, "Striim lõppes ootamatult (ENDED). Teeme kiire kordusettevalmistuse...")
+                    player.seekToDefaultPosition()
+                    player.prepare()
+                }
             }
 
             // Watchdog: Kui jääb pikalt puhverdama, tee taaskäivitus
@@ -465,11 +475,15 @@ class RadioService : Service() {
                     updateExternalDevices(currentTitle, currentArtist)
                 }
 
+                startProgressTracker()
             } else {
                 if (!player.playWhenReady && !isChangingStation) {
-                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
+                    val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
+                    val action = if (isLocal) ACTION_PLAYER_PAUSED else ACTION_PLAYER_STOPPED
+                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(action))
                 }
                 metadataPushJob?.cancel()
+                stopProgressTracker()
             }
         }
 
@@ -571,6 +585,34 @@ class RadioService : Service() {
             putExtra("IS_RECORDING", isRecording)
             putExtra("RECORDING_DURATION", if (isRecording) android.os.SystemClock.elapsedRealtime() - recordingStartMillis else 0L)
             putExtra("RECORDING_STATION", currentStationName)
+        }
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
+    }
+
+    private fun startProgressTracker() {
+        stopProgressTracker()
+        if (currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")) {
+            progressJob = sessionScope.launch {
+                while (player.isPlaying) {
+                    val pos = player.currentPosition
+                    val dur = player.duration
+                    broadcastPlaybackProgress(pos, dur)
+                    delay(250)
+                }
+            }
+        }
+    }
+
+    private fun stopProgressTracker() {
+        progressJob?.cancel()
+        progressJob = null
+        broadcastPlaybackProgress(0L, 0L)
+    }
+
+    private fun broadcastPlaybackProgress(position: Long, duration: Long) {
+        val intent = Intent(ACTION_PLAYBACK_PROGRESS).apply {
+            putExtra("PLAYBACK_POSITION", position)
+            putExtra("PLAYBACK_DURATION", duration)
         }
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
     }
@@ -821,7 +863,12 @@ class RadioService : Service() {
             }
             ACTION_RESUME -> {
                 if (!player.isPlaying && currentStreamUrl.isNotEmpty()) {
-                    playStation(currentStreamUrl, currentStationName, "USER_RESUME")
+                    val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
+                    if (isLocal && player.playbackState != Player.STATE_IDLE) {
+                        player.play()
+                    } else {
+                        playStation(currentStreamUrl, currentStationName, "USER_RESUME")
+                    }
                 }
                 return START_STICKY
             }
@@ -859,6 +906,13 @@ class RadioService : Service() {
             }
             ACTION_FORCE_WIDGET_UPDATE -> {
                 updateWidget()
+                return START_STICKY
+            }
+            ACTION_SEEK -> {
+                val positionMs = intent.getLongExtra(EXTRA_SEEK_POSITION, 0L)
+                if (::player.isInitialized) {
+                    player.seekTo(positionMs)
+                }
                 return START_STICKY
             }
         }
@@ -984,6 +1038,7 @@ class RadioService : Service() {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         stopSleepTimer()
         stopRecording()
+        stopProgressTracker()
         metadataPushJob?.cancel()
         bufferingWatchdogJob?.cancel()
         bufferingWatchdogJob = null

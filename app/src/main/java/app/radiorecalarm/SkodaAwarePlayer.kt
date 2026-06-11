@@ -66,17 +66,31 @@ class SkodaAwarePlayer(
 
     // --- SKODA FIX 1: Fikseeritud kestus (5 minutit) ---
     override fun getDuration(): Long {
+        if (isLocalPlayback()) {
+            val realDuration = super.getDuration()
+            if (realDuration != androidx.media3.common.C.TIME_UNSET) {
+                return realDuration
+            }
+        }
         return 300000L
     }
 
     // --- SKODA FIX 2: Võlts-progress ---
     override fun getCurrentPosition(): Long {
+        if (isLocalPlayback()) {
+            return super.getCurrentPosition()
+        }
         if (super.isPlaying()) {
             val elapsed = SystemClock.elapsedRealtime() - streamStartTime
             positionAtPause = if (streamStartTime > 0) elapsed % 300000L else 0L
             return positionAtPause
         }
         return positionAtPause
+    }
+
+    private fun isLocalPlayback(): Boolean {
+        val uri = super.getCurrentMediaItem()?.localConfiguration?.uri ?: return false
+        return uri.scheme == "file" || uri.scheme == "content"
     }
 
     override fun getMediaMetadata(): MediaMetadata {

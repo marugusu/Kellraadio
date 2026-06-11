@@ -12,6 +12,8 @@ data class MainUiState(
     val bitrate: String = "",
     val activeStationName: String = "",
     val activeStreamUrl: String = "",
+    val playbackPosition: Long = 0L,
+    val playbackDuration: Long = 0L,
     val isRecording: Boolean = false,
     val recordingDuration: Long = 0L,
     val recordingStation: String = "",
