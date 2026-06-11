@@ -1042,6 +1042,7 @@ class RadioService : Service() {
         metadataPushJob?.cancel()
         bufferingWatchdogJob?.cancel()
         bufferingWatchdogJob = null
+        player.playWhenReady = false
         player.stop()
         player.clearMediaItems()
         isAlarmMode = false
