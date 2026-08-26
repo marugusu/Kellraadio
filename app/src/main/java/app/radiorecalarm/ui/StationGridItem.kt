@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.radiorecalarm.RadioStation
+import app.radiorecalarm.getFlagEmoji
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -139,43 +140,44 @@ fun StationGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = borderStroke
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             if (showFlag && station.countryCode.isNotEmpty()) {
                 Text(
-                    text = station.countryCode.uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
-                    color = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(end = 8.dp)
+                    text = getFlagEmoji(station.countryCode),
+                    style = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 7.dp, top = 5.dp)
                 )
             }
 
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 14.sp,
-                    lineHeight = 18.sp,
-                    letterSpacing = 0.1.sp
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
+                    letterSpacing = 0.sp
                 ),
                 fontWeight = if (isSelected && isPlaying) FontWeight.Bold else FontWeight.SemiBold,
                 color = contentColor,
+                textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 4.dp)
             )
 
             if (station.isFavorite && showFavoriteIcon) {
-                Spacer(modifier = Modifier.width(6.dp))
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier
+                        .size(15.dp)
+                        .align(Alignment.TopEnd)
+                        .padding(end = 6.dp, top = 4.dp)
                 )
             }
         }
