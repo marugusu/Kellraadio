@@ -3,8 +3,10 @@ package app.radiorecalarm.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -25,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.radiorecalarm.R
@@ -131,8 +134,17 @@ fun StationList(
                         FilterChip(
                             selected = isSelected,
                             onClick = { onCategorySelect(categoryId) },
-                            label = { Text(getCategoryDisplayName(categoryId)) },
+                            label = { 
+                                Text(
+                                    getCategoryDisplayName(categoryId),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    letterSpacing = 0.2.sp
+                                ) 
+                            },
                             modifier = Modifier.height(32.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
                             colors = FilterChipDefaults.filterChipColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -170,19 +182,20 @@ fun StationList(
                                 Box(
                                     modifier = Modifier
                                         .size(32.dp)
-                                        .clip(CircleShape)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                                         .background(MaterialTheme.colorScheme.surfaceVariant)
                                         .clickable { onCategorySelect(selectedCategory) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val isCountryCategory = selectedCategory.length == 2
                                     if (isCountryCategory) {
-                                        Text(text = getFlagEmoji(selectedCategory), fontSize = 18.sp)
+                                        Text(text = getFlagEmoji(selectedCategory), fontSize = 16.sp)
                                     } else {
                                         Icon(
                                             imageVector = Icons.Default.FilterAlt,
                                             contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
+                                            modifier = Modifier.size(16.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -197,13 +210,16 @@ fun StationList(
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = { onSubCategoryToggle(sub) },
-                                    label = { Text(displayLabel, fontSize = 12.sp) },
+                                    label = { Text(displayLabel, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                                     modifier = Modifier.height(32.dp),
                                     leadingIcon = if (isSelected) {
                                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp)) }
                                     } else null,
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(6.dp),
+                                    border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
                                     colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )

@@ -134,36 +134,48 @@ fun StationGridItem(
             .hoverable(interactionSource)
             .focusable(interactionSource = interactionSource),
 
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isFocused || (isSelected && isPlaying)) 8.dp else 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = borderStroke
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             if (showFlag && station.countryCode.isNotEmpty()) {
                 Text(
-                    text = getFlagEmoji(station.countryCode),
-                    style = androidx.compose.ui.text.TextStyle(fontSize = 10.sp),
-                    modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 4.dp)
+                    text = station.countryCode.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
+                    color = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(end = 8.dp)
                 )
             }
+
             Text(
                 text = station.name,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
-                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    letterSpacing = 0.1.sp
+                ),
+                fontWeight = if (isSelected && isPlaying) FontWeight.Bold else FontWeight.SemiBold,
+                color = contentColor,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(top = 8.dp, start = 4.dp, end = 4.dp)
+                modifier = Modifier.weight(1f)
             )
+
             if (station.isFavorite && showFavoriteIcon) {
+                Spacer(modifier = Modifier.width(6.dp))
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(16.dp).align(Alignment.TopEnd).padding(top = 4.dp, end = 8.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
