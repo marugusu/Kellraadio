@@ -208,11 +208,11 @@ fun RaadioEkraan(
         Row(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             NavigationRail(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
                 val railItemColors = NavigationRailItemDefaults.colors(
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    indicatorColor = Color.Transparent,
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
                     selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -265,12 +265,12 @@ fun RaadioEkraan(
                 if (showTeaser) {
                     if (isLargeScreenHeight) {
                         val stationColor = StationArtworkUtils.getStationColor(state.activeStationName)
-                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), MaterialTheme.colorScheme.background)))) {
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(8.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), MaterialTheme.colorScheme.background)))) {
                             SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
                         }
                     } else {
                         AnimatedVisibility(visible = !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                            SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.background)))
+                            SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.background)))
                         }
                     }
                 }
@@ -303,11 +303,11 @@ fun RaadioEkraan(
                     }
                     NavigationBar(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface, tonalElevation = 0.dp) {
                         val navItemColors = NavigationBarItemDefaults.colors(
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            indicatorColor = Color.Transparent,
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
                             selectedTextColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                         NavigationBarItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = navItemColors)
                         NavigationBarItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = navItemColors)

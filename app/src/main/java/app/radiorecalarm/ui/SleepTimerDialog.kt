@@ -1,6 +1,7 @@
 package app.radiorecalarm.ui
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +37,7 @@ fun SleepTimerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(12.dp),
         icon = { Icon(Icons.Default.Timer, null, tint = MaterialTheme.colorScheme.secondary) },
         title = { Text(stringResource(R.string.timer_dialog_title), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
         text = {
@@ -53,7 +55,7 @@ fun SleepTimerDialog(
                 Text(
                     text = stringResource(R.string.timer_until, timeString),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -77,12 +79,15 @@ fun SleepTimerDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     listOf(15, 30, 45, 60, 90, 120).forEach { min ->
+                        val isSelected = sliderValue.toInt() == min
                         SuggestionChip(
                             onClick = { sliderValue = min.toFloat() },
                             label = { Text("$min min") },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
                             colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = if (sliderValue.toInt() == min) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                labelColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                             )
                         )
                     }
@@ -100,7 +105,7 @@ fun SleepTimerDialog(
                     context.startService(intent)
                     onDismiss()
                 },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(stringResource(R.string.timer_start))
             }
@@ -115,7 +120,8 @@ fun SleepTimerDialog(
                     }
                     context.startService(intent)
                     onDismiss()
-                }
+                },
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.tertiary)
             }

@@ -2,6 +2,7 @@ package app.radiorecalarm.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -77,8 +78,8 @@ fun PlayerControls(
                 .fillMaxWidth()
                 .heightIn(min = 130.dp)
                 .animateContentSize()
-                .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
@@ -198,15 +199,17 @@ fun PlayerControls(
 
         // Gap 1: Nüüd täpselt 12dp
         Spacer(modifier = Modifier.height(12.dp))
-        val buttonShape = RoundedCornerShape(12.dp)
+        val buttonShape = RoundedCornerShape(8.dp)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val buttonModifier = Modifier
+            val baseButtonModifier = Modifier
                 .weight(1f)
                 .height(64.dp)
+                .clip(buttonShape)
+
             if (isPlaying) {
                 FilledIconButton(
                     onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onPlayPause() },
-                    modifier = buttonModifier,
+                    modifier = baseButtonModifier.border(1.5.dp, MaterialTheme.colorScheme.primary, buttonShape),
                     shape = buttonShape,
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.Black)
                 ) { Icon(Icons.Default.Pause, stringResource(R.string.action_pause), modifier = Modifier.size(32.dp)) }
@@ -214,14 +217,14 @@ fun PlayerControls(
                 FilledTonalIconButton(
                     onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); selectedStation?.let { onPlayStation(it) } },
                     enabled = selectedStation != null,
-                    modifier = buttonModifier,
+                    modifier = baseButtonModifier.border(1.dp, MaterialTheme.colorScheme.outline, buttonShape),
                     shape = buttonShape
                 ) { Icon(Icons.Default.PlayArrow, stringResource(R.string.action_play), modifier = Modifier.size(32.dp)) }
             }
             FilledTonalIconButton(
                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onToggleFavorite() },
                 enabled = selectedStation != null,
-                modifier = buttonModifier,
+                modifier = baseButtonModifier.border(if (isFavorite) 1.5.dp else 1.dp, if (isFavorite) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline, buttonShape),
                 shape = buttonShape,
                 colors = if (isFavorite) {
                     IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onSecondary, contentColor = Color.Black)
@@ -232,7 +235,7 @@ fun PlayerControls(
             FilledTonalIconButton(
                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onRecordClick() },
                 enabled = isPlaying && selectedStation != null,
-                modifier = buttonModifier,
+                modifier = baseButtonModifier.border(if (isRecording) 1.5.dp else 1.dp, if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline, buttonShape),
                 shape = buttonShape,
                 colors = if (isRecording) {
                     IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White)
@@ -251,15 +254,14 @@ fun PlayerControls(
             FilledTonalIconButton(
                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSleepClick() },
                 enabled = isPlaying || isTimerSet,
-                modifier = buttonModifier,
+                modifier = baseButtonModifier.border(if (isTimerSet) 1.5.dp else 1.dp, if (isTimerSet) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline, buttonShape),
                 shape = buttonShape,
                 colors = if (isTimerSet) IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = Color.Black) else IconButtonDefaults.filledTonalIconButtonColors()
             ) { Icon(Icons.Default.Bedtime, stringResource(R.string.timer_dialog_title), modifier = Modifier.size(28.dp)) }
             val isAlarmSet = alarmInfo != null
             val interactionSource = remember { MutableInteractionSource() }
             Surface(
-                modifier = buttonModifier
-                    .clip(buttonShape)
+                modifier = baseButtonModifier
                     .combinedClickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
@@ -270,6 +272,7 @@ fun PlayerControls(
                             }
                         }),
                 shape = buttonShape,
+                border = BorderStroke(if (isAlarmSet) 1.5.dp else 1.dp, if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline),
                 color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurfaceVariant
             ) {
