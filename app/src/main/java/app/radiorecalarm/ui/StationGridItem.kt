@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.radiorecalarm.RadioStation
-import app.radiorecalarm.getFlagEmoji
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -143,8 +142,10 @@ fun StationGridItem(
         Box(modifier = Modifier.fillMaxSize()) {
             if (showFlag && station.countryCode.isNotEmpty()) {
                 Text(
-                    text = getFlagEmoji(station.countryCode),
-                    style = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                    text = station.countryCode.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
+                    color = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(start = 7.dp, top = 5.dp)
