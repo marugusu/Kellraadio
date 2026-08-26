@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -65,9 +66,9 @@ fun PlayerControls(
 ) {
     val haptic = LocalHapticFeedback.current
 
-    val artistColor = if (isPlaying) MaterialTheme.colorScheme.primary else Color.Gray
-    val titleColor = if (isPlaying) MaterialTheme.colorScheme.secondary else Color.Gray
-    val extraColor = if (isPlaying) MaterialTheme.colorScheme.onSecondary else Color.Gray
+    val titleColor = if (isPlaying) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+    val artistColor = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    val extraColor = if (isPlaying) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
 
     Column(modifier = modifier) {
 
@@ -77,11 +78,12 @@ fun PlayerControls(
                 .heightIn(min = 130.dp)
                 .animateContentSize()
                 .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF252525),
-                            Color(0xFF141414)
+                            MaterialTheme.colorScheme.surface,
+                            Color(0xFF0C0E14)
                         )
                     )
                 )
@@ -98,7 +100,7 @@ fun PlayerControls(
                     text = StationArtworkUtils.getStationInitials(activeStationName),
                     fontSize = 150.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
                     maxLines = 1, softWrap = false, overflow = TextOverflow.Visible,
                     modifier = Modifier
                         .matchParentSize()
@@ -153,11 +155,11 @@ fun PlayerControls(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(Color.Red.copy(alpha = alpha))
+                                .background(MaterialTheme.colorScheme.error.copy(alpha = alpha))
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                     }
-                    Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = if (isRecording) Color.Red else Color.Gray)
+                    Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
 
@@ -202,19 +204,38 @@ fun PlayerControls(
                 .weight(1f)
                 .height(64.dp)
             if (isPlaying) {
-                FilledIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onPlayPause() }, modifier = buttonModifier, shape = buttonShape) { Icon(Icons.Default.Pause, stringResource(R.string.action_pause), modifier = Modifier.size(32.dp)) }
+                FilledIconButton(
+                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onPlayPause() },
+                    modifier = buttonModifier,
+                    shape = buttonShape,
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.Black)
+                ) { Icon(Icons.Default.Pause, stringResource(R.string.action_pause), modifier = Modifier.size(32.dp)) }
             } else {
-                FilledTonalIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); selectedStation?.let { onPlayStation(it) } }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape) { Icon(Icons.Default.PlayArrow, stringResource(R.string.action_play), modifier = Modifier.size(32.dp)) }
+                FilledTonalIconButton(
+                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); selectedStation?.let { onPlayStation(it) } },
+                    enabled = selectedStation != null,
+                    modifier = buttonModifier,
+                    shape = buttonShape
+                ) { Icon(Icons.Default.PlayArrow, stringResource(R.string.action_play), modifier = Modifier.size(32.dp)) }
             }
-            FilledTonalIconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onToggleFavorite() }, enabled = selectedStation != null, modifier = buttonModifier, shape = buttonShape,
-                colors = if (isFavorite) { IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onSecondary, contentColor = Color.Black) } else { IconButtonDefaults.filledTonalIconButtonColors() }) { Icon(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, null, modifier = Modifier.size(28.dp)) }
+            FilledTonalIconButton(
+                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onToggleFavorite() },
+                enabled = selectedStation != null,
+                modifier = buttonModifier,
+                shape = buttonShape,
+                colors = if (isFavorite) {
+                    IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onSecondary, contentColor = Color.Black)
+                } else {
+                    IconButtonDefaults.filledTonalIconButtonColors()
+                }
+            ) { Icon(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, null, modifier = Modifier.size(28.dp)) }
             FilledTonalIconButton(
                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onRecordClick() },
                 enabled = isPlaying && selectedStation != null,
                 modifier = buttonModifier,
                 shape = buttonShape,
                 colors = if (isRecording) {
-                    IconButtonDefaults.filledIconButtonColors(containerColor = Color.Red, contentColor = Color.White)
+                    IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White)
                 } else {
                     IconButtonDefaults.filledTonalIconButtonColors()
                 }
@@ -222,7 +243,7 @@ fun PlayerControls(
                 Icon(
                     imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
                     contentDescription = stringResource(R.string.action_record),
-                    tint = if (isRecording) Color.White else if (isPlaying) Color.Red else Color.Gray,
+                    tint = if (isRecording) Color.White else if (isPlaying) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -236,17 +257,22 @@ fun PlayerControls(
             ) { Icon(Icons.Default.Bedtime, stringResource(R.string.timer_dialog_title), modifier = Modifier.size(28.dp)) }
             val isAlarmSet = alarmInfo != null
             val interactionSource = remember { MutableInteractionSource() }
-            Surface(modifier = buttonModifier
-                .clip(buttonShape)
-                .combinedClickable(
-                    interactionSource = interactionSource,
-                    indication = LocalIndication.current,
-                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAlarmClick() },
-                    onLongClick = {
-                        if (isAlarmSet) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); onAlarmLongClick()
-                        }
-                    }), shape = buttonShape, color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondaryContainer, contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSecondaryContainer) {
+            Surface(
+                modifier = buttonModifier
+                    .clip(buttonShape)
+                    .combinedClickable(
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current,
+                        onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAlarmClick() },
+                        onLongClick = {
+                            if (isAlarmSet) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress); onAlarmLongClick()
+                            }
+                        }),
+                shape = buttonShape,
+                color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurfaceVariant
+            ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Icon(if (isAlarmSet) Icons.Default.AlarmOn else Icons.Default.AlarmAdd, contentDescription = stringResource(R.string.alarm_title), modifier = Modifier.size(28.dp)) }
             }
         }

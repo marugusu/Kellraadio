@@ -35,28 +35,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import app.radiorecalarm.ui.*
-import java.util.Locale
+import app.radiorecalarm.ui.theme.KellraadioTheme
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val darkColors = darkColorScheme(
-                primary = Color(0xFFBB86FC),
-                primaryContainer = Color(0xFF4F378B),
-                onPrimaryContainer = Color(0xFFEADDFF),
-                onPrimary = Color.Black,
-                secondary = Color(0xFF03DAC6),
-                tertiary = Color(0xFFFE7879),
-                onSecondary = Color(0xFFCB7E1F),
-                background = Color.Black,
-                surface = Color(0xFF121212),
-                surfaceVariant = Color(0xFF252525),
-                onSurface = Color(0xFFE0E0E0),
-                onSurfaceVariant = Color(0xFFB0B0B0)
-            )
-
-            MaterialTheme(colorScheme = darkColors) {
+            KellraadioTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     RaadioEkraan()
                 }
@@ -221,13 +206,13 @@ fun RaadioEkraan(
         val isLargeScreenHeight = config.screenHeightDp >= AppConfig.UI.Layout.HEIGHT_THRESHOLD_LARGE_LANDSCAPE_DP
 
         Row(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-            NavigationRail(containerColor = Color.Black, contentColor = Color.White) {
+            NavigationRail(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
                 val railItemColors = NavigationRailItemDefaults.colors(
                     indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    selectedTextColor = Color.White,
-                    unselectedIconColor = Color.Gray,
-                    unselectedTextColor = Color.Gray
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -238,7 +223,7 @@ fun RaadioEkraan(
                 NavigationRailItem(selected = state.currentTab == 4, onClick = { mainViewModel.onTabSelected(4) }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(navSettingsTitle) }, colors = railItemColors)
                 Spacer(modifier = Modifier.weight(1f))
             }
-            VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+            VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
             Column(modifier = Modifier.weight(playerWeight).fillMaxHeight().padding(start = 12.dp, top = 12.dp, bottom = 16.dp, end = 12.dp)) {
                 Box(modifier = Modifier.fillMaxWidth()) {
@@ -280,12 +265,12 @@ fun RaadioEkraan(
                 if (showTeaser) {
                     if (isLargeScreenHeight) {
                         val stationColor = StationArtworkUtils.getStationColor(state.activeStationName)
-                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), Color.Black)))) {
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), MaterialTheme.colorScheme.background)))) {
                             SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
                         }
                     } else {
                         AnimatedVisibility(visible = !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                            SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(Color(0xFF252525), Color.Black)))
+                            SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.background)))
                         }
                     }
                 }
@@ -307,17 +292,23 @@ fun RaadioEkraan(
         Scaffold(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             bottomBar = {
-                Column(modifier = Modifier.background(Color.Black)) {
+                Column(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
                     AnimatedVisibility(visible = state.currentTab == 0 && showTeaser && !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                         SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo)
                     }
                     if (state.currentTab == 0 && showTeaser && !state.showSongInfoSheet) {
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(brush = Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), Color.Transparent))))
                     } else {
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFF222222))
+                        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     }
-                    NavigationBar(containerColor = Color.Black, contentColor = Color.White, tonalElevation = 0.dp) {
-                        val navItemColors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer, selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTextColor = Color.White, unselectedIconColor = Color.Gray, unselectedTextColor = Color.Gray)
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface, tonalElevation = 0.dp) {
+                        val navItemColors = NavigationBarItemDefaults.colors(
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
                         NavigationBarItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = navItemColors)
                         NavigationBarItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = navItemColors)
                         NavigationBarItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = navItemColors)

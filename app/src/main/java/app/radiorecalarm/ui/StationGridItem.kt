@@ -67,11 +67,11 @@ fun StationGridItem(
         MaterialTheme.colorScheme.onSurface
     }
     
-    val borderStroke = if (isFocused || (isSelected && isPlaying)) {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.primary) // TAASTATUD: 2dp
-    } else if (isSelected) {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-    } else null
+    val borderStroke = when {
+        isFocused || (isSelected && isPlaying) -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+        isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    }
 
     Card(
         modifier = Modifier

@@ -54,7 +54,7 @@ fun SongInfoTeaser(
 
     val stationColor = StationArtworkUtils.getStationColor(stationName)
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
-    val bgBrush = backgroundBrush ?: SolidColor(Color.Black)
+    val bgBrush = backgroundBrush ?: SolidColor(MaterialTheme.colorScheme.surface)
 
     Surface(
         modifier = modifier
@@ -114,7 +114,7 @@ fun SongInfoTeaser(
                 Text(
                     text = if (isLoading) stringResource(R.string.info_searching) else stringResource(R.string.info_available),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isLoading) Color.Gray else MaterialTheme.colorScheme.primary,
+                    color = if (isLoading) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary,
                     maxLines = 1
                 )
             }
@@ -137,7 +137,7 @@ fun SongInfoTeaser(
                     Icon(
                         painter = icon,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.7f),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                         modifier = Modifier.fillMaxSize()
                     )
                 }

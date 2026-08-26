@@ -134,16 +134,16 @@ fun StationList(
                             label = { Text(getCategoryDisplayName(categoryId)) },
                             modifier = Modifier.height(32.dp),
                             colors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 selectedContainerColor = when {
-                                    isFavoritesChip -> MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.2f)
-                                    isMyStationsChip -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-                                    isAllChip -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                                    isFavoritesChip -> MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.25f)
+                                    isMyStationsChip -> MaterialTheme.colorScheme.secondaryContainer
                                     else -> MaterialTheme.colorScheme.primaryContainer
                                 },
                                 selectedLabelColor = when {
                                     isFavoritesChip -> MaterialTheme.colorScheme.onSecondary
-                                    isMyStationsChip -> MaterialTheme.colorScheme.tertiary
-                                    isAllChip -> MaterialTheme.colorScheme.secondary
+                                    isMyStationsChip -> MaterialTheme.colorScheme.secondary
                                     else -> MaterialTheme.colorScheme.onPrimaryContainer
                                 }
                             )
@@ -256,7 +256,7 @@ fun StationList(
 
             if (stationsForThisPage.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.search_no_results), color = Color.Gray)
+                    Text(stringResource(R.string.search_no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyVerticalGrid(

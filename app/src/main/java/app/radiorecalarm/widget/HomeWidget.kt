@@ -158,13 +158,13 @@ class HomeWidget : GlanceAppWidget() {
     private fun AllInfoText(station: String, title: String, artist: String, extra: String, status: String, alarm: String, centered: Boolean, isPlaying: Boolean = false) {
         val textAlign = if (centered) TextAlign.Center else TextAlign.Start
 
-        val colorDim     = ColorProvider(Color(0xFFB0B0B0))
-        val colorStatus = ColorProvider(Color(0xFFEADDFF))
-        val colorStation = ColorProvider(Color(0xFFEADDFF))
-        val colorTitle = if (isPlaying) ColorProvider(Color(0xFF03DAC6)) else colorDim
-        val colorExtra   = if (isPlaying) ColorProvider(Color(0xFFCB7E1F)) else colorDim
-        val colorText    = if (isPlaying)  ColorProvider(Color(0xFFBB86FC)) else colorDim
-        val colorAlarm   = ColorProvider(Color(0xFFFE7879))
+        val colorDim     = ColorProvider(Color(0xFF94A3B8))
+        val colorStatus  = ColorProvider(Color(0xFFFFA726))
+        val colorStation = ColorProvider(Color(0xFFFFA726))
+        val colorTitle   = if (isPlaying) ColorProvider(Color(0xFFF8FAFC)) else colorDim
+        val colorExtra   = if (isPlaying) ColorProvider(Color(0xFFCBD5E1)) else colorDim
+        val colorText    = if (isPlaying) ColorProvider(Color(0xFFFFB74D)) else colorDim
+        val colorAlarm   = ColorProvider(Color(0xFFFF8A65))
 
         Column(
             modifier = GlanceModifier.fillMaxHeight(),
