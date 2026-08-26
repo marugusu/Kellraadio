@@ -1,11 +1,14 @@
 package app.radiorecalarm.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -109,7 +112,13 @@ fun SearchScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { performSearchWithUIEffects() }),
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -123,6 +132,14 @@ fun SearchScreen(
                     onClick = {
                         if (selectedCountry == null) viewModel.openFilter("COUNTRY") else viewModel.onCountrySelected(null)
                     },
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, if (selectedCountry != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
                     label = {
                         Text(
                             text = selectedCountry?.name ?: stringResource(R.string.filter_all_countries),
@@ -139,6 +156,14 @@ fun SearchScreen(
                     onClick = {
                         if (selectedGenre == null) viewModel.openFilter("GENRE") else viewModel.onGenreSelected(null)
                     },
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, if (selectedGenre != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
                     label = {
                         Text(
                             text = selectedGenre ?: stringResource(R.string.filter_all_genres),
@@ -151,29 +176,41 @@ fun SearchScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
                     onClick = { performSearchWithUIEffects() },
                     enabled = !isLoading,
-                    modifier = Modifier.weight(1f)
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.Black
+                    ),
+                    modifier = Modifier.weight(1f).height(44.dp)
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black)
                     } else {
-                        Text(stringResource(R.string.action_search))
+                        Text(stringResource(R.string.action_search), fontWeight = FontWeight.Bold)
                     }
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                TextButton(onClick = { viewModel.openManualAddDialog() }) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                OutlinedButton(
+                    onClick = { viewModel.openManualAddDialog() },
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.height(44.dp)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.search_manual))
+                    Text(stringResource(R.string.search_manual), fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -281,7 +318,8 @@ fun SearchResultItem(
     val flag = getFlagEmoji(station.countryCode)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -290,7 +328,10 @@ fun SearchResultItem(
         ) {
             IconButton(
                 onClick = onPlay,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
                 colors = IconButtonDefaults.iconButtonColors(
                     containerColor = if (isPlaying) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
                     contentColor = if (isPlaying) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
@@ -360,11 +401,24 @@ fun ManualAddDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(12.dp),
         title = { Text(stringResource(R.string.manual_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.station_name)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text(stringResource(R.string.stream_url)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.station_name)) },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text(stringResource(R.string.stream_url)) },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -375,6 +429,7 @@ fun ManualAddDialog(
                         onValueChange = { category = it },
                         label = { Text(stringResource(R.string.station_category)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
                     ExposedDropdownMenu(
@@ -393,7 +448,12 @@ fun ManualAddDialog(
                     }
                 }
                 
-                OutlinedCard(onClick = { showCountryPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                OutlinedCard(
+                    onClick = { showCountryPicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""
                         if (flag.isNotEmpty()) {
@@ -414,11 +474,28 @@ fun ManualAddDialog(
                 }
             }
         },
-        confirmButton = { Button(onClick = { onSave(name, url, countryCode, category) }) { Text(stringResource(R.string.action_save)) } },
+        confirmButton = {
+            Button(
+                onClick = { onSave(name, url, countryCode, category) },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
+        },
         dismissButton = {
             Row {
-                TextButton(onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) }) { Text(stringResource(R.string.action_test)) }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(
+                    onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.action_test))
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             }
         }
     )

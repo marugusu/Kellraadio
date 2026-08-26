@@ -305,7 +305,7 @@ fun ActionButton(
     ) {
         Surface(
             color = color.copy(alpha = 0.2f),
-            shape = CircleShape,
+            shape = RoundedCornerShape(8.dp),
             modifier = Modifier.size(40.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
         ) {
@@ -322,7 +322,7 @@ fun ActionButton(
 fun InfoChip(text: String, icon: Boolean = false) {
     Surface(
         color = Color.White.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(6.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
         Row(

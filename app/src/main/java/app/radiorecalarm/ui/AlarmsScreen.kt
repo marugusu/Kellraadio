@@ -1,9 +1,11 @@
 package app.radiorecalarm.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
@@ -35,7 +37,12 @@ fun AlarmsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddAlarm) {
+            FloatingActionButton(
+                onClick = onAddAlarm,
+                shape = RoundedCornerShape(8.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.Black
+            ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.alarm_add_new))
             }
         }
@@ -106,6 +113,8 @@ fun AlarmItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, if (alarm.isEnabled) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
         colors = CardDefaults.cardColors(
             containerColor = if (alarm.isEnabled) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
         )

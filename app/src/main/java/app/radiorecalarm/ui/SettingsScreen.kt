@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -155,7 +156,8 @@ fun SettingsScreen(
 
             SettingsGroup(title = stringResource(R.string.settings_group_appearance)) {
                 Card(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -233,7 +235,8 @@ fun SettingsScreen(
                 )
 
                 Card(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -321,7 +324,8 @@ fun SettingsScreen(
     if (showLanguageDialog) {
         Dialog(onDismissRequest = { showLanguageDialog = false }) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp,
                 modifier = Modifier.fillMaxWidth()
@@ -388,6 +392,7 @@ fun SettingsScreen(
     if (showDeleteHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteHistoryDialog = false },
+            shape = RoundedCornerShape(12.dp),
             title = { Text(stringResource(R.string.history_delete_confirm_title)) },
             text = { Text(stringResource(R.string.history_delete_confirm_text)) },
             confirmButton = {
@@ -395,13 +400,17 @@ fun SettingsScreen(
                     onClick = {
                         onClearHistory()
                         showDeleteHistoryDialog = false
-                    }
+                    },
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteHistoryDialog = false }) {
+                TextButton(
+                    onClick = { showDeleteHistoryDialog = false },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Text(stringResource(R.string.action_cancel))
                 }
             }
@@ -436,7 +445,8 @@ fun SettingsCardItem(
     trailingContent: @Composable (() -> Unit)? = null
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = Modifier.fillMaxWidth()
     ) {

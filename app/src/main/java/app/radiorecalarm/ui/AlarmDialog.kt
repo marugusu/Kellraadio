@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material3.*
@@ -67,6 +68,7 @@ fun AlarmDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(12.dp),
         icon = {
             Icon(
                 Icons.Default.Alarm,
@@ -117,9 +119,9 @@ fun AlarmDialog(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .clip(CircleShape)
+                                .clip(RoundedCornerShape(6.dp))
                                 .background(bgColor)
-                                .border(1.dp, if(isSelected) Color.Transparent else Color.Gray, CircleShape)
+                                .border(1.dp, if(isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
                                 .clickable {
                                     if (isSelected) days.remove(dayId) else days.add(dayId)
                                 },
@@ -138,7 +140,8 @@ fun AlarmDialog(
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onAlarmSaved(timePickerState.hour, timePickerState.minute, days.toSet())
                     onDismiss()
-                }
+                },
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(stringResource(R.string.action_save))
             }
@@ -151,6 +154,7 @@ fun AlarmDialog(
                         onDelete()
                         onDismiss()
                     },
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text(stringResource(R.string.action_delete))
@@ -161,7 +165,8 @@ fun AlarmDialog(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onDismiss()
-                }
+                },
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(stringResource(R.string.action_cancel))
             }

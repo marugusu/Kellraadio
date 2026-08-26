@@ -1,9 +1,20 @@
 package app.radiorecalarm.ui.theme
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
+val KellraadioShapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(6.dp),
+    medium = RoundedCornerShape(8.dp),
+    large = RoundedCornerShape(10.dp),
+    extraLarge = RoundedCornerShape(12.dp)
+)
 
 val KellraadioDarkColorScheme = darkColorScheme(
     primary = AmberPrimary,
@@ -34,6 +45,7 @@ fun KellraadioTheme(
     MaterialTheme(
         colorScheme = KellraadioDarkColorScheme,
         typography = Typography,
+        shapes = KellraadioShapes,
         content = content
     )
 }
