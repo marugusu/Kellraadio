@@ -76,8 +76,8 @@ fun StationGridItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .height(66.dp)
+            .clip(RoundedCornerShape(8.dp))
             .onKeyEvent { event ->
                 val isEnter = event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
                         event.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_ENTER ||
@@ -139,46 +139,68 @@ fun StationGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = borderStroke
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (showFlag && station.countryCode.isNotEmpty()) {
-                Text(
-                    text = station.countryCode.uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
-                    color = if (isSelected && isPlaying) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 7.dp, top = 5.dp)
-                )
-            }
-
-            Text(
-                text = station.name,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 13.sp,
-                    lineHeight = 16.sp,
-                    letterSpacing = 0.sp
-                ),
-                fontWeight = if (isSelected && isPlaying) FontWeight.Bold else FontWeight.SemiBold,
-                color = contentColor,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+            // Tsoon 1: Ülemine mikroriba (Top Status Track)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.Center)
-                    .padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 4.dp)
-            )
+                    .height(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showFlag && station.countryCode.isNotEmpty()) {
+                    Text(
+                        text = station.countryCode.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 9.sp,
+                            letterSpacing = 0.5.sp
+                        ),
+                        color = if (isSelected && isPlaying) {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
 
-            if (station.isFavorite && showFavoriteIcon) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier
-                        .size(15.dp)
-                        .align(Alignment.TopEnd)
-                        .padding(end = 6.dp, top = 4.dp)
+                Spacer(modifier = Modifier.weight(1f))
+
+                if (station.isFavorite && showFavoriteIcon) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondary,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+
+            // Tsoon 2: Põhiline nimeala (Main Name Stage)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                        letterSpacing = 0.sp
+                    ),
+                    fontWeight = if (isSelected && isPlaying) FontWeight.Bold else FontWeight.SemiBold,
+                    color = contentColor,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
