@@ -169,7 +169,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         loadPreferences()
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             stationRepository.allStations.collect { stations ->
                 val allCategories = stations
                     .filter { !it.isUserStation && it.category.isNotBlank() }
@@ -189,7 +189,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val stations = stationRepository.allStations.first()
             val lastUpdate = prefs.getLong("last_update_time", 0L)
             val oneDayMillis = 24 * 60 * 60 * 1000L
@@ -198,7 +198,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 refreshStations()
             }
         }
-        updateCountries()
     }
 
     private fun loadPreferences() {
@@ -214,7 +213,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateCountries() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             _uiState.update { it.copy(isCountriesLoading = true) }
             val remoteCountries = stationRepository.getCountries().toMutableList()
             val localCountryCodes = _uiState.value.stations

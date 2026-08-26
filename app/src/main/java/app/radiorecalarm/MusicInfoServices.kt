@@ -11,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -191,7 +192,11 @@ object MusicInfoRepository {
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.e(TAG, "❌ iTunes viga", e)
+            if (e is HttpException && e.code() == 404) {
+                Log.d(TAG, "ℹ️ iTunes: Tulemusi ei leitud (404)")
+            } else {
+                Log.w(TAG, "⚠️ iTunes päring ebaõnnestus: ${e.message}")
+            }
         }
 
         if (foundCover == null) {
@@ -211,7 +216,11 @@ object MusicInfoRepository {
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.e(TAG, "❌ MusicBrainz viga", e)
+                if (e is HttpException && e.code() == 404) {
+                    Log.d(TAG, "ℹ️ MusicBrainz: Tulemusi ei leitud (404)")
+                } else {
+                    Log.w(TAG, "⚠️ MusicBrainz päring ebaõnnestus: ${e.message}")
+                }
             }
         }
 
@@ -244,7 +253,11 @@ object MusicInfoRepository {
                 break
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.e(TAG, "❌ LRCLIB viga (Katse ${lrcAttempt + 1})", e)
+                if (e is HttpException && e.code() == 404) {
+                    Log.d(TAG, "ℹ️ LRCLIB: Sõnu ei leitud (404)")
+                    break // Sõnu pole serveris, korduskatse pole vajalik
+                }
+                Log.w(TAG, "⚠️ LRCLIB viga (Katse ${lrcAttempt + 1}): ${e.message}")
                 lrcAttempt++
                 if (lrcAttempt < 2) delay(1000) // Ootame sekund enne uut katset
             }

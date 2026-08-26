@@ -150,7 +150,7 @@ fun RaadioEkraan(
         val sortedCountries = countryCodes.sortedWith(compareBy<String> { code ->
             val index = AppConfig.UI.PREFERRED_COUNTRY_ORDER.indexOf(code)
             if (index != -1) index else Int.MAX_VALUE
-        }.thenBy { Locale("", it).getDisplayCountry() })
+        }.thenBy { getCachedCountryDisplayName(it) })
 
         baseGroups.addAll(sortedCountries)
         if (!state.hideRemoteStations) {

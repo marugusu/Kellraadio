@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioStation
 import app.radiorecalarm.getFlagEmoji
+import app.radiorecalarm.getCachedCountryDisplayName
 import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -68,7 +69,7 @@ fun StationList(
             categoryId == "Favorites" -> favoritesLabel
             categoryId == "My" -> myStationsLabel
             categoryId == "All" -> allLabel
-            categoryId.length == 2 -> Locale("", categoryId).displayCountry
+            categoryId.length == 2 -> getCachedCountryDisplayName(categoryId)
             else -> categoryId
         }
     }
@@ -240,10 +241,16 @@ fun StationList(
             }
 
             val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+            var hasScrolledInitial by remember { mutableStateOf(false) }
             LaunchedEffect(selectedStationId, stationsForThisPage) {
                 val index = stationsForThisPage.indexOfFirst { it.id == selectedStationId }
                 if (index >= 0) {
-                    gridState.animateScrollToItem(index = index, scrollOffset = -400)
+                    if (!hasScrolledInitial) {
+                        gridState.scrollToItem(index = index, scrollOffset = -400)
+                        hasScrolledInitial = true
+                    } else {
+                        gridState.animateScrollToItem(index = index, scrollOffset = -400)
+                    }
                 }
             }
 
