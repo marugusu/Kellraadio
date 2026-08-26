@@ -328,21 +328,8 @@ class RadioService : Service() {
             artworkData = null
         )
 
-        player.playlistMetadata = newMetadata
-
-        val currentItem = player.currentMediaItem
-        if (currentItem != null) {
-             val newItem = currentItem.buildUpon()
-                .setMediaMetadata(newMetadata)
-                .build()
-            
-            player.replaceMediaItem(player.currentMediaItemIndex, newItem)
-        }
-
         serviceScope.launch(Dispatchers.Main) {
-            listeners.forEach { listener ->
-                try { listener.onMediaMetadataChanged(newMetadata) } catch (e: Exception) { }
-            }
+            player.updateTrackMetadata(newMetadata)
         }
     }
 
@@ -471,7 +458,6 @@ class RadioService : Service() {
                     lastSentTitle = ""
                     lastSentArtist = ""
                     lastSentTime = 0
-                    player.streamStartTime = SystemClock.elapsedRealtime()
                     updateExternalDevices(currentTitle, currentArtist)
                 }
 

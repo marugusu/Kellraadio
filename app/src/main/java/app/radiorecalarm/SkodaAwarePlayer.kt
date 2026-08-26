@@ -93,7 +93,30 @@ class SkodaAwarePlayer(
         return uri.scheme == "file" || uri.scheme == "content"
     }
 
+    private var currentTrackMetadata: MediaMetadata? = null
+
+    fun updateTrackMetadata(metadata: MediaMetadata) {
+        currentTrackMetadata = metadata
+        try {
+            super.setPlaylistMetadata(metadata)
+        } catch (e: Exception) {
+            // Ignore if unsupported
+        }
+        internalListeners.forEach { listener ->
+            try {
+                listener.onMediaMetadataChanged(metadata)
+                listener.onPlaylistMetadataChanged(metadata)
+            } catch (e: Exception) {
+                // Ignore listener exceptions
+            }
+        }
+    }
+
     override fun getMediaMetadata(): MediaMetadata {
-        return super.getMediaMetadata()
+        return currentTrackMetadata ?: super.getMediaMetadata()
+    }
+
+    override fun getPlaylistMetadata(): MediaMetadata {
+        return currentTrackMetadata ?: super.getPlaylistMetadata()
     }
 }
