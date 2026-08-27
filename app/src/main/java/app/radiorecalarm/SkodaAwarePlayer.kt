@@ -3,6 +3,7 @@ package app.radiorecalarm
 import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -102,14 +103,24 @@ class SkodaAwarePlayer(
         } catch (e: Exception) {
             // Ignore if unsupported
         }
+        val currentItem = getCurrentMediaItem()
         internalListeners.forEach { listener ->
             try {
                 listener.onMediaMetadataChanged(metadata)
                 listener.onPlaylistMetadataChanged(metadata)
+                if (currentItem != null) {
+                    listener.onMediaItemTransition(currentItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+                }
             } catch (e: Exception) {
                 // Ignore listener exceptions
             }
         }
+    }
+
+    override fun getCurrentMediaItem(): MediaItem? {
+        val item = super.getCurrentMediaItem() ?: return null
+        val metadata = currentTrackMetadata ?: item.mediaMetadata
+        return item.buildUpon().setMediaMetadata(metadata).build()
     }
 
     override fun getMediaMetadata(): MediaMetadata {

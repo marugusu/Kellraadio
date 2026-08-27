@@ -81,6 +81,7 @@ class RadioService : Service() {
     private var currentStreamUrl: String = ""
 
     private var metadataPushJob: kotlinx.coroutines.Job? = null
+    private var pendingMetadataJob: kotlinx.coroutines.Job? = null
     private var bufferingWatchdogJob: kotlinx.coroutines.Job? = null
     private var activeDataSource: RetryingHttpDataSource? = null
 
@@ -306,15 +307,25 @@ class RadioService : Service() {
         if (!::player.isInitialized) return
 
         val currentTime = SystemClock.elapsedRealtime()
-        if (currentTime - lastSentTime < 500) {
-            Log.d(TAG, "updateExternalDevices: SKIPPED (Too fast updates)")
+        val timeSinceLast = currentTime - lastSentTime
+
+        if (timeSinceLast < 500) {
+            Log.d(TAG, "updateExternalDevices: Debouncing update ($timeSinceLast ms since last) for Title='$title', Artist='$artist'")
+            pendingMetadataJob?.cancel()
+            pendingMetadataJob = sessionScope.launch {
+                delay(500 - timeSinceLast)
+                updateExternalDevices(title, artist)
+            }
             return
         }
 
         if (title == lastSentTitle && artist == lastSentArtist) {
             return
         }
-        
+
+        pendingMetadataJob?.cancel()
+        pendingMetadataJob = null
+
         Log.d(TAG, "updateExternalDevices: SENDING TO CAR -> Title='$title', Artist='$artist', Album='$currentStationName'")
 
         lastSentTitle = title
@@ -328,9 +339,7 @@ class RadioService : Service() {
             artworkData = null
         )
 
-        serviceScope.launch(Dispatchers.Main) {
-            player.updateTrackMetadata(newMetadata)
-        }
+        player.updateTrackMetadata(newMetadata)
     }
 
     private val httpTransferListener = object : TransferListener {
@@ -449,6 +458,7 @@ class RadioService : Service() {
                 lastSentTitle = ""
                 lastSentArtist = ""
                 lastSentTime = 0
+                player.streamStartTime = SystemClock.elapsedRealtime()
                 updateExternalDevices(currentTitle, currentArtist)
 
                 metadataPushJob?.cancel()
@@ -469,6 +479,8 @@ class RadioService : Service() {
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(action))
                 }
                 metadataPushJob?.cancel()
+                pendingMetadataJob?.cancel()
+                pendingMetadataJob = null
                 stopProgressTracker()
             }
         }
@@ -805,7 +817,7 @@ class RadioService : Service() {
                 artworkData = null
             )
             
-            player.playlistMetadata = initialMeta
+            player.updateTrackMetadata(initialMeta)
             player.setMediaItem(
                 MediaItem.Builder()
                     .setUri(currentStreamUrl)
@@ -998,7 +1010,7 @@ class RadioService : Service() {
                 .build()
         )
 
-        player.playlistMetadata = initialMeta
+        player.updateTrackMetadata(initialMeta)
         player.streamStartTime = SystemClock.elapsedRealtime()
 
         player.prepare()
@@ -1026,6 +1038,8 @@ class RadioService : Service() {
         stopRecording()
         stopProgressTracker()
         metadataPushJob?.cancel()
+        pendingMetadataJob?.cancel()
+        pendingMetadataJob = null
         bufferingWatchdogJob?.cancel()
         bufferingWatchdogJob = null
         player.playWhenReady = false
