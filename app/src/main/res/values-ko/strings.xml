@@ -88,8 +88,8 @@
     <string name="settings_grid_layout">채널 그리드</string>
     <string name="settings_portrait">세로 모드 (Portrait)</string>
     <string name="settings_landscape">가로 모드 (Landscape)</string>
-    <string name="settings_show_flags">국기 표시</string>
-    <string name="settings_show_flags_desc">방송국 이름 옆에 국기 표시</string>
+    <string name="settings_show_flags">국가 코드 표시 (EE, LV...)</string>
+    <string name="settings_show_flags_desc">방송국 카드 모서리에 국가 코드 표시</string>
     <string name="settings_widget_transparency">위젯 투명도</string>
     <string name="settings_widget_transparency_desc">홈 화면 위젯 배경 투명도 조절</string>
     

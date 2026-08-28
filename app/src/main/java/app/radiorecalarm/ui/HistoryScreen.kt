@@ -50,6 +50,7 @@ fun HistoryScreen(
     playbackPosition: Long = 0L,
     playbackDuration: Long = 0L,
     onSeek: (Long) -> Unit = {},
+    onClearHistory: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val historyItems by repository.historyItems.collectAsState(initial = emptyList())
@@ -62,6 +63,7 @@ fun HistoryScreen(
     var selectedHistoryItem by remember { mutableStateOf<HistoryItem?>(null) }
     var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showClearHistoryDialog by remember { mutableStateOf(false) }
     var activeSubTab by remember { mutableStateOf(0) }
     var isLyricsLoading by remember { mutableStateOf(false) }
 
@@ -127,8 +129,17 @@ fun HistoryScreen(
                 )
             }
 
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 if (activeSubTab == 0) {
+                    if (onClearHistory != null && historyItems.isNotEmpty()) {
+                        IconButton(onClick = { showClearHistoryDialog = true }) {
+                            Icon(
+                                Icons.Default.DeleteSweep,
+                                contentDescription = stringResource(R.string.settings_clear_history),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(
                             Icons.Default.Event,
@@ -325,6 +336,34 @@ fun HistoryScreen(
                 }
             )
         }
+    }
+
+    if (showClearHistoryDialog && onClearHistory != null) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryDialog = false },
+            shape = RoundedCornerShape(8.dp),
+            title = { Text(stringResource(R.string.history_delete_confirm_title)) },
+            text = { Text(stringResource(R.string.history_delete_confirm_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onClearHistory()
+                        showClearHistoryDialog = false
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showClearHistoryDialog = false },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
     }
 }
 

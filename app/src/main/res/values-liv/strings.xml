@@ -73,8 +73,8 @@
 <string name="settings_grid_layout">"Kanāl ruodūd"</string>
 <string name="settings_portrait">"Pistõz"</string>
 <string name="settings_landscape">"Kierõz"</string>
-<string name="settings_show_flags">"Näyt lipūd"</string>
-<string name="settings_show_flags_desc">"Näyt mō lippõ stacij jūres"</string>
+<string name="settings_show_flags">"Näyt mō tunnustõ (EE, LV...)"</string>
+<string name="settings_show_flags_desc">"Näyt stacij kaard pǟl mō tunnustõ"</string>
 <string name="settings_widget_transparency">"Läbipaistvūz"</string>
 <string name="settings_widget_transparency_desc">"Mūot sākumekrān taust läbipaistvūz"</string>
 <string name="settings_group_general">"Üld"</string>

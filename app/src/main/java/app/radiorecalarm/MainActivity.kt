@@ -448,7 +448,8 @@ fun ContentScreens(
             isPlaying = state.isPlaying,
             playbackPosition = state.playbackPosition,
             playbackDuration = state.playbackDuration,
-            onSeek = viewModel::seekTo
+            onSeek = viewModel::seekTo,
+            onClearHistory = viewModel::clearHistory
         )
         3 -> SearchScreen(
             repository = viewModel.stationRepository,
@@ -495,7 +496,6 @@ fun ContentScreens(
                 onColsPortraitChange = viewModel::setColsPortrait,
                 onColsLandscapeChange = viewModel::setColsLandscape,
                 onRefresh = viewModel::refreshStations,
-                onClearHistory = viewModel::clearHistory,
                 onResetOrder = viewModel::openResetOrderDialog,
                 onWidgetTransparencyChange = viewModel::setWidgetTransparency,
                 onExportData = {

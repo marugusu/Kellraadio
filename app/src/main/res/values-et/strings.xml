@@ -93,8 +93,8 @@
     <string name="settings_grid_layout">Kanalite ruudustik</string>
     <string name="settings_portrait">Püstine vaade (Portrait)</string>
     <string name="settings_landscape">Külili vaade (Landscape)</string>
-    <string name="settings_show_flags">Näita riigilippe</string>
-    <string name="settings_show_flags_desc">Kuva kanalite juures päritoluriigi lippu</string>
+    <string name="settings_show_flags">Näita riigitunnust (EE, LV...)</string>
+    <string name="settings_show_flags_desc">Kuva kanali kaardi nurgas riigitunnust</string>
     <string name="settings_widget_transparency">Vidina läbipaistvus</string>
     <string name="settings_widget_transparency_desc">Muuda koduekraani vidina tausta</string>
     
