@@ -585,11 +585,74 @@
     "countrycode": "EE"
   },
   {
+    "id": 107,
+    "name": "Rock FM Classic",
+    "url": "https://stream.skymedia.ee/live/rckclassic",
+    "isActive": true,
+    "priority": 1382,
+    "category": "Sky",
+    "countrycode": "EE"
+  },
+  {
+    "id": 108,
+    "name": "NRJ",
+    "url": "https://stream.skymedia.ee/live/NRJ",
+    "isActive": true,
+    "priority": 1385,
+    "category": "Sky",
+    "countrycode": "EE"
+  },
+  {
+    "id": 109,
+    "name": "NRJ DnB",
+    "url": "https://stream.skymedia.ee/live/NRJdnb",
+    "isActive": true,
+    "priority": 1386,
+    "category": "Sky",
+    "countrycode": "EE"
+  },
+  {
     "id": 77,
     "name": "Retro Disco",
     "url": "https://stream.skymedia.ee/live/retro1.mp3",
     "isActive": true,
     "priority": 1390,
+    "category": "Sky",
+    "countrycode": "EE"
+  },
+  {
+    "id": 110,
+    "name": "Relax Cafe",
+    "url": "https://stream.skymedia.ee/live/cafe",
+    "isActive": true,
+    "priority": 1396,
+    "category": "Sky",
+    "countrycode": "EE"
+  },
+  {
+    "id": 111,
+    "name": "Relax Instrumental",
+    "url": "https://stream.skymedia.ee/live/instrumental",
+    "isActive": true,
+    "priority": 1397,
+    "category": "Sky",
+    "countrycode": "EE"
+  },
+  {
+    "id": 112,
+    "name": "Relax International",
+    "url": "https://stream.skymedia.ee/live/international",
+    "isActive": true,
+    "priority": 1398,
+    "category": "Sky",
+    "countrycode": "EE"
+  },
+  {
+    "id": 113,
+    "name": "Relax SPA",
+    "url": "https://stream.skymedia.ee/live/spa",
+    "isActive": true,
+    "priority": 1399,
     "category": "Sky",
     "countrycode": "EE"
   },
@@ -609,6 +672,15 @@
     "isActive": true,
     "priority": 1401,
     "category": "Muud",
+    "countrycode": "EE"
+  },
+  {
+    "id": 114,
+    "name": "Raadio 7",
+    "url": "https://stream.skymedia.ee/live/R7",
+    "isActive": true,
+    "priority": 1405,
+    "category": "Sky",
     "countrycode": "EE"
   },
   {
@@ -704,7 +776,7 @@
   {
     "id": 43,
     "name": "Power Hit Radio",
-    "url": "https://ice.leviracloud.eu/phr96-aac?",
+    "url": "https://ice.leviracloud.eu/phr128-aac",
     "isActive": true,
     "priority": 1500,
     "category": "TV3",

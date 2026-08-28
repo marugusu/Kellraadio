@@ -82,7 +82,6 @@ def scrape_err() -> Dict[str, str]:
         "r2popkorge.mp3": "r2_pop",
         "r2alternatiivkorge.mp3": "r2_alternatiiv",
         "raadiotallinnkorge.mp3": "raadio_tallinn",
-        "raadio4korge.mp3": "raadio_4",
         "vikerraadio.mp3": "vikerraadio_sd"
     }
 
@@ -120,11 +119,11 @@ def scrape_sky() -> Dict[str, str]:
         "RetroJ6ulud": "retro_love",
         "rck": "rock_fm",
         "rckmetal": "rock_fm_metal",
+        "rckclassic": "rock_fm_classic",
         "KISS": "kiss_fm",
         "KISS_AAC": "kiss_fm",
-        "RR": "russkoe_radio",
-        "SKY": "sky_radio",
         "NRJ": "nrj",
+        "NRJdnb": "nrj_dnb",
         "relax": "relax_fm",
         "relax_HD": "relax_fm",
         "cafe": "relax_cafe",
@@ -181,8 +180,7 @@ def scrape_tv3() -> Dict[str, str]:
     pages = {
         "star_fm": "https://raadiod.tv3.ee/starfm/",
         "power_hit_radio": "https://raadiod.tv3.ee/power/",
-        "star_fm_eesti": "https://raadiod.tv3.ee/starfmeesti/",
-        "star_fm_plus": "https://raadiod.tv3.ee/starfmplus/"
+        "star_fm_eesti": "https://raadiod.tv3.ee/starfmeesti/"
     }
 
     results = {

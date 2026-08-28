@@ -454,5 +454,69 @@
     "priority": 1570,
     "countrycode": "EE",
     "fallback_url": "https://s2.radio.co/sadb37cbdb/listen"
+  },
+  "rock_fm_classic": {
+    "id": 107,
+    "name": "Rock FM Classic",
+    "category": "Sky",
+    "priority": 1382,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/rckclassic"
+  },
+  "nrj": {
+    "id": 108,
+    "name": "NRJ",
+    "category": "Sky",
+    "priority": 1385,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/NRJ"
+  },
+  "nrj_dnb": {
+    "id": 109,
+    "name": "NRJ DnB",
+    "category": "Sky",
+    "priority": 1386,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/NRJdnb"
+  },
+  "relax_cafe": {
+    "id": 110,
+    "name": "Relax Cafe",
+    "category": "Sky",
+    "priority": 1396,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/cafe"
+  },
+  "relax_instrumental": {
+    "id": 111,
+    "name": "Relax Instrumental",
+    "category": "Sky",
+    "priority": 1397,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/instrumental"
+  },
+  "relax_international": {
+    "id": 112,
+    "name": "Relax International",
+    "category": "Sky",
+    "priority": 1398,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/international"
+  },
+  "relax_spa": {
+    "id": 113,
+    "name": "Relax SPA",
+    "category": "Sky",
+    "priority": 1399,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/spa"
+  },
+  "raadio_7": {
+    "id": 114,
+    "name": "Raadio 7",
+    "category": "Sky",
+    "priority": 1405,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/R7"
   }
 }
