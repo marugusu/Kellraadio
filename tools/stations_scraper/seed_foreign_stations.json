@@ -1,0 +1,380 @@
+[
+  {
+    "id": 80,
+    "name": "Irish Pub Radio",
+    "url": "http://solid24.streamupsolutions.com:8026/stream",
+    "isActive": true,
+    "priority": 999,
+    "category": "Folk",
+    "countrycode": "IE"
+  },
+  {
+    "id": 81,
+    "name": "Venice Classic Radio",
+    "url": "https://uk2.streamingpulse.com/ssl/vcr1",
+    "isActive": true,
+    "priority": 999,
+    "category": "Cassical",
+    "countrycode": "IT"
+  },
+  {
+    "id": 82,
+    "name": "Radio Heimatmelodie",
+    "url": "http://rhm1.de/listen.mp3",
+    "isActive": true,
+    "priority": 999,
+    "category": "Schlager",
+    "countrycode": "DE"
+  },
+  {
+    "id": 83,
+    "name": "BBC Radio 2",
+    "url": "http://as-hls-ww-live.akamaized.net/pool_74208725/live/ww/bbc_radio_two/bbc_radio_two.isml/bbc_radio_two-audio%3d128000.norewind.m3u8",
+    "isActive": true,
+    "priority": 999,
+    "category": "BBC",
+    "countrycode": "GB"
+  },
+  {
+    "id": 84,
+    "name": "TMM 1 (HQ)",
+    "url": "https://listen-msmn.sharp-stream.com/nme1high.mp3",
+    "isActive": true,
+    "priority": 999,
+    "category": "Rock",
+    "countrycode": "GB"
+  },
+  {
+    "id": 85,
+    "name": "POPfm",
+    "url": "https://stream.madmenmedia.se/popfm",
+    "isActive": true,
+    "priority": 999,
+    "category": "Pop",
+    "countrycode": "FI"
+  },
+  {
+    "id": 86,
+    "name": "Radio SuomiPop",
+    "url": "https://aud-stream-suomipop.nm-elemental.nelonenmedia.fi/playlist-256000.m3u8",
+    "isActive": true,
+    "priority": 999,
+    "category": "Pop",
+    "countrycode": "FI"
+  },
+  {
+    "id": 87,
+    "name": "YleX",
+    "url": "https://yleradiolive.akamaized.net/hls/live/2027674/in-YleX/master.m3u8",
+    "isActive": true,
+    "priority": 999,
+    "category": "YLE",
+    "countrycode": "FI"
+  },
+  {
+    "id": 88,
+    "name": "Hits HQ 70s+",
+    "url": "https://nr8.newradio.it:19574/stream",
+    "isActive": true,
+    "priority": 999,
+    "category": "70s",
+    "countrycode": "IT"
+  },
+  {
+    "id": 89,
+    "name": "RdMix Italo Disco 80s",
+    "url": "https://cast1.torontocast.com:2130/stream",
+    "isActive": true,
+    "priority": 999,
+    "category": "Disco",
+    "countrycode": "CA"
+  },
+  {
+    "id": 90,
+    "name": "RdMix Network 70s 80s 90s",
+    "url": "https://cast1.torontocast.com:1830/stream",
+    "isActive": true,
+    "priority": 999,
+    "category": "My",
+    "countrycode": "CA"
+  },
+  {
+    "id": 91,
+    "name": "Paradise FM 103.1 Curacao",
+    "url": "http://stream.paradisefm.cw/ParadiseFM",
+    "isActive": true,
+    "priority": 999,
+    "category": "My",
+    "countrycode": "CW"
+  },
+  {
+    "id": 92,
+    "name": "talkSPORT 2",
+    "url": "http://radio.talksport.com/stream2",
+    "isActive": true,
+    "priority": 999,
+    "category": "Sport",
+    "countrycode": "GB"
+  },
+  {
+    "id": 93,
+    "name": "talkSPORT",
+    "url": "http://radio.talksport.com/stream?aisGetOriginalStream=true",
+    "isActive": true,
+    "priority": 999,
+    "category": "Sport",
+    "countrycode": "GB"
+  },
+  {
+    "id": 98,
+    "name": ".977 Country",
+    "url": "http://26343.live.streamtheworld.com/977_COUNTRY_SC",
+    "isActive": true,
+    "priority": 999,
+    "category": "Country",
+    "countrycode": "US"
+  },
+  {
+    "id": 99,
+    "name": "181.FM - Old School HipHop/RnB",
+    "url": "http://listen.181fm.com/181-oldschool_128k.mp3",
+    "isActive": true,
+    "priority": 999,
+    "category": "HipHop",
+    "countrycode": "US"
+  },
+  {
+    "id": 100,
+    "name": "CNN",
+    "url": "https://tunein.cdnstream1.com/2868_96.mp3",
+    "isActive": true,
+    "priority": 999,
+    "category": "News",
+    "countrycode": "US"
+  },
+  {
+    "id": 101,
+    "name": "The Big 80s Station",
+    "url": "http://158.69.114.190:8065/;",
+    "isActive": true,
+    "priority": 999,
+    "category": "80s",
+    "countrycode": "US"
+  },
+  {
+    "id": 102,
+    "name": "Radio Paradise Rock Mix",
+    "url": "http://stream.radioparadise.com/rock-320",
+    "isActive": true,
+    "priority": 999,
+    "category": "Rock",
+    "countrycode": "US"
+  },
+  {
+    "id": 103,
+    "name": "SomaFM Underground 80s (128k MP3)",
+    "url": "https://ice6.somafm.com/u80s-128-mp3",
+    "isActive": true,
+    "priority": 999,
+    "category": "80s",
+    "countrycode": "US"
+  },
+  {
+    "id": 104,
+    "name": "BBC Radio 4 Extra (128k)",
+    "url": "http://as-hls-ww-live.akamaized.net/pool_26173715/live/ww/bbc_radio_four_extra/bbc_radio_four_extra.isml/bbc_radio_four_extra-audio%3d128000.norewind.m3u8",
+    "isActive": true,
+    "priority": 999,
+    "category": "My",
+    "countrycode": "GB"
+  },
+  {
+    "id": 105,
+    "name": "Radio Paradise Main Mix",
+    "url": "http://stream-uk1.radioparadise.com/aac-320",
+    "isActive": true,
+    "priority": 999,
+    "category": "Pop",
+    "countrycode": "US"
+  },
+  {
+    "id": 106,
+    "name": "KEXP 90.3 Seattle",
+    "url": "https://kexp.streamguys1.com/kexp160.aac",
+    "isActive": true,
+    "priority": 999,
+    "category": "My",
+    "countrycode": "US"
+  },
+  {
+    "id": 29,
+    "name": "Schlagerparadies",
+    "url": "https://kuschelfm.schlagerparadies.de/schlagerparadies128k.mp3",
+    "isActive": true,
+    "priority": 1510,
+    "category": "Folk",
+    "countrycode": "DE"
+  },
+  {
+    "id": 30,
+    "name": "Antenne Bayern",
+    "url": "https://stream.antenne.de/antenne/stream/mp3",
+    "isActive": true,
+    "priority": 1520,
+    "category": "Pop",
+    "countrycode": "DE"
+  },
+  {
+    "id": 31,
+    "name": "Radio Rock",
+    "url": "https://aud-stream-radiorock.nm-elemental.nelonenmedia.fi/playlist.m3u8",
+    "isActive": true,
+    "priority": 1530,
+    "category": "Rock",
+    "countrycode": "FI"
+  },
+  {
+    "id": 32,
+    "name": "YLE Radio 1",
+    "url": "https://yleradiolive.akamaized.net/hls/live/2027672/in-YleRadio1/master.m3u8",
+    "isActive": true,
+    "priority": 1540,
+    "category": "YLE",
+    "countrycode": "FI"
+  },
+  {
+    "id": 33,
+    "name": "YLE Radio Suomi",
+    "url": "https://yleradiolive.akamaized.net/hls/live/2027706/in-YleKemi/master.m3u8",
+    "isActive": true,
+    "priority": 1550,
+    "category": "YLE",
+    "countrycode": "FI"
+  },
+  {
+    "id": 34,
+    "name": "YLE Sámi Radio",
+    "url": "https://yleradiolive.akamaized.net/hls/live/2027680/in-YleSami/master.m3u8",
+    "isActive": true,
+    "priority": 1560,
+    "category": "YLE",
+    "countrycode": "FI"
+  },
+  {
+    "id": 36,
+    "name": "BBC Radio 1",
+    "url": "https://as-hls-ww-live.akamaized.net/pool_01505109/live/ww/bbc_radio_one/bbc_radio_one.isml/bbc_radio_one-audio=320000.norewind.m3u8",
+    "isActive": true,
+    "priority": 1580,
+    "category": "BBC",
+    "countrycode": "GB"
+  },
+  {
+    "id": 37,
+    "name": "BBC Radio 4",
+    "url": "http://as-hls-ww-live.akamaized.net/pool_55057080/live/ww/bbc_radio_fourfm/bbc_radio_fourfm.isml/bbc_radio_fourfm-audio%3d128000.norewind.m3u8",
+    "isActive": true,
+    "priority": 1590,
+    "category": "BBC",
+    "countrycode": "GB"
+  },
+  {
+    "id": 58,
+    "name": "Capital FM",
+    "url": "https://ice-sov.musicradio.com/CapitalLiverpoolHD?hdauth=:2000000000:a290d4b39a16153061d4c743008b9fe8d424a7e5ec6469d40acf51fdcd336e80",
+    "isActive": true,
+    "priority": 1640,
+    "category": "Pop",
+    "countrycode": "GB"
+  },
+  {
+    "id": 60,
+    "name": "Gold",
+    "url": "https://ice-sov.musicradio.com/GoldHD?hdauth=:2000000000:a290d4b39a16153061d4c743008b9fe8d424a7e5ec6469d40acf51fdcd336e80",
+    "isActive": true,
+    "priority": 1660,
+    "category": "Old",
+    "countrycode": "GB"
+  },
+  {
+    "id": 61,
+    "name": "Heart 70s",
+    "url": "https://ice-sov.musicradio.com/Heart70sHD?hdauth=:2000000000:a290d4b39a16153061d4c743008b9fe8d424a7e5ec6469d40acf51fdcd336e80",
+    "isActive": true,
+    "priority": 1670,
+    "category": "70s",
+    "countrycode": "GB"
+  },
+  {
+    "id": 62,
+    "name": "Heart 80s",
+    "url": "https://ice-sov.musicradio.com/Heart80sHD?hdauth=:2000000000:a290d4b39a16153061d4c743008b9fe8d424a7e5ec6469d40acf51fdcd336e80",
+    "isActive": true,
+    "priority": 1680,
+    "category": "80s",
+    "countrycode": "GB"
+  },
+  {
+    "id": 63,
+    "name": "Heart 90s",
+    "url": "https://ice-sov.musicradio.com/Heart90sHD?hdauth=:2000000000:a290d4b39a16153061d4c743008b9fe8d424a7e5ec6469d40acf51fdcd336e80",
+    "isActive": true,
+    "priority": 1690,
+    "category": "90s",
+    "countrycode": "GB"
+  },
+  {
+    "id": 64,
+    "name": "Bayern 1",
+    "url": "https://mcdn.hf.br.de/br/hf/b1main/master.m3u8",
+    "isActive": true,
+    "priority": 1700,
+    "category": "News",
+    "countrycode": "DE"
+  },
+  {
+    "id": 67,
+    "name": "RTL Radio",
+    "url": "https://stream.rtlradio.de/rtl-de-national/mp3-19",
+    "isActive": true,
+    "priority": 1730,
+    "category": "Pop",
+    "countrycode": "DE"
+  },
+  {
+    "id": 68,
+    "name": "BR24 live",
+    "url": "https://mcdn.hf.br.de/br/hf/br24live/master.m3u8",
+    "isActive": true,
+    "priority": 1740,
+    "category": "News",
+    "countrycode": "DE"
+  },
+  {
+    "id": 69,
+    "name": "Ballermann Radio",
+    "url": "https://s37.derstream.net/bmr-dab.mp3",
+    "isActive": true,
+    "priority": 1750,
+    "category": "Schlager",
+    "countrycode": "DE"
+  },
+  {
+    "id": 50,
+    "name": "Christmas Vinyl HD",
+    "url": "https://icecast.walmradio.com:8443/christmas",
+    "isActive": true,
+    "priority": 1770,
+    "category": "Xmas",
+    "countrycode": "GB"
+  },
+  {
+    "id": 10000,
+    "name": "GB News",
+    "url": "http://listen-gbnews.sharp-stream.com/gbnews.mp3",
+    "isActive": true,
+    "priority": 10000,
+    "category": "My",
+    "countrycode": "GB"
+  }
+]

@@ -1,0 +1,458 @@
+{
+  "vomba_fm": {
+    "id": 94,
+    "name": "Võmba FM",
+    "category": "Muud",
+    "priority": 999,
+    "countrycode": "EE",
+    "fallback_url": "https://c4.radioboss.fm:18123/stream"
+  },
+  "vikerraadio_sd": {
+    "id": 95,
+    "name": "Vikerraadio (sd)",
+    "category": "ERR",
+    "priority": 999,
+    "countrycode": "EE",
+    "fallback_url": "http://icecast.err.ee/vikerraadio.mp3"
+  },
+  "tre_raadio_ring_fm": {
+    "id": 96,
+    "name": "Tre Raadio Ring FM",
+    "category": "Muud",
+    "priority": 999,
+    "countrycode": "EE",
+    "fallback_url": "https://cdn.treraadio.ee/ringfm"
+  },
+  "raadio_kidzone": {
+    "id": 97,
+    "name": "Raadio Kidzone",
+    "category": "Duo",
+    "priority": 999,
+    "countrycode": "EE",
+    "fallback_url": "https://le01.euddn.net/d3234a63af1bebda7d8bf0638f93824f6667da6c452d3a510c06997367525934f604f84c3e966dfa65e330d3b40a4bb1a0ee63ae0f23e6a0203776e0a42bb03365cf559300967b9a4c739e5e9ab4f3f9fb8b5755ab42aaad4507cf3e35c5f5a23cd197d1b435a8c66c22298f65e41ec8a0e8818d86273bd1713706c829829d0e80a749ca4f59004ff5d62b3573eccf55420c548828e0157c66d487a91ab0c488e680b84ac7ae25af76ef1494f6032a9c/kidzone.aac"
+  },
+  "vikerraadio": {
+    "id": 1,
+    "name": "Vikerraadio",
+    "category": "ERR",
+    "priority": 1010,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/vikerraadiokorge.mp3"
+  },
+  "raadio_2": {
+    "id": 2,
+    "name": "Raadio 2",
+    "category": "ERR",
+    "priority": 1020,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/raadio2korge.mp3"
+  },
+  "klassikaraadio": {
+    "id": 3,
+    "name": "Klassikaraadio",
+    "category": "ERR",
+    "priority": 1030,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/klassikaraadiokorge.mp3"
+  },
+  "klara_klassika": {
+    "id": 4,
+    "name": "KlaRa Klassika",
+    "category": "ERR",
+    "priority": 1040,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/klaraklassikakorge.mp3"
+  },
+  "klara_nostalgia": {
+    "id": 5,
+    "name": "KlaRa Nostalgia",
+    "category": "ERR",
+    "priority": 1050,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/klaranostalgiakorge.mp3"
+  },
+  "klara_meditatsioon": {
+    "id": 27,
+    "name": "KlaRa Meditatsioon",
+    "category": "ERR",
+    "priority": 1060,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/klarameditatsioonkorge.mp3"
+  },
+  "klara_jazz": {
+    "id": 6,
+    "name": "KlaRa Jazz",
+    "category": "ERR",
+    "priority": 1070,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/klarajazzkorge.mp3"
+  },
+  "r2_chill": {
+    "id": 21,
+    "name": "R2 Chill",
+    "category": "ERR",
+    "priority": 1080,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/r2chillkorge.mp3"
+  },
+  "r2_rock": {
+    "id": 20,
+    "name": "R2 Rock",
+    "category": "ERR",
+    "priority": 1090,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/r2rockkorge.mp3"
+  },
+  "r2_eesti": {
+    "id": 22,
+    "name": "R2 Eesti",
+    "category": "ERR",
+    "priority": 1100,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/r2eestikorge.mp3"
+  },
+  "r2_music": {
+    "id": 23,
+    "name": "R2 Music",
+    "category": "ERR",
+    "priority": 1110,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/r2musickorge.mp3"
+  },
+  "r2_rap": {
+    "id": 24,
+    "name": "R2 Rap",
+    "category": "ERR",
+    "priority": 1120,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/r2pkorge.mp3"
+  },
+  "r2_pop": {
+    "id": 25,
+    "name": "R2 Pop",
+    "category": "ERR",
+    "priority": 1130,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/r2popkorge.mp3"
+  },
+  "r2_alternatiiv": {
+    "id": 26,
+    "name": "R2 Alternatiiv",
+    "category": "ERR",
+    "priority": 1140,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/r2alternatiivkorge.mp3"
+  },
+  "raadio_tallinn": {
+    "id": 28,
+    "name": "Raadio Tallinn",
+    "category": "ERR",
+    "priority": 1150,
+    "countrycode": "EE",
+    "fallback_url": "https://icecast.err.ee/raadiotallinnkorge.mp3"
+  },
+  "elmar": {
+    "id": 13,
+    "name": "Elmar",
+    "category": "Duo",
+    "priority": 1160,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmar.aac"
+  },
+  "elmar_kuld": {
+    "id": 14,
+    "name": "Elmar Kuld",
+    "category": "Duo",
+    "priority": 1170,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmarikuld.aac"
+  },
+  "elmari_ballaadid": {
+    "id": 15,
+    "name": "Elmari Ballaadid",
+    "category": "Duo",
+    "priority": 1180,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/EB_elmariballaadid.aac"
+  },
+  "kuku": {
+    "id": 16,
+    "name": "Kuku",
+    "category": "Duo",
+    "priority": 1190,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kuku_high.mp3"
+  },
+  "duo_rock": {
+    "id": 9,
+    "name": "Duo Rock",
+    "category": "Duo",
+    "priority": 1200,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/rokk.aac"
+  },
+  "duo_country": {
+    "id": 12,
+    "name": "Duo Country",
+    "category": "Duo",
+    "priority": 1210,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/dc_duocountry.aac"
+  },
+  "duo_gold": {
+    "id": 51,
+    "name": "Duo Gold",
+    "category": "Duo",
+    "priority": 1220,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kuld.aac"
+  },
+  "duo_softmix": {
+    "id": 52,
+    "name": "Duo Softmix",
+    "category": "Duo",
+    "priority": 1230,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/DS_softmix.aac"
+  },
+  "duo_party": {
+    "id": 53,
+    "name": "Duo Party",
+    "category": "Duo",
+    "priority": 1240,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/duodance.aac"
+  },
+  "elmari_tantsuohtu": {
+    "id": 54,
+    "name": "Elmari Tantsuõhtu",
+    "category": "Duo",
+    "priority": 1250,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmaritantsuohtu.aac"
+  },
+  "duo_hitmix": {
+    "id": 55,
+    "name": "Duo Hitmix",
+    "category": "Duo",
+    "priority": 1260,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/DHM_hitmix.aac"
+  },
+  "duo_dance": {
+    "id": 56,
+    "name": "Duo Dance",
+    "category": "Duo",
+    "priority": 1270,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/md_mhdance.aac"
+  },
+  "myhits": {
+    "id": 42,
+    "name": "MyHits",
+    "category": "Duo",
+    "priority": 1280,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/myhits.mp3"
+  },
+  "duo_christmas": {
+    "id": 49,
+    "name": "Duo Christmas",
+    "category": "Duo",
+    "priority": 1290,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/christmas.aac"
+  },
+  "rock_fm": {
+    "id": 7,
+    "name": "Rock FM",
+    "category": "Sky",
+    "priority": 1300,
+    "countrycode": "EE",
+    "fallback_url": "https://edge02.cdn.bitflip.ee:8888/rck"
+  },
+  "retro_fm": {
+    "id": 10,
+    "name": "Retro FM",
+    "category": "Sky",
+    "priority": 1310,
+    "countrycode": "EE",
+    "fallback_url": "https://edge02.cdn.bitflip.ee:8888/RETRO?_i=258f436b"
+  },
+  "retro_fm_eesti": {
+    "id": 11,
+    "name": "Retro FM Eesti",
+    "category": "Sky",
+    "priority": 1320,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/retro2.mp3"
+  },
+  "rock_fm_metal": {
+    "id": 8,
+    "name": "Rock FM Metal",
+    "category": "Sky",
+    "priority": 1330,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/rckmetal"
+  },
+  "legendaarne": {
+    "id": 19,
+    "name": "Legendaarne",
+    "category": "Sky",
+    "priority": 1340,
+    "countrycode": "EE",
+    "fallback_url": "https://streaming.radio.co/s36a57fb00/listen"
+  },
+  "relax_fm": {
+    "id": 57,
+    "name": "Relax FM",
+    "category": "Sky",
+    "priority": 1350,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/relax"
+  },
+  "kiss_fm": {
+    "id": 45,
+    "name": "Kiss FM",
+    "category": "Sky",
+    "priority": 1360,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/KISS_AAC"
+  },
+  "sky_plus": {
+    "id": 46,
+    "name": "Sky Plus",
+    "category": "Sky",
+    "priority": 1370,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/SKYPLUS"
+  },
+  "retro_love": {
+    "id": 48,
+    "name": "Retro Love",
+    "category": "Sky",
+    "priority": 1380,
+    "countrycode": "EE",
+    "fallback_url": "https://edge03.cdn.bitflip.ee:8888/RetroJ6ulud?_i=c2964188"
+  },
+  "retro_disco": {
+    "id": 77,
+    "name": "Retro Disco",
+    "category": "Sky",
+    "priority": 1390,
+    "countrycode": "EE",
+    "fallback_url": "https://stream.skymedia.ee/live/retro1.mp3"
+  },
+  "big_fm": {
+    "id": 78,
+    "name": "Big FM",
+    "category": "Muud",
+    "priority": 1400,
+    "countrycode": "EE",
+    "fallback_url": "https://sc2.flamebox.org/bigfm-hd"
+  },
+  "raadio_kadi": {
+    "id": 17,
+    "name": "Raadio Kadi",
+    "category": "Muud",
+    "priority": 1401,
+    "countrycode": "EE",
+    "fallback_url": "https://edge06.cdn.bitflip.ee:8888/kadi"
+  },
+  "aripaev": {
+    "id": 18,
+    "name": "Äripäev",
+    "category": "Muud",
+    "priority": 1410,
+    "countrycode": "EE",
+    "fallback_url": "https://ice.leviracloud.eu/aripaev320-mp3"
+  },
+  "ida": {
+    "id": 70,
+    "name": "IDA",
+    "category": "Muud",
+    "priority": 1420,
+    "countrycode": "EE",
+    "fallback_url": "https://broadcast.idaidaida.net:8000/stream"
+  },
+  "kaguraadio": {
+    "id": 71,
+    "name": "Kaguraadio",
+    "category": "Muud",
+    "priority": 1430,
+    "countrycode": "EE",
+    "fallback_url": "https://radio.vlevelscdn.net/radio/kaguraadio.stream/playlist.m3u8"
+  },
+  "meie_raadio": {
+    "id": 72,
+    "name": "Meie Raadio",
+    "category": "Muud",
+    "priority": 1440,
+    "countrycode": "EE",
+    "fallback_url": "http://78.28.64.87:8000/meieraadio.mp3"
+  },
+  "raadio_x": {
+    "id": 76,
+    "name": "Raadio X",
+    "category": "Muud",
+    "priority": 1450,
+    "countrycode": "EE",
+    "fallback_url": "https://ice.leviracloud.eu/raadioX320-mp3"
+  },
+  "xfm": {
+    "id": 79,
+    "name": "XFM",
+    "category": "Muud",
+    "priority": 1450,
+    "countrycode": "EE",
+    "fallback_url": "https://stream1.rcast.net/73328"
+  },
+  "star_fm": {
+    "id": 44,
+    "name": "Star FM",
+    "category": "TV3",
+    "priority": 1460,
+    "countrycode": "EE",
+    "fallback_url": "https://ice.leviracloud.eu/star320-mp3"
+  },
+  "star_fm_eesti": {
+    "id": 73,
+    "name": "Star FM Eesti",
+    "category": "TV3",
+    "priority": 1470,
+    "countrycode": "EE",
+    "fallback_url": "https://ice.leviracloud.eu/starFMEesti320-mp3"
+  },
+  "star_fm_80s": {
+    "id": 74,
+    "name": "Star FM 80s",
+    "category": "TV3",
+    "priority": 1480,
+    "countrycode": "EE",
+    "fallback_url": "https://ice.leviracloud.eu/StarFM80s"
+  },
+  "star_fm_90s": {
+    "id": 75,
+    "name": "Star FM 90s",
+    "category": "TV3",
+    "priority": 1490,
+    "countrycode": "EE",
+    "fallback_url": "https://ice.leviracloud.eu/StarFM90s"
+  },
+  "power_hit_radio": {
+    "id": 43,
+    "name": "Power Hit Radio",
+    "category": "TV3",
+    "priority": 1500,
+    "countrycode": "EE",
+    "fallback_url": "https://ice.leviracloud.eu/phr96-aac?"
+  },
+  "finest_fm": {
+    "id": 35,
+    "name": "FinEst FM",
+    "category": "Muud",
+    "priority": 1570,
+    "countrycode": "EE",
+    "fallback_url": "https://s2.radio.co/sadb37cbdb/listen"
+  }
+}

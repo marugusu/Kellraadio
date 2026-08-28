@@ -190,6 +190,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
 
         viewModelScope.launch(Dispatchers.IO) {
+            stationRepository.loadOfflineStationsIfEmpty(context)
             val stations = stationRepository.allStations.first()
             val lastUpdate = prefs.getLong("last_update_time", 0L)
             val oneDayMillis = 24 * 60 * 60 * 1000L

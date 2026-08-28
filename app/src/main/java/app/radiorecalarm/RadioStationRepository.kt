@@ -1,7 +1,9 @@
 package app.radiorecalarm
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
 class RadioStationRepository(
@@ -123,25 +125,48 @@ class RadioStationRepository(
         }
     }
 
+    suspend fun loadOfflineStationsIfEmpty(context: Context) {
+        try {
+            val existingStations = stationDao.getAllActiveStationsSync()
+            if (existingStations.isEmpty()) {
+                context.assets.open("stations.json").use { inputStream ->
+                    val jsonText = inputStream.bufferedReader().readText()
+                    val offlineStations = json.decodeFromString<List<RadioStation>>(jsonText)
+
+                    if (offlineStations.isNotEmpty()) {
+                        stationDao.insertAll(offlineStations)
+                        Log.d("RADIO_DEBUG", "Laaditud ${offlineStations.size} jaama kohalikust varukoopiast (assets).")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("RADIO_DEBUG", "Viga kohalike jaamade laadimisel: ${e.message}")
+        }
+    }
+
     suspend fun refreshStations() {
         try {
             Log.d("RADIO_DEBUG", "Alustan jaamade värskendamist...")
             val existingStations = stationDao.getAllActiveStationsSync()
-            val favoriteData = existingStations.filter { it.isFavorite }.associate { it.id to it.favoriteOrder }
+            // Säilitame lemmikud nii ID kui ka URL järgi (topeltkindlus jaamade nihkumise vastu)
+            val favoriteById = existingStations.filter { it.isFavorite }.associate { it.id to it.favoriteOrder }
+            val favoriteByUrl = existingStations.filter { it.isFavorite }.associate { it.url to it.favoriteOrder }
             val remoteStations = apiService.getStations(System.currentTimeMillis())
 
             if (remoteStations.isNotEmpty()) {
                 val updatedStations = remoteStations.map { remote ->
+                    val isFav = favoriteById.containsKey(remote.id) || favoriteByUrl.containsKey(remote.url)
+                    val favOrder = favoriteById[remote.id] ?: favoriteByUrl[remote.url] ?: 0
                     remote.copy(
-                        isFavorite = favoriteData.containsKey(remote.id),
-                        favoriteOrder = favoriteData[remote.id] ?: 0,
+                        isFavorite = isFav,
+                        favoriteOrder = favOrder,
                         isUserStation = false,
                         uuid = ""
                     )
                 }
                 stationDao.insertAll(updatedStations)
                 stationDao.deleteMissing(updatedStations.map { it.id })
-                Log.d("RADIO_DEBUG", "Uuendatud.")
+                Log.d("RADIO_DEBUG", "Jaamade nimekiri edukalt uuendatud.")
             }
         } catch (e: Exception) {
             Log.e("RADIO_DEBUG", "Viga värskendamisel: ${e.message}")
@@ -182,6 +207,13 @@ class RadioStationRepository(
         } catch (e: Exception) {
             android.util.Log.e("RADIO_DEBUG", "Otsingu viga: ${e.message}")
             emptyList()
+        }
+    }
+
+    companion object {
+        private val json = Json {
+            ignoreUnknownKeys = true
+            coerceInputValues = true
         }
     }
 }

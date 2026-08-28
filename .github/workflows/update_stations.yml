@@ -1,0 +1,43 @@
+name: Update Stations List
+
+on:
+  schedule:
+    # Käivitub igal öösel kell 04:00 UTC (Eesti aja järgi kell 06:00 või 07:00)
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    # Võimaldab käsitsi käivitamist GitHubi lehelt
+
+permissions:
+  contents: write
+
+jobs:
+  update-stations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Stations Scraper & Generator
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ vars.GIST_ID || 'e886795e2e2ae5df7b9573bd3f84333b' }}
+        run: |
+          python tools/stations_scraper/generate_stations.py --publish
+
+      - name: Commit and push changes if assets updated
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/assets/stations.json tools/stations_scraper/
+          if git diff --staged --quiet; then
+            echo "No changes in station list."
+          else
+            git commit -m "Auto-update radio stations list [skip ci]"
+            git push
+          fi
