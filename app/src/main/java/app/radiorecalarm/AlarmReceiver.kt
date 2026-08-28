@@ -21,44 +21,51 @@ class AlarmReceiver : BroadcastReceiver() {
             return
         }
 
-        // 2. Käivita Coroutine, et teha andmebaasi päring taustalõimes
+        // 2. Käivita Coroutine goAsync abil, et hoida protsessor ärkvel kuni andmebaasipäring ja teenus on käivitatud
+        val pendingResult = goAsync()
         val scope = CoroutineScope(Dispatchers.IO)
         scope.launch {
-            val db = AppDatabase.getDatabase(context)
-            val alarm = db.alarmDao().getAlarmById(alarmId)
+            try {
+                val db = AppDatabase.getDatabase(context)
+                val alarm = db.alarmDao().getAlarmById(alarmId)
 
-            if (alarm == null) {
-                Log.e("AlarmReceiver", "Andmebaasist ei leitud äratust ID-ga $alarmId")
-                return@launch
-            }
+                if (alarm == null) {
+                    Log.e("AlarmReceiver", "Andmebaasist ei leitud äratust ID-ga $alarmId")
+                    return@launch
+                }
 
-            // 3. Kontrolli, kas äratus on korduv või ühekordne
-            if (alarm.days.isNotEmpty()) {
-                // KORDUV: Seadistame kohe järgmise äratuse taustal sama ID-ga
-                AlarmUtils.reScheduleRepeatingAlarm(context, alarm)
-            } else {
-                // ÜHEKORDNE: Märgime äratuse andmebaasis mitteaktiivseks
-                val updatedAlarm = alarm.copy(isEnabled = false)
-                db.alarmDao().update(updatedAlarm)
-                Log.d("AlarmReceiver", "Ühekordne äratus (ID: $alarmId) deaktiveeritud.")
-            }
+                // 3. Kontrolli, kas äratus on korduv või ühekordne
+                if (alarm.days.isNotEmpty()) {
+                    // KORDUV: Seadistame kohe järgmise äratuse taustal sama ID-ga
+                    AlarmUtils.reScheduleRepeatingAlarm(context, alarm)
+                } else {
+                    // ÜHEKORDNE: Märgime äratuse andmebaasis mitteaktiivseks
+                    val updatedAlarm = alarm.copy(isEnabled = false)
+                    db.alarmDao().update(updatedAlarm)
+                    Log.d("AlarmReceiver", "Ühekordne äratus (ID: $alarmId) deaktiveeritud.")
+                }
 
-            // 4. Teavita UI-d (kui see on avatud), et see saaks oma olekut uuendada
-            val uiUpdateIntent = Intent("app.radiorecalarm.ALARMS_CHANGED")
-            LocalBroadcastManager.getInstance(context).sendBroadcast(uiUpdateIntent)
+                // 4. Teavita UI-d (kui see on avatud), et see saaks oma olekut uuendada
+                val uiUpdateIntent = Intent("app.radiorecalarm.ALARMS_CHANGED")
+                LocalBroadcastManager.getInstance(context).sendBroadcast(uiUpdateIntent)
 
-            // 5. Käivita raadio (Foreground Service)
-            // Kasutame andmeid otse 'alarm' objektist, mis on alati ajakohane.
-            val serviceIntent = Intent(context, RadioService::class.java).apply {
-                putExtra("STREAM_URL", alarm.stationUrl)
-                putExtra("STATION_NAME", alarm.stationName)
-                putExtra("TRIGGERED_BY", "ALARM")
-            }
+                // 5. Käivita raadio (Foreground Service)
+                // Kasutame andmeid otse 'alarm' objektist, mis on alati ajakohane.
+                val serviceIntent = Intent(context, RadioService::class.java).apply {
+                    putExtra("STREAM_URL", alarm.stationUrl)
+                    putExtra("STATION_NAME", alarm.stationName)
+                    putExtra("TRIGGERED_BY", "ALARM")
+                }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } catch (e: Exception) {
+                Log.e("AlarmReceiver", "Viga äratuse käivitamisel: ${e.message}", e)
+            } finally {
+                pendingResult.finish()
             }
         }
     }
