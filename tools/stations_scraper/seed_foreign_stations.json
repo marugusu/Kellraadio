@@ -6,7 +6,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Folk",
-    "countrycode": "IE"
+    "countrycode": "IE",
+    "isUserStation": true
   },
   {
     "id": 81,
@@ -15,7 +16,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Cassical",
-    "countrycode": "IT"
+    "countrycode": "IT",
+    "isUserStation": true
   },
   {
     "id": 82,
@@ -24,7 +26,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Schlager",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "isUserStation": true
   },
   {
     "id": 83,
@@ -33,7 +36,8 @@
     "isActive": true,
     "priority": 999,
     "category": "BBC",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 84,
@@ -42,7 +46,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Rock",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 85,
@@ -51,7 +56,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Pop",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "isUserStation": true
   },
   {
     "id": 86,
@@ -60,7 +66,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Pop",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "isUserStation": true
   },
   {
     "id": 87,
@@ -69,7 +76,8 @@
     "isActive": true,
     "priority": 999,
     "category": "YLE",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "isUserStation": true
   },
   {
     "id": 88,
@@ -78,7 +86,8 @@
     "isActive": true,
     "priority": 999,
     "category": "70s",
-    "countrycode": "IT"
+    "countrycode": "IT",
+    "isUserStation": true
   },
   {
     "id": 89,
@@ -87,7 +96,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Disco",
-    "countrycode": "CA"
+    "countrycode": "CA",
+    "isUserStation": true
   },
   {
     "id": 90,
@@ -96,7 +106,8 @@
     "isActive": true,
     "priority": 999,
     "category": "My",
-    "countrycode": "CA"
+    "countrycode": "CA",
+    "isUserStation": true
   },
   {
     "id": 91,
@@ -105,7 +116,8 @@
     "isActive": true,
     "priority": 999,
     "category": "My",
-    "countrycode": "CW"
+    "countrycode": "CW",
+    "isUserStation": true
   },
   {
     "id": 92,
@@ -114,7 +126,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Sport",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 93,
@@ -123,7 +136,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Sport",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 98,
@@ -132,7 +146,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Country",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 99,
@@ -141,7 +156,8 @@
     "isActive": true,
     "priority": 999,
     "category": "HipHop",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 100,
@@ -150,7 +166,8 @@
     "isActive": true,
     "priority": 999,
     "category": "News",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 101,
@@ -159,7 +176,8 @@
     "isActive": true,
     "priority": 999,
     "category": "80s",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 102,
@@ -168,7 +186,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Rock",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 103,
@@ -177,7 +196,8 @@
     "isActive": true,
     "priority": 999,
     "category": "80s",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 104,
@@ -186,7 +206,8 @@
     "isActive": true,
     "priority": 999,
     "category": "My",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 105,
@@ -195,7 +216,8 @@
     "isActive": true,
     "priority": 999,
     "category": "Pop",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 106,
@@ -204,7 +226,8 @@
     "isActive": true,
     "priority": 999,
     "category": "My",
-    "countrycode": "US"
+    "countrycode": "US",
+    "isUserStation": true
   },
   {
     "id": 29,
@@ -213,7 +236,8 @@
     "isActive": true,
     "priority": 1510,
     "category": "Folk",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "isUserStation": true
   },
   {
     "id": 30,
@@ -222,7 +246,8 @@
     "isActive": true,
     "priority": 1520,
     "category": "Pop",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "isUserStation": true
   },
   {
     "id": 31,
@@ -231,7 +256,8 @@
     "isActive": true,
     "priority": 1530,
     "category": "Rock",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "isUserStation": true
   },
   {
     "id": 32,
@@ -240,7 +266,8 @@
     "isActive": true,
     "priority": 1540,
     "category": "YLE",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "isUserStation": true
   },
   {
     "id": 33,
@@ -249,7 +276,8 @@
     "isActive": true,
     "priority": 1550,
     "category": "YLE",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "isUserStation": true
   },
   {
     "id": 34,
@@ -258,7 +286,8 @@
     "isActive": true,
     "priority": 1560,
     "category": "YLE",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "isUserStation": true
   },
   {
     "id": 36,
@@ -267,7 +296,8 @@
     "isActive": true,
     "priority": 1580,
     "category": "BBC",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 37,
@@ -276,7 +306,8 @@
     "isActive": true,
     "priority": 1590,
     "category": "BBC",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 58,
@@ -285,7 +316,8 @@
     "isActive": true,
     "priority": 1640,
     "category": "Pop",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 60,
@@ -294,7 +326,8 @@
     "isActive": true,
     "priority": 1660,
     "category": "Old",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 61,
@@ -303,7 +336,8 @@
     "isActive": true,
     "priority": 1670,
     "category": "70s",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 62,
@@ -312,7 +346,8 @@
     "isActive": true,
     "priority": 1680,
     "category": "80s",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 63,
@@ -321,7 +356,8 @@
     "isActive": true,
     "priority": 1690,
     "category": "90s",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 64,
@@ -330,7 +366,8 @@
     "isActive": true,
     "priority": 1700,
     "category": "News",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "isUserStation": true
   },
   {
     "id": 67,
@@ -339,7 +376,8 @@
     "isActive": true,
     "priority": 1730,
     "category": "Pop",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "isUserStation": true
   },
   {
     "id": 68,
@@ -348,7 +386,8 @@
     "isActive": true,
     "priority": 1740,
     "category": "News",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "isUserStation": true
   },
   {
     "id": 69,
@@ -357,7 +396,8 @@
     "isActive": true,
     "priority": 1750,
     "category": "Schlager",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "isUserStation": true
   },
   {
     "id": 50,
@@ -366,7 +406,8 @@
     "isActive": true,
     "priority": 1770,
     "category": "Xmas",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   },
   {
     "id": 10000,
@@ -375,6 +416,7 @@
     "isActive": true,
     "priority": 10000,
     "category": "My",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "isUserStation": true
   }
 ]

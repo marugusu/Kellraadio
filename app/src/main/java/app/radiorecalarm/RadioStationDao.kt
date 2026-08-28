@@ -51,4 +51,7 @@ interface RadioStationDao {
 
     @Query("UPDATE stations SET isFavorite = 0, favoriteOrder = 0")
     suspend fun resetAllFavorites()
+
+    @Query("UPDATE stations SET isUserStation = 1 WHERE id >= 80")
+    suspend fun restoreUserStations()
 }
