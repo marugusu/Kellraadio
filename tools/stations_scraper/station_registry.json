@@ -486,5 +486,13 @@
     "priority": 1405,
     "countrycode": "EE",
     "fallback_url": "https://stream.skymedia.ee/live/R7"
+  },
+  "raadio_kidzone": {
+    "id": 59,
+    "name": "Raadio Kidzone",
+    "category": "Duo",
+    "priority": 1280,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kidzone.aac"
   }
 }

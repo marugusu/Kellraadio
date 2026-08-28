@@ -223,7 +223,8 @@ def get_duo_streams() -> Dict[str, str]:
         "duo_party": f"{base}/duodance.aac",
         "duo_hitmix": f"{base}/DHM_hitmix.aac",
         "duo_dance": f"{base}/md_mhdance.aac",
-        "duo_christmas": f"{base}/christmas.aac"
+        "duo_christmas": f"{base}/christmas.aac",
+        "raadio_kidzone": f"{base}/kidzone.aac"
     }
 
 

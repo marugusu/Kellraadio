@@ -252,6 +252,15 @@
     "countrycode": "EE"
   },
   {
+    "id": 59,
+    "name": "Raadio Kidzone",
+    "url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kidzone.aac",
+    "isActive": true,
+    "priority": 1280,
+    "category": "Duo",
+    "countrycode": "EE"
+  },
+  {
     "id": 49,
     "name": "Duo Christmas",
     "url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/christmas.aac",
