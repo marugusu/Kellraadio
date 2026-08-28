@@ -704,7 +704,7 @@
   {
     "id": 43,
     "name": "Power Hit Radio",
-    "url": "https://ice.leviracloud.eu/phr128-aac",
+    "url": "https://ice.leviracloud.eu/phr96-aac?",
     "isActive": true,
     "priority": 1500,
     "category": "TV3",
