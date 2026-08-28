@@ -81,8 +81,7 @@ def scrape_err() -> Dict[str, str]:
         "r2pkorge.mp3": "r2_rap",
         "r2popkorge.mp3": "r2_pop",
         "r2alternatiivkorge.mp3": "r2_alternatiiv",
-        "raadiotallinnkorge.mp3": "raadio_tallinn",
-        "vikerraadio.mp3": "vikerraadio_sd"
+        "raadiotallinnkorge.mp3": "raadio_tallinn"
     }
 
     results = {}
@@ -224,8 +223,7 @@ def get_duo_streams() -> Dict[str, str]:
         "duo_party": f"{base}/duodance.aac",
         "duo_hitmix": f"{base}/DHM_hitmix.aac",
         "duo_dance": f"{base}/md_mhdance.aac",
-        "duo_christmas": f"{base}/christmas.aac",
-        "raadio_kidzone": f"{base}/kidzone.aac"
+        "duo_christmas": f"{base}/christmas.aac"
     }
 
 

@@ -139,8 +139,6 @@ class RadioStationRepository(
                     }
                 }
             }
-            // Eneseparandus: tagame, et kõik kasutaja lisatud jaamad (id >= 80) omavad isUserStation = 1
-            stationDao.restoreUserStations()
         } catch (e: Exception) {
             Log.e("RADIO_DEBUG", "Viga kohalike jaamade laadimisel: ${e.message}")
         }
@@ -150,22 +148,19 @@ class RadioStationRepository(
         try {
             Log.d("RADIO_DEBUG", "Alustan jaamade värskendamist...")
             val existingStations = stationDao.getAllActiveStationsSync()
-            val existingById = existingStations.associateBy { it.id }
-            val existingByUrl = existingStations.associateBy { it.url }
+            val favoriteById = existingStations.filter { it.isFavorite }.associate { it.id to it.favoriteOrder }
+            val favoriteByUrl = existingStations.filter { it.isFavorite }.associate { it.url to it.favoriteOrder }
             val remoteStations = apiService.getStations(System.currentTimeMillis())
 
             if (remoteStations.isNotEmpty()) {
                 val updatedStations = remoteStations.map { remote ->
-                    val existing = existingById[remote.id] ?: existingByUrl[remote.url]
-                    val isFav = existing?.isFavorite ?: false
-                    val favOrder = existing?.favoriteOrder ?: 0
-                    // SÄILITA KASUTAJA JAAMA STAATUS (KASUTAJA JAAMAD JÄÄVAD ALATI KASUTAJA JAAMADEKS)
-                    val isUser = existing?.isUserStation == true || remote.isUserStation || (remote.id >= 80)
+                    val isFav = favoriteById.containsKey(remote.id) || favoriteByUrl.containsKey(remote.url)
+                    val favOrder = favoriteById[remote.id] ?: favoriteByUrl[remote.url] ?: 0
                     remote.copy(
                         isFavorite = isFav,
                         favoriteOrder = favOrder,
-                        isUserStation = isUser,
-                        uuid = existing?.uuid ?: ""
+                        isUserStation = false,
+                        uuid = ""
                     )
                 }
                 stationDao.insertAll(updatedStations)
