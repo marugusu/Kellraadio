@@ -31,7 +31,7 @@ OUTPUT_JSON_PATH = os.path.join(DIST_DIR, "stations.json")
 APP_ASSETS_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "app", "src", "main", "assets"))
 APP_ASSETS_JSON = os.path.join(APP_ASSETS_DIR, "stations.json")
 
-USER_AGENT = "KellraadioStationBot/1.0 (+https://github.com/marugusu/Kellraadio)"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 
 def fetch_json(url: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
