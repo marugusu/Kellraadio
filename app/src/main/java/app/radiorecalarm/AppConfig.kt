@@ -15,6 +15,11 @@ object AppConfig {
         const val ITUNES_BASE_URL = "https://itunes.apple.com/"
         const val MUSICBRAINZ_BASE_URL = "https://musicbrainz.org/ws/2/"
 
+        // GitHub Releases API (äpisisene uuendus)
+        const val GITHUB_API_BASE_URL = "https://api.github.com/"
+        const val GITHUB_REPO_OWNER = "marugusu"
+        const val GITHUB_REPO_NAME = "Kellraadio"
+
         // Viisakas on öelda API-le, kes me oleme
         const val USER_AGENT = "radiow/1.0 ( radiow.ct.ws@gmail.com )"
     }

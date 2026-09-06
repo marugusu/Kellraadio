@@ -4,6 +4,7 @@ import app.radiorecalarm.Alarm
 import app.radiorecalarm.RadioFilterItem
 import app.radiorecalarm.RadioStation
 import app.radiorecalarm.SongAdditionalInfo
+import app.radiorecalarm.update.UpdateUiState
 
 data class MainUiState(
     // --- RAADIO MÄNGIJA OLEK ---
@@ -55,5 +56,8 @@ data class MainUiState(
     val showSongInfoSheet: Boolean = false,
     val stationToDelete: RadioStation? = null,
     val stationToEdit: RadioStation? = null,
-    val showResetOrderDialog: Boolean = false
+    val showResetOrderDialog: Boolean = false,
+
+    // --- UUENDUSTE OLEK ---
+    val updateState: UpdateUiState = UpdateUiState.Idle
 )

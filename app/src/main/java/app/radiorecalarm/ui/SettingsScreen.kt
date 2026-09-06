@@ -33,6 +33,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import app.radiorecalarm.LogExporter
 import app.radiorecalarm.R
+import app.radiorecalarm.update.GitHubRelease
+import app.radiorecalarm.update.GitHubReleaseAsset
+import app.radiorecalarm.update.UpdateUiState
+import java.io.File
 import kotlin.math.roundToInt
 
 data class AppLanguage(val code: String, val flag: String, val name: String)
@@ -62,6 +66,13 @@ fun SettingsScreen(
     onWidgetTransparencyChange: (Float) -> Unit,
     onExportData: () -> Unit,
     onImportData: () -> Unit,
+    updateState: UpdateUiState = UpdateUiState.Idle,
+    onCheckForUpdates: (String) -> Unit = {},
+    onDownloadUpdate: (GitHubRelease, GitHubReleaseAsset) -> Unit = { _, _ -> },
+    onInstallUpdate: (File) -> Unit = {},
+    onDismissUpdateDialog: () -> Unit = {},
+    canInstallPackages: Boolean = true,
+    onRequestInstallPermission: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -241,6 +252,19 @@ fun SettingsScreen(
             // GRUPP 5: ABI JA DIAGNOSTIKA
             SettingsSection(title = stringResource(R.string.settings_group_help)) {
                 SettingsRow(
+                    headline = stringResource(R.string.settings_check_updates),
+                    supporting = when (updateState) {
+                        is UpdateUiState.Checking -> stringResource(R.string.settings_checking_updates)
+                        is UpdateUiState.UpdateAvailable -> stringResource(R.string.update_dialog_version, updateState.release.tagName)
+                        is UpdateUiState.UpToDate -> stringResource(R.string.update_already_latest, updateState.currentVersion)
+                        else -> stringResource(R.string.settings_check_updates_desc)
+                    },
+                    icon = Icons.Default.SystemUpdate,
+                    isLoading = updateState is UpdateUiState.Checking,
+                    onClick = { onCheckForUpdates(appVersion) }
+                )
+                SettingsDivider()
+                SettingsRow(
                     headline = stringResource(R.string.settings_send_log),
                     supporting = stringResource(R.string.settings_send_log_desc),
                     icon = Icons.Default.BugReport,
@@ -340,6 +364,15 @@ fun SettingsScreen(
             }
         }
     }
+
+    UpdateDialog(
+        state = updateState,
+        canInstallPackages = canInstallPackages,
+        onDismiss = onDismissUpdateDialog,
+        onDownload = onDownloadUpdate,
+        onInstall = onInstallUpdate,
+        onRequestPermission = onRequestInstallPermission
+    )
 }
 
 /**

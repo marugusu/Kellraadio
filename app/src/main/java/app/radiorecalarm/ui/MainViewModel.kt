@@ -22,6 +22,11 @@ import app.radiorecalarm.RadioService
 import app.radiorecalarm.RadioStation
 import app.radiorecalarm.RadioStationRepository
 import app.radiorecalarm.StationApiService
+import app.radiorecalarm.update.AppUpdateManager
+import app.radiorecalarm.update.GitHubRelease
+import app.radiorecalarm.update.GitHubReleaseAsset
+import app.radiorecalarm.update.UpdateUiState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -29,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.File
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -793,6 +799,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    // --- ÄPISISENE UUENDUS (IN-APP UPDATER) ---
+    val updateManager = AppUpdateManager(context)
+    private var downloadJob: Job? = null
+
+    fun checkForUpdates(currentVersion: String) {
+        _uiState.update { it.copy(updateState = UpdateUiState.Checking) }
+        viewModelScope.launch {
+            val result = updateManager.checkForUpdate(currentVersion)
+            _uiState.update { it.copy(updateState = result) }
+        }
+    }
+
+    fun downloadUpdate(release: GitHubRelease, asset: GitHubReleaseAsset) {
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
+            updateManager.downloadApk(release, asset).collect { state ->
+                _uiState.update { it.copy(updateState = state) }
+            }
+        }
+    }
+
+    fun installUpdate(apkFile: File) {
+        updateManager.installApk(apkFile)
+    }
+
+    fun dismissUpdateDialog() {
+        downloadJob?.cancel()
+        downloadJob = null
+        _uiState.update { it.copy(updateState = UpdateUiState.Idle) }
+    }
+
+    fun canInstallPackages(): Boolean = updateManager.canInstallPackages()
+
+    fun openInstallPermissionSettings() = updateManager.openInstallPermissionSettings()
 }
 
 @Serializable

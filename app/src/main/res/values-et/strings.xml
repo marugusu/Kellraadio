@@ -191,4 +191,19 @@
     <string name="backup_failed">Eksport ebaõnnestus: %1$s</string>
     <string name="restore_success">Andmed edukalt taastatud!</string>
     <string name="restore_failed">Taastamine ebaõnnestus: %1$s</string>
+
+    <!-- In-App Updates -->
+    <string name="settings_group_updates">Uuendused</string>
+    <string name="settings_check_updates">Kontrolli uuendusi</string>
+    <string name="settings_check_updates_desc">Otsi GitHubist rakenduse uuemat versiooni</string>
+    <string name="settings_checking_updates">Kontrollin uuendusi...</string>
+    <string name="update_dialog_title">Uus versioon saadaval</string>
+    <string name="update_dialog_version">Versioon %1$s</string>
+    <string name="update_dialog_changelog">Muudatuste nimekiri:</string>
+    <string name="update_action_download">Laadi alla ja paigalda</string>
+    <string name="update_action_install">Paigalda uuendus</string>
+    <string name="update_downloading">Laadin uuendust alla… (%1$d%%)</string>
+    <string name="update_already_latest">Rakendus on ajakohane (%1$s)</string>
+    <string name="update_permission_required">Äppide paigaldamiseks on vaja luba. Palun luba see seadetes.</string>
+    <string name="update_open_settings">Ava seaded</string>
 </resources>

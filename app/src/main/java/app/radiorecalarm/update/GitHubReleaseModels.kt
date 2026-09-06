@@ -1,0 +1,33 @@
+package app.radiorecalarm.update
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * GitHub Releases API vastuse mudel.
+ */
+@Serializable
+data class GitHubRelease(
+    @SerialName("tag_name")
+    val tagName: String,
+    val name: String? = null,
+    val body: String? = null,
+    @SerialName("published_at")
+    val publishedAt: String? = null,
+    val prerelease: Boolean = false,
+    val draft: Boolean = false,
+    val assets: List<GitHubReleaseAsset> = emptyList()
+)
+
+/**
+ * Väljalaske lisafaili (nt APK) mudel.
+ */
+@Serializable
+data class GitHubReleaseAsset(
+    val name: String,
+    val size: Long = 0L,
+    @SerialName("browser_download_url")
+    val browserDownloadUrl: String,
+    @SerialName("content_type")
+    val contentType: String? = null
+)
