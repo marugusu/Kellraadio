@@ -9,7 +9,7 @@ Use this skill when you need to introduce new network calls, fetch external data
 
 ## Trigger Scenarios
 
-*   The user requests: "fetch lyrics from a different website", "connect to a new search API", or "parse this online JSON playlist".
+*   The user requests: "fetch lyrics from a different website", "connect to a new search API", "check releases from GitHub", or "parse this online JSON playlist".
 *   You find yourself modifying network layer files, adding interfaces with `@GET` / `@POST`, or creating `@Serializable` data classes.
 
 ## Procedural Walkthrough
@@ -28,7 +28,7 @@ Use this skill when you need to introduce new network calls, fetch external data
 3.  Ensure all optional keys or keys that might be missing are marked as nullable (e.g., `String? = null`) or have a default value to prevent serialization failures.
 
 ### Step 2: Declare the Retrofit Interface
-1.  Define the query parameters and paths.
+1.  Define the query parameters, path variables, and headers.
     *   *Example:*
         ```kotlin
         interface CustomLyricsApi {
@@ -39,15 +39,21 @@ Use this skill when you need to introduce new network calls, fetch external data
             ): LyricResponse
         }
         ```
+    *   For streaming large files (like APK downloads in [GitHubReleaseApiService.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/update/GitHubReleaseApiService.kt)):
+        ```kotlin
+        @Streaming
+        @GET
+        suspend fun downloadFile(@Url fileUrl: String): ResponseBody
+        ```
 
 ### Step 3: Register API Base URL
-1.  Open [AppConfig.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/ws/ct/radiow/AppConfig.kt).
+1.  Open [AppConfig.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/AppConfig.kt).
 2.  Locate `object Api`.
 3.  Add your base URL constant there (e.g., `const val LYRICS_PROVIDER_BASE_URL = "https://api.lyrics.com/"`).
 
 ### Step 4: Configure the Retrofit Instance & OkHttpClient
-Initialize the API client inside your Repository (like [MusicInfoServices.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/ws/ct/radiow/MusicInfoServices.kt)):
-1.  Use `OkHttpClient` to set connection timeouts and register user-agent headers. Always add a logging interceptor for debugging:
+Initialize the API client inside your Repository (like [MusicInfoServices.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/MusicInfoServices.kt)):
+1.  Use `OkHttpClient` to set connection timeouts and register user-agent headers:
     ```kotlin
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -81,6 +87,6 @@ Initialize the API client inside your Repository (like [MusicInfoServices.kt](fi
 
 ## Verification Checklists
 
-- [ ] Verify serialization handles empty/null responses without crashing.
+- [ ] Verify serialization handles empty/null responses without crashing (`Json { ignoreUnknownKeys = true }`).
 - [ ] Ensure correct User-Agent is sent in headers (`AppConfig.Api.USER_AGENT`).
-- [ ] Verify that timeout errors are caught gracefully and do not crash the app UI.
+- [ ] Verify that timeout and HTTP errors (such as 404) are caught gracefully and do not crash the app UI.

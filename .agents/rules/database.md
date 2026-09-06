@@ -4,11 +4,11 @@ Guidelines for modifying or extending the local Room persistence layer of the Ke
 
 ## Core Database Configuration
 
-*   **Database Class**: `AppDatabase.kt` is the central database entry point. It registers all database `@Database` entities, Version, TypeConverters, and migrations.
+*   **Database Class**: [AppDatabase.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/AppDatabase.kt) is the central database entry point (`app.radiorecalarm.AppDatabase`). It registers all database `@Database` entities, Version (currently `version = 9`), TypeConverters, and migrations.
 *   **Existing Entities**:
-    1.  `RadioStation` (`stations` table) - Represents standard and user-defined radio channels.
-    2.  `HistoryItem` (`history` table) - Represents played track metadata for playback history.
-    3.  `Alarm` (`alarms` table) - Represents user-configured waking alarms.
+    1.  [RadioStation.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/RadioStation.kt) (`stations` table) - Represents standard and user-defined radio channels.
+    2.  [HistoryItem.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/HistoryItem.kt) (`history` table) - Represents played track metadata for playback history.
+    3.  [Alarm.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/Alarm.kt) (`alarms` table) - Represents user-configured waking alarms.
 
 ## Rule: Schema & Entities Modification
 

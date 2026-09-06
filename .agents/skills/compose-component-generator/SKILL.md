@@ -42,9 +42,9 @@ To keep components reusable and testable:
 
 ### Step 2: Use MaterialTheme Styling (No Hardcoding Colors)
 Always read styling tokens from the active MaterialTheme:
-*   **Colors**: Use `MaterialTheme.colorScheme.primary`, `onSurface`, `surfaceVariant`, `background`, etc. Refer to [MainActivity.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/ws/ct/radiow/MainActivity.kt) for the dark color palette specifications.
+*   **Colors**: Use `MaterialTheme.colorScheme.primary`, `onSurface`, `surfaceVariant`, `background`, etc. Refer to [MainActivity.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/MainActivity.kt) for the dark color palette specifications.
 *   **Typography**: Use `MaterialTheme.typography.titleMedium`, `bodyMedium`, etc.
-*   **Shapes**: Use `RoundedCornerShape(12.dp)` or `MaterialTheme.shapes` for panels.
+*   **Shapes**: Use `RoundedCornerShape(8.dp)` or `12.dp` matching the Braun/Hi-Fi minimal aesthetic.
 
 ### Step 3: Implement Responsive & Adaptive Layouts
 Ensure the UI adapts correctly on landscape, portrait, and larger screens:
@@ -57,7 +57,12 @@ Ensure the UI adapts correctly on landscape, portrait, and larger screens:
 2.  Use standard weight-based column scaling. For instance, on wide screens (>= 500dp), partition layouts using row structures (`Row`) instead of stacked vertical panels (`Column`).
 3.  Ensure touch targets are at least `48.dp` in size for accessibility.
 
-### Step 4: Include Compose Previews
+### Step 4: Lifecycle & Permissions Awareness
+When launching external system dialogs or Settings intents (e.g. unknown app install permission):
+*   Use `rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult())`.
+*   Combine with `LocalLifecycleOwner.current` and `LifecycleEventObserver(ON_RESUME)` so that state is refreshed immediately when returning to the app without requiring manual user cancellation or dialog reloading.
+
+### Step 5: Include Compose Previews
 For every newly created UI component, write a corresponding `@Preview` function at the bottom of the file:
 ```kotlin
 @Preview(showBackground = true)
@@ -75,6 +80,6 @@ fun CustomFeatureButtonPreview() {
 
 ## Verification Checklists
 
-- [ ] Verify that UI runs correctly under both portrait and landscape orientation without wrapping issues.
+- [ ] Verify that UI runs correctly under both portrait and landscape orientation without clipping or wrapping issues.
 - [ ] Ensure that colors are high contrast and legible under the dark color theme.
 - [ ] Verify that no warnings/errors are raised during layout previews.
