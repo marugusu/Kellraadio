@@ -66,6 +66,7 @@ class RadioService : Service() {
     private var currentStationBitmap: android.graphics.Bitmap? = null
 
     private var isChangingStation = false
+    private var isInitialStationPlayback = false
     private var currentCategory: String = ""
     private var lastBitrateInfo: String = ""
 
@@ -121,10 +122,8 @@ class RadioService : Service() {
             
             serviceScope.launch(Dispatchers.Main) {
                 if (::player.isInitialized && player.playWhenReady && !player.isPlaying && !isChangingStation) {
-                    Log.d(TAG, "VÕRK: Ühendus taastus ja raadio ei mängi. Proovin uuesti ühendada...")
-                    if (currentStreamUrl.isNotEmpty()) {
-                        playStation(currentStreamUrl, currentStationName, "NETWORK_RESTORED")
-                    }
+                    Log.d(TAG, "VÕRK: Ühendus taastus ja raadio ei mängi. Taastan taasesituse ilma metaandmeid nullimata...")
+                    retryPlaybackWithoutMetadataWipe("NETWORK_RESTORED")
                 }
             }
         }
@@ -303,6 +302,15 @@ class RadioService : Service() {
         )
     }
 
+    private fun retryPlaybackWithoutMetadataWipe(reason: String) {
+        if (!::player.isInitialized || !player.playWhenReady || currentStreamUrl.isEmpty()) return
+        Log.d(TAG, "retryPlaybackWithoutMetadataWipe: $reason. Reconnecting without wiping metadata (Title='$currentTitle', Artist='$currentArtist')...")
+        activeDataSource?.invalidateConnection()
+        player.seekToDefaultPosition()
+        player.prepare()
+        player.play()
+    }
+
     private fun updateExternalDevices(title: String, artist: String) {
         if (!::player.isInitialized) return
 
@@ -422,10 +430,8 @@ class RadioService : Service() {
                     bufferingWatchdogJob = serviceScope.launch(Dispatchers.Main) {
                         delay(15000)
                         if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady) {
-                            Log.w(TAG, "Valvur: Mängija on kestnud BUFFERING olekus üle 15 sekundi. Taaskäivitan striimi...")
-                            if (currentStreamUrl.isNotEmpty()) {
-                                playStation(currentStreamUrl, currentStationName, "WATCHDOG_RECONNECT")
-                            }
+                            Log.w(TAG, "Valvur: Mängija on kestnud BUFFERING olekus üle 15 sekundi. Taaskäivitan ühenduse ilma metaandmeid nullimata...")
+                            retryPlaybackWithoutMetadataWipe("WATCHDOG_TIMEOUT")
                         }
                     }
                 }
@@ -453,21 +459,25 @@ class RadioService : Service() {
                 )
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 
-                // KOHE KUI HELI MÄNGIMA HAKKAB, SAADAME INFO AUTOSSE!
-                // Siin on auto ekraan valmis uut teksti vastu võtma (pärast laadimise viivet).
-                lastSentTitle = ""
-                lastSentArtist = ""
-                lastSentTime = 0
-                player.streamStartTime = SystemClock.elapsedRealtime()
-                updateExternalDevices(currentTitle, currentArtist)
-
-                metadataPushJob?.cancel()
-                metadataPushJob = sessionScope.launch {
-                    delay(5000)
-                    Log.d(TAG, "metadataPushJob: Forcing 5s metadata push")
+                if (isInitialStationPlayback) {
+                    isInitialStationPlayback = false
                     lastSentTitle = ""
                     lastSentArtist = ""
                     lastSentTime = 0
+                    player.streamStartTime = SystemClock.elapsedRealtime()
+                    updateExternalDevices(currentTitle, currentArtist)
+
+                    metadataPushJob?.cancel()
+                    metadataPushJob = sessionScope.launch {
+                        delay(5000)
+                        Log.d(TAG, "metadataPushJob: Initial station connection 5s refresh")
+                        if (player.isPlaying && !isChangingStation) {
+                            updateExternalDevices(currentTitle, currentArtist)
+                        }
+                    }
+                } else {
+                    // Striimi taastumine võrgukatkestusest või lühiajalisest puhverdamisest:
+                    // Uuendame autot ainult siis, kui laul on vahepeal päriselt muutunud!
                     updateExternalDevices(currentTitle, currentArtist)
                 }
 
@@ -945,6 +955,7 @@ class RadioService : Service() {
         stopRecording()
         hasSuccessfullyStartedPlaying = false
         isChangingStation = true
+        isInitialStationPlayback = true
         lastBitrateInfo = ""
         sendBitrateUpdate()
         wakeLock?.acquire(10 * 60 * 1000L)
