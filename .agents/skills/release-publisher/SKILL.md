@@ -14,9 +14,8 @@ Use this skill when you need to issue a new release of the Kellraadio applicatio
 
 ## Architecture Context
 
-*   **Private Core Repository**: `marugusu/Kellraadio` is strictly private. Code is committed and pushed here.
-*   **Public Releases Repository**: `marugusu/Kellraadio-releases` is the dedicated public repository where GitHub Releases and downloadable APKs are published.
-*   **In-App Updater Target**: The app queries `https://api.github.com/repos/marugusu/Kellraadio-releases/releases/latest` to check for updates.
+*   **Repository & Releases**: `marugusu/Kellraadio` is public. GitHub Releases and downloadable APKs are published directly under this repository.
+*   **In-App Updater Target**: The app queries `https://api.github.com/repos/marugusu/Kellraadio/releases/latest` to check for updates.
 
 ## Procedural Walkthrough
 
@@ -40,7 +39,7 @@ python tools/publish_release.py v1.1.3 "Lühike muudatuste kirjeldus"
 The script will:
 1. Automatically read GitHub credentials from Windows Credential Manager.
 2. Copy `app/build/outputs/apk/debug/app-debug.apk` to `Kellraadio-v1.1.3.apk`.
-3. Create the release in `marugusu/Kellraadio-releases` via GitHub REST API.
+3. Create the release in `marugusu/Kellraadio` via GitHub REST API.
 4. Upload the APK asset to the release.
 
 ### Step 4: Commit and Push Version Bump
@@ -58,5 +57,5 @@ The script will:
 ## Verification Checklists
 
 - [ ] Verify that `publish_release.py` output confirms `[OK] APK edukalt üles laaditud!`.
-- [ ] Verify the release is publicly visible at `https://github.com/marugusu/Kellraadio-releases/releases/tag/<tag>`.
+- [ ] Verify the release is publicly visible at `https://github.com/marugusu/Kellraadio/releases/tag/<tag>`.
 - [ ] Check that `git status` on `master` is clean of unintended commits.

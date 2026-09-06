@@ -94,7 +94,6 @@ def publish_release(repo_owner, repo_name, tag_name, release_name, body_text, ap
         create_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases"
         payload = {
             "tag_name": tag_name,
-            "target_commitish": "main",
             "name": release_name,
             "body": body_text,
             "draft": False,
@@ -105,9 +104,14 @@ def publish_release(repo_owner, repo_name, tag_name, release_name, body_text, ap
             data=json.dumps(payload).encode("utf-8"),
             headers={**headers, "Content-Type": "application/json"}
         )
-        with urllib.request.urlopen(req) as resp:
-            existing_release = json.loads(resp.read().decode("utf-8"))
-            print(f"[OK] Release loodud (ID: {existing_release.get('id')})!")
+        try:
+            with urllib.request.urlopen(req) as resp:
+                existing_release = json.loads(resp.read().decode("utf-8"))
+                print(f"[OK] Release loodud (ID: {existing_release.get('id')})!")
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8")
+            print(f"[VIGA] Release loomine ebaõnnestus ({e.code}): {err_body}")
+            raise e
 
     upload_url_template = existing_release.get("upload_url", "")
     upload_base_url = upload_url_template.split("{")[0]
@@ -149,7 +153,7 @@ def publish_release(repo_owner, repo_name, tag_name, release_name, body_text, ap
 if __name__ == "__main__":
     import shutil
     repo_owner = "marugusu"
-    repo_name = "Kellraadio-releases"
+    repo_name = "Kellraadio"
     tag_name = sys.argv[1] if len(sys.argv) > 1 else "v1.1.1"
     release_name = f"Kellraadio {tag_name.lstrip('v')}"
     body_text = sys.argv[2] if len(sys.argv) > 2 else "- Automaatne paigalduse jätkamine pärast seadetes loa andmist\n- Äpisisene uuendussüsteem\n- Stabiilsuse parandused"

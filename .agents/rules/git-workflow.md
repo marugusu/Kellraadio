@@ -2,12 +2,10 @@
 
 Guardrails and protocols for Git operations and version control in the Kellraadio project.
 
-## 1. Repository Privacy Guardrail
+## 1. Repository & Secrets Guardrail
 
-*   **Core Code Repository**: `marugusu/Kellraadio` is strictly **private**.
-    *   Never attempt to make it public.
-    *   Never commit API tokens, passwords, or personal credentials.
-*   **Releases Repository**: `marugusu/Kellraadio-releases` is a separate, dedicated public repository used solely for hosting compiled APK releases and release notes.
+*   **Core Code Repository**: `marugusu/Kellraadio` is public. Never commit API tokens, passwords, private keystores, or personal credentials.
+*   **Releases Hosting**: All releases and downloadable APKs are hosted directly under this repository (`marugusu/Kellraadio/releases`).
 
 ## 2. Branching Strategy
 

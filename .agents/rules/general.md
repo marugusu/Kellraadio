@@ -12,7 +12,7 @@ Rules and guardrails for developing the Kellraadio Android app. Every agent modi
     *   **Repositories**: Encapsulate data fetching/caching logic (e.g., `RadioStationRepository`, `MusicInfoRepository`). Provide data streams via `Flow`.
 *   **Media Playback**: Rely on AndroidX Media3 (ExoPlayer & MediaSession). Playback service runs in a foreground service (`RadioService`). Always handle `mediaPlayback` foreground type and respect the `WakeLock` to prevent the OS from killing the audio thread.
 *   **Bluetooth Sync**: When dealing with external displays (e.g., Skoda/VW car multimedia systems), maintain the simulated fixed duration/meta synchronization in `RadioService.kt` to force metadata updates.
-*   **In-App Updates**: Built-in updater in `app.radiorecalarm.update` (`AppUpdateManager`, `UpdateDialog`). Checks for new releases from public repository `marugusu/Kellraadio-releases`. Downloaded APKs are installed via Android `FileProvider`.
+*   **In-App Updates**: Built-in updater in `app.radiorecalarm.update` (`AppUpdateManager`, `UpdateDialog`). Checks for new releases directly from `marugusu/Kellraadio`. Downloaded APKs are installed via Android `FileProvider`.
 
 ## UI & Jetpack Compose Standards
 
@@ -40,7 +40,7 @@ Rules and guardrails for developing the Kellraadio Android app. Every agent modi
 
 ## Git & Repository Guardrails
 
-*   **Repository Privacy**: The source code repository `marugusu/Kellraadio` is strictly **private**. Never attempt to make it public or expose secrets. Public artifacts (releases, APKs) are hosted exclusively in `marugusu/Kellraadio-releases`.
+*   **Repository & Secrets**: The repository `marugusu/Kellraadio` is public. Never commit API tokens, passwords, private keys, or personal credentials. Releases and downloadable APKs are hosted directly under this repository (`marugusu/Kellraadio/releases`).
 *   **Feature Branching**: Always create a new feature branch (e.g., `feature/<name>`) for new features and tasks. Never commit or merge directly into `master` without explicit user review and permission.
 *   **Unstaged Work Protection**: The user frequently has uncommitted visual/UX experiments (notably in `MainActivity.kt` and `ui/SongInfoSheet.kt`). **NEVER** overwrite, discard (`git checkout --`, `git restore`), or blindly stage (`git add .`) these unstaged modifications. Always inspect `git diff` before staging.
 *   **Release Automation**: Releases are published using `tools/publish_release.py`. Never perform manual browser release uploads.

@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/marugusu/Kellraadio-releases/releases/latest"><img src="https://img.shields.io/badge/Release-v1.1.2-F59E0B?style=for-the-badge&logo=android&logoColor=white" alt="Latest Release"></a>
+  <a href="https://github.com/marugusu/Kellraadio/releases/latest"><img src="https://img.shields.io/badge/Release-v1.1.3-F59E0B?style=for-the-badge&logo=android&logoColor=white" alt="Latest Release"></a>
   <a href="https://developer.android.com/about/versions/14"><img src="https://img.shields.io/badge/Android-8.0_to_16_Ready-10B981?style=for-the-badge&logo=android&logoColor=white" alt="Android Version"></a>
   <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/UI-Jetpack_Compose_Material_3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose"></a>
   <a href="https://developer.android.com/media/media3"><img src="https://img.shields.io/badge/Audio-AndroidX_Media3_ExoPlayer-EC4899?style=for-the-badge" alt="Media3"></a>
@@ -19,8 +19,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/marugusu/Kellraadio-releases/releases/latest">
-    <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_LATEST_APK_(v1.1.2)-F59E0B?style=for-the-badge&labelColor=1F2937" height="42" alt="Download APK">
+  <a href="https://github.com/marugusu/Kellraadio/releases/latest">
+    <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_LATEST_APK_(v1.1.3)-F59E0B?style=for-the-badge&labelColor=1F2937" height="42" alt="Download APK">
   </a>
 </p>
 
@@ -58,7 +58,7 @@ Internet radio streams often choke car infotainment systems (such as VW Group MI
 * Transmits high-res artwork, artist, title, and station name reliably to car instrument clusters and head units.
 
 ### 🔄 In-App Self-Updating (No Play Store Required)
-* **100% Google-Free Freedom**: The application checks for updates directly from the public GitHub Releases repository (`marugusu/Kellraadio-releases`).
+* **100% Google-Free Freedom**: The application checks for updates directly from the public GitHub Releases repository (`marugusu/Kellraadio`).
 * **Live Byte-Streaming Progress**: Real-time progress bar tracking downloaded bytes vs total size.
 * **Lifecycle-Aware Install Flow**: Returning from Android's "Install unknown apps" permission toggle automatically detects the grant and launches the package installer without requiring manual cancel/recheck.
 
@@ -167,7 +167,7 @@ app/src/main/java/app/radiorecalarm/
 ### Method 1: Direct Download (Recommended)
 Download the latest APK directly from the public releases repository:
 
-👉 **[Download Latest Kellraadio APK](https://github.com/marugusu/Kellraadio-releases/releases/latest)**
+👉 **[Download Latest Kellraadio APK](https://github.com/marugusu/Kellraadio/releases/latest)**
 
 1. Transfer the `.apk` to your Android device or download directly on your phone.
 2. Tap the downloaded file to install.
