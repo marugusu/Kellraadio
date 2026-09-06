@@ -16,3 +16,4 @@ local.properties
 /stations.json
 /tools/stations_scraper/dist/
 !app/src/main/assets/stations.json
+*.apk

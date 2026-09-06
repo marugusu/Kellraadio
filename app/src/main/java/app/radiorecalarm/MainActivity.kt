@@ -504,7 +504,14 @@ fun ContentScreens(
                 },
                 onImportData = {
                     importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
-                }
+                },
+                updateState = state.updateState,
+                onCheckForUpdates = viewModel::checkForUpdates,
+                onDownloadUpdate = viewModel::downloadUpdate,
+                onInstallUpdate = viewModel::installUpdate,
+                onDismissUpdateDialog = viewModel::dismissUpdateDialog,
+                canInstallPackages = viewModel.canInstallPackages(),
+                onRequestInstallPermission = viewModel::openInstallPermissionSettings
             )
         }
     }

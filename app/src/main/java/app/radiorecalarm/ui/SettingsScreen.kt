@@ -1,8 +1,13 @@
 package app.radiorecalarm.ui
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.BorderStroke
@@ -23,6 +28,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -33,6 +41,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import app.radiorecalarm.LogExporter
 import app.radiorecalarm.R
+import app.radiorecalarm.update.GitHubRelease
+import app.radiorecalarm.update.GitHubReleaseAsset
+import app.radiorecalarm.update.UpdateUiState
+import java.io.File
 import kotlin.math.roundToInt
 
 data class AppLanguage(val code: String, val flag: String, val name: String)
@@ -62,6 +74,13 @@ fun SettingsScreen(
     onWidgetTransparencyChange: (Float) -> Unit,
     onExportData: () -> Unit,
     onImportData: () -> Unit,
+    updateState: UpdateUiState = UpdateUiState.Idle,
+    onCheckForUpdates: (String) -> Unit = {},
+    onDownloadUpdate: (GitHubRelease, GitHubReleaseAsset) -> Unit = { _, _ -> },
+    onInstallUpdate: (File) -> Unit = {},
+    onDismissUpdateDialog: () -> Unit = {},
+    canInstallPackages: Boolean = true,
+    onRequestInstallPermission: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -70,6 +89,48 @@ fun SettingsScreen(
     val scrollState = rememberScrollState()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
+
+    var hasInstallPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.packageManager.canRequestPackageInstalls()
+            } else true
+        )
+    }
+    var awaitingInstallPermission by remember { mutableStateOf(false) }
+
+    fun checkAndHandlePermissionReturn() {
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.packageManager.canRequestPackageInstalls()
+        } else true
+        hasInstallPermission = granted
+
+        if (awaitingInstallPermission) {
+            awaitingInstallPermission = false
+            if (granted && updateState is UpdateUiState.ReadyToInstall) {
+                onInstallUpdate(updateState.apkFile)
+            }
+        }
+    }
+
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        checkAndHandlePermissionReturn()
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                checkAndHandlePermissionReturn()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val currentLocales = AppCompatDelegate.getApplicationLocales()
     val manualLang = if (!currentLocales.isEmpty) currentLocales.get(0)?.language else null
@@ -241,6 +302,19 @@ fun SettingsScreen(
             // GRUPP 5: ABI JA DIAGNOSTIKA
             SettingsSection(title = stringResource(R.string.settings_group_help)) {
                 SettingsRow(
+                    headline = stringResource(R.string.settings_check_updates),
+                    supporting = when (updateState) {
+                        is UpdateUiState.Checking -> stringResource(R.string.settings_checking_updates)
+                        is UpdateUiState.UpdateAvailable -> stringResource(R.string.update_dialog_version, updateState.release.tagName)
+                        is UpdateUiState.UpToDate -> stringResource(R.string.update_already_latest, updateState.currentVersion)
+                        else -> stringResource(R.string.settings_check_updates_desc)
+                    },
+                    icon = Icons.Default.SystemUpdate,
+                    isLoading = updateState is UpdateUiState.Checking,
+                    onClick = { onCheckForUpdates(appVersion) }
+                )
+                SettingsDivider()
+                SettingsRow(
                     headline = stringResource(R.string.settings_send_log),
                     supporting = stringResource(R.string.settings_send_log_desc),
                     icon = Icons.Default.BugReport,
@@ -340,6 +414,25 @@ fun SettingsScreen(
             }
         }
     }
+
+    UpdateDialog(
+        state = updateState,
+        canInstallPackages = hasInstallPermission,
+        onDismiss = onDismissUpdateDialog,
+        onDownload = onDownloadUpdate,
+        onInstall = onInstallUpdate,
+        onRequestPermission = {
+            awaitingInstallPermission = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+                installPermissionLauncher.launch(intent)
+            } else {
+                onRequestInstallPermission()
+            }
+        }
+    )
 }
 
 /**

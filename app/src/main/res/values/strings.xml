@@ -191,4 +191,19 @@
     <string name="backup_failed">Export failed: %1$s</string>
     <string name="restore_success">Data successfully restored!</string>
     <string name="restore_failed">Restore failed: %1$s</string>
+
+    <!-- In-App Updates -->
+    <string name="settings_group_updates">Updates</string>
+    <string name="settings_check_updates">Check for updates</string>
+    <string name="settings_check_updates_desc">Check for new app versions on GitHub</string>
+    <string name="settings_checking_updates">Checking for updates...</string>
+    <string name="update_dialog_title">Update Available</string>
+    <string name="update_dialog_version">Version %1$s</string>
+    <string name="update_dialog_changelog">What\'s new:</string>
+    <string name="update_action_download">Download &amp; Install</string>
+    <string name="update_action_install">Install Update</string>
+    <string name="update_downloading">Downloading update… (%1$d%%)</string>
+    <string name="update_already_latest">App is up to date (%1$s)</string>
+    <string name="update_permission_required">Permission to install apps is required. Please enable it in Settings.</string>
+    <string name="update_open_settings">Open Settings</string>
 </resources>
