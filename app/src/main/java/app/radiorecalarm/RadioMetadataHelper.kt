@@ -12,7 +12,32 @@ data class ParsedMetadata(
     val extra: String
 )
 
-class RadioMetadataHelper(private val context: Context) {
+class RadioMetadataHelper(
+    private val context: Context? = null,
+    private val defaultLiveBroadcast: String = "Otseeeter"
+) {
+
+    private fun getLiveBroadcastString(): String {
+        return try {
+            context?.getString(R.string.live_broadcast) ?: defaultLiveBroadcast
+        } catch (e: Exception) {
+            defaultLiveBroadcast
+        }
+    }
+
+    /**
+     * Puhastab toorest tekstist mitteprinditavad kontrollsümbolid (nt \u0000 kuni \u001F ja DEL)
+     * ning tehnilise prügi (nt {+info: ...}), asendades reavahetused viisakate eraldajatega.
+     */
+    fun sanitizeRawInput(rawMetadata: String): String {
+        return rawMetadata
+            .replace(Regex("""[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]"""), "")
+            .replace(Regex("""\s*\{.*\}\s*$"""), "")
+            .trim()
+            .replace("\r\n", " - ")
+            .replace("\n", " - ")
+            .replace("\r", " - ")
+    }
 
     /**
      * See funktsioon teeb toorest striimi tekstist (nt "Queen - Bohemian Rhapsody")
@@ -20,13 +45,24 @@ class RadioMetadataHelper(private val context: Context) {
      * Siin asub ka loogika "Reversed" jaamade (Star FM) ja tühjade stringide jaoks.
      */
     fun parse(rawMetadata: String, stationName: String): ParsedMetadata {
-        // 1. Eemalda tehniline prügi (nt {+info: ...}) ja reavahetused
-        var cleaned = rawMetadata.replace(Regex("""\s*\{.*\}\s*$"""), "")
-            .trim()
-            .replace("\n", " - ")
+        val liveBroadcastStr = getLiveBroadcastString()
+        val safeStation = if (stationName.isNotBlank()) stationName.trim() else "Radio"
 
-        if (cleaned.isEmpty() || cleaned == "-" || cleaned == "." || cleaned == " -" || cleaned == "_") {
-            return ParsedMetadata(context.getString(R.string.live_broadcast), stationName, "")
+        // 1. Eemalda tehniline prügi, kontrollsümbolid ja reavahetused
+        val cleaned = sanitizeRawInput(rawMetadata)
+
+        val isGarbage = cleaned.isEmpty() ||
+                cleaned == "-" ||
+                cleaned == "." ||
+                cleaned == " -" ||
+                cleaned == "- " ||
+                cleaned == " - " ||
+                cleaned == "_" ||
+                cleaned == "•" ||
+                cleaned.all { it == '-' || it == ' ' || it == '.' || it == '_' || it == '•' }
+
+        if (isGarbage) {
+            return ParsedMetadata(liveBroadcastStr, safeStation, "")
         }
 
         // 2. Esialgne tükeldamine
@@ -54,7 +90,18 @@ class RadioMetadataHelper(private val context: Context) {
         if (buffer.isNotEmpty()) parts.add(buffer)
 
         if (parts.size < 2) {
-            return ParsedMetadata(parts.getOrNull(0) ?: cleaned, stationName, "")
+            val single = (parts.getOrNull(0) ?: cleaned).trim()
+            val isStationOrLive = single.isEmpty() ||
+                    single.equals(safeStation, ignoreCase = true) ||
+                    single.equals(liveBroadcastStr, ignoreCase = true) ||
+                    single.equals("Live Stream", ignoreCase = true) ||
+                    single.equals("Otseeeter", ignoreCase = true)
+
+            return if (isStationOrLive) {
+                ParsedMetadata(liveBroadcastStr, safeStation, "")
+            } else {
+                ParsedMetadata(single, safeStation, "")
+            }
         }
 
         // 4. STRATEEGIA VALIK (Soundtrack vs Tavaline)
@@ -101,8 +148,11 @@ class RadioMetadataHelper(private val context: Context) {
         val starMatch = starRegex.find(title)
         if (starMatch != null) {
             val content = starMatch.groupValues[1].trim()
-            extrasList.add(content)
-            title = title.substring(0, starMatch.range.first).trim()
+            if (content.isNotBlank()) extrasList.add(content)
+            val remaining = title.substring(0, starMatch.range.first).trim()
+            if (remaining.isNotBlank()) {
+                title = remaining
+            }
         }
 
         // c) Kontrollime sulgudes lisasid pealkirja lõpus tsükliga
@@ -110,14 +160,36 @@ class RadioMetadataHelper(private val context: Context) {
         while (true) {
             val match = titleEndRegex.find(title) ?: break
             val content = match.groupValues[1].trim()
-            extrasList.add(0, content) 
-            title = title.substring(0, match.range.first).trim()
+            val remaining = title.substring(0, match.range.first).trim()
+            if (remaining.isNotBlank()) {
+                if (content.isNotBlank()) extrasList.add(0, content)
+                title = remaining
+            } else {
+                // Kui sulgude eemaldamisel jääks pealkiri tühjaks (nt terve pealkiri oli "(Live)"),
+                // eemaldame ainult sulud, aga säilitame sisu pealkirjana
+                title = content.ifBlank { title.removeSurrounding("(", ")").trim() }
+                break
+            }
         }
 
         // d) Eemaldame pealkirja ümbritsevad ülakomad (nt 'La Lucina')
-        title = title.removeSurrounding("'")
+        title = title.removeSurrounding("'").trim()
 
-        // 5. EXTRA LÕPLIK VORMISTUS
+        // 5. FAIL-SAFE FALLBACK (Kindlustus tühjade väärtuste vastu)
+        var finalArtist = artist.trim()
+        var finalTitle = title.trim()
+
+        if (finalTitle.isBlank()) {
+            finalTitle = if (extrasList.isNotEmpty()) extrasList.removeAt(0) else safeStation
+        }
+        if (finalArtist.isBlank()) {
+            finalArtist = liveBroadcastStr
+        }
+        if (finalArtist.equals(safeStation, ignoreCase = true) && finalTitle.equals(safeStation, ignoreCase = true)) {
+            finalArtist = liveBroadcastStr
+        }
+
+        // 6. EXTRA LÕPLIK VORMISTUS
         var extra = extrasList.filter { it.isNotBlank() }.joinToString(" • ")
 
         // Asendame "Esitaja (Pill)" -> "Esitaja • Pill"
@@ -125,12 +197,13 @@ class RadioMetadataHelper(private val context: Context) {
             extra = extra.replace(Regex("""\s*\(([^()]+)\)"""), " • $1")
         }
 
-        return ParsedMetadata(artist.trim(), title.trim(), extra.trim())
+        return ParsedMetadata(finalArtist, finalTitle, extra.trim())
     }
 
     /**
      * Ehitab valmis MediaMetadata objekti, mida ExoPlayer ja Bluetooth vajavad.
      * Siin on peidus ka see "Skoda fix" 5-minuti kestuse info (Bundle sees).
+     * Garanteerib, et ükski väli ei ole tühi ega sisalda mitteprinditavaid märke.
      */
     fun buildMediaMetadata(
         title: String,
@@ -138,8 +211,15 @@ class RadioMetadataHelper(private val context: Context) {
         stationName: String,
         artworkData: ByteArray?
     ): MediaMetadata {
+        val safeStation = if (stationName.isNotBlank()) stationName.trim() else "Radio"
+        val cleanTitle = title.replace(Regex("""[\u0000-\u001F\u007F]"""), "").trim()
+        val cleanArtist = artist.replace(Regex("""[\u0000-\u001F\u007F]"""), "").trim()
+
+        val finalTitle = if (cleanTitle.isNotBlank()) cleanTitle else safeStation
+        val finalArtist = if (cleanArtist.isNotBlank()) cleanArtist else getLiveBroadcastString()
+
         // Unikaalne ID aitab autol aru saada, et lugu muutus
-        val uniqueId = "radiow_${(title + artist).hashCode()}"
+        val uniqueId = "radiow_${(finalTitle + finalArtist).hashCode()}"
 
         val extras = Bundle().apply {
             putString("android.media.metadata.MEDIA_ID", uniqueId)
@@ -147,9 +227,9 @@ class RadioMetadataHelper(private val context: Context) {
         }
 
         return MediaMetadata.Builder()
-            .setTitle(title)
-            .setArtist(artist)
-            .setAlbumTitle(stationName)
+            .setTitle(finalTitle)
+            .setArtist(finalArtist)
+            .setAlbumTitle(safeStation)
             .setTrackNumber(1)
             .setTotalTrackCount(1)
             .setIsPlayable(true)
