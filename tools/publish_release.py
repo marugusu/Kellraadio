@@ -147,11 +147,21 @@ def publish_release(repo_owner, repo_name, tag_name, release_name, body_text, ap
         print(f"Allalaadimislink: {download_url}")
 
 if __name__ == "__main__":
+    import shutil
     repo_owner = "marugusu"
     repo_name = "Kellraadio-releases"
-    tag_name = sys.argv[1] if len(sys.argv) > 1 else "v1.1"
+    tag_name = sys.argv[1] if len(sys.argv) > 1 else "v1.1.1"
     release_name = f"Kellraadio {tag_name.lstrip('v')}"
-    body_text = "- Äpisisene uuendussüsteem\n- Bluetooth ja äärealade stabiilsuse parandused"
-    apk_path = "Kellraadio-v1.1.apk"
+    body_text = sys.argv[2] if len(sys.argv) > 2 else "- Automaatne paigalduse jätkamine pärast seadetes loa andmist\n- Äpisisene uuendussüsteem\n- Stabiilsuse parandused"
+    
+    apk_path = f"Kellraadio-{tag_name}.apk"
+    if not os.path.exists(apk_path):
+        debug_apk = os.path.join("app", "build", "outputs", "apk", "debug", "app-debug.apk")
+        if os.path.exists(debug_apk):
+            print(f"[INFO] Kopeerin värske APK: {debug_apk} -> {apk_path}")
+            shutil.copy2(debug_apk, apk_path)
+        else:
+            print(f"[VIGA] Faili {apk_path} ega {debug_apk} ei leitud! Käivita esmalt ./gradlew assembleDebug")
+            sys.exit(1)
 
     publish_release(repo_owner, repo_name, tag_name, release_name, body_text, apk_path)
