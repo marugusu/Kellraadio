@@ -117,7 +117,20 @@ class AppUpdateManager(
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Log.e(TAG, "Error checking for updates", e)
-            UpdateUiState.Error(e.localizedMessage ?: "Võrguviga uuenduste kontrollimisel")
+            if (e is retrofit2.HttpException && e.code() == 404) {
+                // 404 GitHubi releases/latest puhul tähendab, et väljalaskeid pole veel avaldatud -> rakendus on ajakohane
+                return@withContext UpdateUiState.UpToDate(currentVersion)
+            }
+            val errorMsg = when (e) {
+                is java.net.UnknownHostException -> "Internetiühendus puudub"
+                is java.net.SocketTimeoutException -> "Päring aegus"
+                is retrofit2.HttpException -> {
+                    if (e.code() == 403) "Päringulimiit ületatud, proovi hiljem"
+                    else "Võrguviga (kood: ${e.code()})"
+                }
+                else -> e.localizedMessage ?: "Võrguviga uuenduste kontrollimisel"
+            }
+            UpdateUiState.Error(errorMsg)
         }
     }
 

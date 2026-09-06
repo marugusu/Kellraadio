@@ -51,6 +51,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          repository: marugusu/Kellraadio-releases
           tag_name: ${{ github.ref_name || github.event.inputs.tag_name }}
           name: Kellraadio ${{ github.ref_name || github.event.inputs.tag_name }}
           files: release_assets/*.apk
@@ -58,4 +59,5 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN || secrets.GIST_TOKEN || secrets.GITHUB_TOKEN }}
+
