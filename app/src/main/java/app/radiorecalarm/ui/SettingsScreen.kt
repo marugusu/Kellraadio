@@ -1,8 +1,13 @@
 package app.radiorecalarm.ui
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.BorderStroke
@@ -23,6 +28,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -81,6 +89,48 @@ fun SettingsScreen(
     val scrollState = rememberScrollState()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
+
+    var hasInstallPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.packageManager.canRequestPackageInstalls()
+            } else true
+        )
+    }
+    var awaitingInstallPermission by remember { mutableStateOf(false) }
+
+    fun checkAndHandlePermissionReturn() {
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.packageManager.canRequestPackageInstalls()
+        } else true
+        hasInstallPermission = granted
+
+        if (awaitingInstallPermission) {
+            awaitingInstallPermission = false
+            if (granted && updateState is UpdateUiState.ReadyToInstall) {
+                onInstallUpdate(updateState.apkFile)
+            }
+        }
+    }
+
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        checkAndHandlePermissionReturn()
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                checkAndHandlePermissionReturn()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val currentLocales = AppCompatDelegate.getApplicationLocales()
     val manualLang = if (!currentLocales.isEmpty) currentLocales.get(0)?.language else null
@@ -367,11 +417,21 @@ fun SettingsScreen(
 
     UpdateDialog(
         state = updateState,
-        canInstallPackages = canInstallPackages,
+        canInstallPackages = hasInstallPermission,
         onDismiss = onDismissUpdateDialog,
         onDownload = onDownloadUpdate,
         onInstall = onInstallUpdate,
-        onRequestPermission = onRequestInstallPermission
+        onRequestPermission = {
+            awaitingInstallPermission = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+                installPermissionLauncher.launch(intent)
+            } else {
+                onRequestInstallPermission()
+            }
+        }
     )
 }
 
