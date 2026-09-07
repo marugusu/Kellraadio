@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -264,8 +265,22 @@ fun RaadioEkraan(
 
                 if (showTeaser) {
                     if (isLargeScreenHeight) {
-                        val stationColor = StationArtworkUtils.getStationColor(state.activeStationName)
-                        Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp).clip(RoundedCornerShape(8.dp)).background(Brush.verticalGradient(colors = listOf(stationColor.copy(alpha = 0.15f), MaterialTheme.colorScheme.background)))) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(top = 12.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.surface,
+                                            Color(0xFF0C0E14)
+                                        )
+                                    )
+                                )
+                        ) {
                             SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
                         }
                     } else {

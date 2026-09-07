@@ -2,6 +2,7 @@ package app.radiorecalarm.ui
 
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -314,7 +315,7 @@ fun ActionButton(
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -349,34 +350,32 @@ fun SongInfoContentLandscape(
     val context = LocalContext.current
     val stationInitials = StationArtworkUtils.getStationInitials(stationName)
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(0.dp)
+            .padding(12.dp),
+        contentAlignment = Alignment.Center
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.Black)
-                .padding(0.dp),
-            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // A) PILT (50% laiust)
+            // A) PILT (45% laiust, 8dp kumerus, matt taust)
             Box(
                 modifier = Modifier
-                    .weight(0.5f)
+                    .weight(0.45f)
                     .aspectRatio(1f)
-                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp))
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black),
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stationInitials,
-                    fontSize = 70.sp,
+                    fontSize = 54.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White.copy(alpha = 0.25f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
                 )
 
                 if (!info.coverArtUrl.isNullOrEmpty()) {
@@ -387,24 +386,22 @@ fun SongInfoContentLandscape(
                             .build(),
                         contentDescription = "Album Art",
                         modifier = Modifier.matchParentSize(),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Crop
                     )
                 }
             }
 
-            // B) INFO JA NUPUD (50% laiust)
+            // B) INFO JA NUPUD (55% laiust)
             Column(
-                modifier = Modifier
-                    .weight(0.5f)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.Top,
+                modifier = Modifier.weight(0.55f),
+                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (info.album != null || info.year != null || info.genre != null) {
                     FlowRow(
                         horizontalArrangement = Arrangement.Center,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         if (!info.year.isNullOrEmpty()) InfoChip(text = info.year)
                         if (!info.genre.isNullOrEmpty()) {
@@ -417,19 +414,19 @@ fun SongInfoContentLandscape(
                         }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Uued nupud, joondatud keskele
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Nupud, joondatud keskele
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ActionButton(Icons.Default.MusicNote, "Spotify", Color(0xFF1DB954)) { openSpotifySearch(context, "$artist $title") }
-                    Spacer(modifier = Modifier.width(24.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
                     ActionButton(Icons.Default.PlayCircleOutline, "YouTube", Color(0xFFFF0000)) { openYoutubeSearch(context, "$artist $title") }
-                    Spacer(modifier = Modifier.width(24.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
                     ActionButton(Icons.Default.Share, stringResource(R.string.action_share), MaterialTheme.colorScheme.primary) { shareSongInfo(context, artist, title, stationName, "", "", info) }
                 }
             }
