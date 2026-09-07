@@ -87,6 +87,8 @@
 <string name="settings_test_data_desc">"Līsa testdātõ"</string>
 <string name="app_version">"Versij %1$s"</string>
 <string name="toast_updated">"Uddistõd!"</string>
+<string name="toast_stations_updated">"Kanalõd uddistõd! Serverist: %1$d • Iž eņtš: %2$d"</string>
+<string name="toast_stations_update_failed">"Kanalõd uddiztimi äb läind korda"</string>
 <string name="toast_order_reset">"Armstõdõd jierdõ um tagāž!"</string>
 <string name="settings_clear_history">"Kistūtõ aig"</string>
 <string name="settings_clear_history_desc">"Kistūtõ amā kūldtõd aig"</string>

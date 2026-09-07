@@ -202,7 +202,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val oneDayMillis = 24 * 60 * 60 * 1000L
             val isExpired = (System.currentTimeMillis() - lastUpdate) > oneDayMillis
             if (stations.isEmpty() || isExpired) {
-                refreshStations()
+                refreshStations(isManual = false)
             }
         }
     }
@@ -526,15 +526,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun refreshStations() {
+    fun refreshStations(isManual: Boolean = true) {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             try {
-                stationRepository.refreshStations()
-                prefs.edit().putLong("last_update_time", System.currentTimeMillis()).apply()
-                Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
+                val result = stationRepository.refreshStations()
+                if (result.isSuccess) {
+                    prefs.edit().putLong("last_update_time", System.currentTimeMillis()).apply()
+                    val message = context.getString(R.string.toast_stations_updated, result.serverCount, result.userCount)
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                } else if (isManual) {
+                    val errorMsg = context.getString(R.string.toast_stations_update_failed)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                }
             } catch (e: Exception) {
-                // Ignore
+                if (isManual) {
+                    val errorMsg = context.getString(R.string.toast_stations_update_failed)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                }
             } finally {
                 _uiState.update { it.copy(isRefreshing = false) }
             }

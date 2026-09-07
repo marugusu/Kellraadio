@@ -103,6 +103,8 @@
     <string name="settings_test_data_desc">데이터베이스에 샘플 데이터 추가</string>
     <string name="app_version">버전 %1$s</string>
     <string name="toast_updated">갱신됨!</string>
+    <string name="toast_stations_updated">채널 갱신됨! 서버: %1$d개 • 내 채널: %2$d개</string>
+    <string name="toast_stations_update_failed">채널 갱신 실패</string>
     <string name="toast_order_reset">순서가 초기화되었습니다!</string>
     <string name="settings_clear_history">기록 삭제</string>
     <string name="settings_clear_history_desc">모든 청취 기록 삭제</string>

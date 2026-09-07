@@ -144,10 +144,11 @@ class RadioStationRepository(
         }
     }
 
-    suspend fun refreshStations() {
-        try {
+    suspend fun refreshStations(): StationRefreshResult {
+        return try {
             Log.d("RADIO_DEBUG", "Alustan jaamade värskendamist...")
             val existingStations = stationDao.getAllActiveStationsSync()
+            val userCount = existingStations.count { it.isUserStation }
             val favoriteById = existingStations.filter { it.isFavorite }.associate { it.id to it.favoriteOrder }
             val favoriteByUrl = existingStations.filter { it.isFavorite }.associate { it.url to it.favoriteOrder }
             val remoteStations = apiService.getStations(System.currentTimeMillis())
@@ -165,10 +166,16 @@ class RadioStationRepository(
                 }
                 stationDao.insertAll(updatedStations)
                 stationDao.deleteMissing(updatedStations.map { it.id })
-                Log.d("RADIO_DEBUG", "Jaamade nimekiri edukalt uuendatud.")
+                Log.d("RADIO_DEBUG", "Jaamade nimekiri edukalt uuendatud. Serverist: ${remoteStations.size}, oma: $userCount")
+                StationRefreshResult(serverCount = remoteStations.size, userCount = userCount, isSuccess = true)
+            } else {
+                StationRefreshResult(serverCount = 0, userCount = userCount, isSuccess = false, errorMessage = "Server ei tagastanud jaamu")
             }
         } catch (e: Exception) {
             Log.e("RADIO_DEBUG", "Viga värskendamisel: ${e.message}")
+            val existingStations = try { stationDao.getAllActiveStationsSync() } catch (_: Exception) { emptyList() }
+            val userCount = existingStations.count { it.isUserStation }
+            StationRefreshResult(serverCount = 0, userCount = userCount, isSuccess = false, errorMessage = e.message)
         }
     }
 
@@ -216,3 +223,10 @@ class RadioStationRepository(
         }
     }
 }
+
+data class StationRefreshResult(
+    val serverCount: Int = 0,
+    val userCount: Int = 0,
+    val isSuccess: Boolean = false,
+    val errorMessage: String? = null
+)
