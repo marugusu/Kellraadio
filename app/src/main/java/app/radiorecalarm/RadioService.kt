@@ -406,10 +406,6 @@ class RadioService : Service() {
                 hasSuccessfullyStartedPlaying = true
                 consecutiveErrorCount = 0
             }
-
-            if (playbackState == Player.STATE_IDLE && player.playWhenReady) {
-                player.prepare()
-            }
             
             // LAHENDUS: Kui striim saab otsa (server paneb toru ära), proovi kiiresti uuesti valmistada (seek + prepare)
             if (playbackState == Player.STATE_ENDED && player.playWhenReady) {
@@ -544,13 +540,20 @@ class RadioService : Service() {
             consecutiveErrorCount++
             lastErrorTime = now
 
+            if (consecutiveErrorCount > 5) {
+                Log.e(TAG, "Liiga palju järjestikuseid vigu ($consecutiveErrorCount). Peatame raadio (Circuit Breaker).")
+                consecutiveErrorCount = 0
+                stopRadio(isError = true)
+                return
+            }
+
             serviceScope.launch {
                 val delayTime = if (consecutiveErrorCount > 3) {
-                    Log.w(TAG, "Liiga palju järjestikuseid vigu ($consecutiveErrorCount). Ootame 5 sekundit enne kordusühendust...")
+                    Log.w(TAG, "Mitu järjestikust viga ($consecutiveErrorCount). Ootame 5 sekundit enne kordusühendust...")
                     5000L
                 } else {
-                    Log.d(TAG, "Võrgu viga tuvastatud. Teeme kiire taaskäivituse 200ms pärast...")
-                    200L
+                    Log.d(TAG, "Viga tuvastatud ($consecutiveErrorCount). Teeme korduskatse 500ms pärast...")
+                    500L
                 }
                 delay(delayTime)
                 withContext(Dispatchers.Main) {
@@ -954,6 +957,7 @@ class RadioService : Service() {
 
         stopRecording()
         hasSuccessfullyStartedPlaying = false
+        consecutiveErrorCount = 0
         isChangingStation = true
         isInitialStationPlayback = true
         lastBitrateInfo = ""
