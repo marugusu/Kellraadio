@@ -91,6 +91,10 @@ class RadioService : Service() {
     private var lastErrorTime = 0L
     private var hasSuccessfullyStartedPlaying = false
 
+    private var wasSuppressedByTransientLoss: Boolean = false
+    private var lastFocusGainTime: Long = 0L
+    private var wasNoisyDuringCall: Boolean = false
+
     private var isRecording = false
     private var recordingFile: java.io.File? = null
     private var recordingOutputStream: java.io.FileOutputStream? = null
@@ -200,6 +204,11 @@ class RadioService : Service() {
                     return SessionResult.RESULT_SUCCESS
                 }
                 Player.COMMAND_PLAY_PAUSE -> {
+                    val now = SystemClock.elapsedRealtime()
+                    if (now - lastFocusGainTime < 1500L) {
+                        Log.i(TAG, "Ignoreerime auto automaatset PLAY_PAUSE käsku vahetult pärast kõne lõppu (race condition kaitse).")
+                        return SessionResult.RESULT_SUCCESS
+                    }
                     if (player.isPlaying) {
                         player.pause()
                     } else {
@@ -491,6 +500,55 @@ class RadioService : Service() {
             }
         }
 
+        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
+            Log.d(TAG, "onPlaybackSuppressionReasonChanged: reason=$playbackSuppressionReason")
+            when (playbackSuppressionReason) {
+                Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS -> {
+                    Log.i(TAG, "Audiofookus ajutiselt kaotatud (telefonikõne vms). Valmistume ooteks...")
+                    wasSuppressedByTransientLoss = true
+                    wasNoisyDuringCall = false
+
+                    // Katkestame aktiivse sokliühenduse, et server ei jääks tühja ootama ega tekiks timeouti
+                    activeDataSource?.invalidateConnection()
+
+                    // Tühistame puhverdamise valvuri kõne ajaks
+                    bufferingWatchdogJob?.cancel()
+                    bufferingWatchdogJob = null
+
+                    updateNotification()
+                }
+                Player.PLAYBACK_SUPPRESSION_REASON_NONE -> {
+                    if (wasSuppressedByTransientLoss) {
+                        wasSuppressedByTransientLoss = false
+                        Log.i(TAG, "Audiofookus taastus pärast kõnet/katkestust! Taastame reaalajas striimi...")
+                        lastFocusGainTime = SystemClock.elapsedRealtime()
+
+                        // Kui auto profiilivahetus lülitas vahepeal ekslikult playWhenReady välja, taastame selle
+                        if (wasNoisyDuringCall) {
+                            Log.i(TAG, "Taastame playWhenReady=true, mis lülitus kõne ajal Bluetooth profiilivahetusel välja.")
+                            wasNoisyDuringCall = false
+                            player.playWhenReady = true
+                        }
+
+                        // Nullime kaitsed samamoodi nagu uue jaama laadimisel, et info kindlasti läbi läheks
+                        lastSentTitle = ""
+                        lastSentArtist = ""
+                        lastSentTime = 0
+                        consecutiveErrorCount = 0
+
+                        serviceScope.launch(Dispatchers.Main) {
+                            // 300ms lühiviivitus auto Bluetooth A2DP profiili stabiliseerumiseks enne helivoo avamist
+                            delay(300)
+                            if (::player.isInitialized && player.playWhenReady && currentStreamUrl.isNotEmpty()) {
+                                retryPlaybackWithoutMetadataWipe("CALL_ENDED_FOCUS_RESTORED")
+                                updateExternalDevices(currentTitle, currentArtist)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
                 val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
@@ -499,6 +557,15 @@ class RadioService : Service() {
                 } else {
                     startForeground(1, notification)
                 }
+            } else {
+                if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
+                    Log.w(TAG, "onPlayWhenReadyChanged: AUDIO_BECOMING_NOISY tuvastatud!")
+                    if (wasSuppressedByTransientLoss) {
+                        Log.i(TAG, "AUDIO_BECOMING_NOISY saabus kõne ajal (Bluetooth profiilivahetus). Salvestame taastamisvajaduse.")
+                        wasNoisyDuringCall = true
+                    }
+                }
+                updateNotification()
             }
         }
 
@@ -522,6 +589,12 @@ class RadioService : Service() {
                 return
             }
             isChangingStation = false
+
+            // Kui viga tekkis kõne / ajutise fookusekaotuse ajal, ei kasvatata vealoendurit ega peata raadiot
+            if (wasSuppressedByTransientLoss) {
+                Log.w(TAG, "Viga tekkis kõne / fookusekaotuse ajal. Ootame kõne lõppu ja taastumist.")
+                return
+            }
 
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val activeNetwork = cm.activeNetwork
@@ -547,6 +620,9 @@ class RadioService : Service() {
                 return
             }
 
+            val isCodecError = error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED ||
+                    cause is androidx.media3.exoplayer.mediacodec.MediaCodecDecoderException
+
             serviceScope.launch {
                 val delayTime = if (consecutiveErrorCount > 3) {
                     Log.w(TAG, "Mitu järjestikust viga ($consecutiveErrorCount). Ootame 5 sekundit enne kordusühendust...")
@@ -558,7 +634,25 @@ class RadioService : Service() {
                 delay(delayTime)
                 withContext(Dispatchers.Main) {
                     if (currentStreamUrl.isNotEmpty() && player.playWhenReady) {
-                        player.seekToDefaultPosition()
+                        if (isCodecError) {
+                            Log.w(TAG, "Koodeki viga tuvastatud: lähtestame mängija meediaüksuse uue koodeki instantsi loomiseks.")
+                            player.stop()
+                            val initialMeta = metadataHelper.buildMediaMetadata(
+                                title = currentTitle,
+                                artist = currentArtist,
+                                stationName = currentStationName,
+                                artworkData = null
+                            )
+                            player.setMediaItem(
+                                MediaItem.Builder()
+                                    .setUri(currentStreamUrl)
+                                    .setMediaId("Raadio")
+                                    .setMediaMetadata(initialMeta)
+                                    .build()
+                            )
+                        } else {
+                            player.seekToDefaultPosition()
+                        }
                         player.prepare()
                     }
                 }
@@ -890,6 +984,11 @@ class RadioService : Service() {
             ACTION_SKIP_NEXT -> { changeStation(1); return START_STICKY }
             ACTION_SKIP_PREVIOUS -> { changeStation(-1); return START_STICKY }
             ACTION_PLAY_PAUSE_TOGGLE -> {
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastFocusGainTime < 1500L) {
+                    Log.i(TAG, "Ignoreerime ACTION_PLAY_PAUSE_TOGGLE vahetult pärast kõne lõppu.")
+                    return START_STICKY
+                }
                 if (player.isPlaying) {
                     player.pause()
                     updateNotification()
@@ -1034,8 +1133,12 @@ class RadioService : Service() {
     }
 
     private fun updateNotification() {
+        if (!::player.isInitialized || mediaSession == null) return
+        val isSuppressed = player.playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE
+        val shouldKeepForeground = player.isPlaying || isAlarmMode || isChangingStation || (player.playWhenReady && (isSuppressed || wasSuppressedByTransientLoss))
+
         val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
-        if (player.isPlaying || isAlarmMode || isChangingStation) {
+        if (shouldKeepForeground) {
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
             } else {
@@ -1049,6 +1152,8 @@ class RadioService : Service() {
 
     private fun stopRadio(isError: Boolean = false) {
         if (wakeLock?.isHeld == true) wakeLock?.release()
+        wasSuppressedByTransientLoss = false
+        wasNoisyDuringCall = false
         stopSleepTimer()
         stopRecording()
         stopProgressTracker()
