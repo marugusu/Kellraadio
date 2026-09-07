@@ -108,6 +108,8 @@
     <string name="settings_test_data_desc">Lisa andmebaasi prooviandmeid</string>
     <string name="app_version">Versioon %1$s</string>
     <string name="toast_updated">Uuendatud!</string>
+    <string name="toast_stations_updated">Kanalid uuendatud! Serverist: %1$d jaama • Oma kanaleid: %2$d</string>
+    <string name="toast_stations_update_failed">Kanalite värskendamine ebaõnnestus</string>
     <string name="toast_order_reset">Lemmikute järjekord taastatud!</string>
     <string name="settings_clear_history">Kustuta ajalugu</string>
     <string name="settings_clear_history_desc">Eemalda kõik salvestatud kuulamised</string>

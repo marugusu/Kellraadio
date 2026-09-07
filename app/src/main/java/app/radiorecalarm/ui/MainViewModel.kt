@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.Build
 import kotlinx.coroutines.flow.first
 
 import android.widget.Toast
@@ -202,7 +204,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val oneDayMillis = 24 * 60 * 60 * 1000L
             val isExpired = (System.currentTimeMillis() - lastUpdate) > oneDayMillis
             if (stations.isEmpty() || isExpired) {
-                refreshStations()
+                refreshStations(isManual = false)
+            }
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val updateResult = updateManager.checkForUpdate(appVersion)
+                if (updateResult is UpdateUiState.UpdateAvailable || updateResult is UpdateUiState.ReadyToInstall) {
+                    cachedUpdateResult = updateResult
+                    _uiState.update { current ->
+                        val shouldShowDialog = current.currentTab == 4 && !hasShownAutoUpdatePopup
+                        if (shouldShowDialog) {
+                            hasShownAutoUpdatePopup = true
+                        }
+                        current.copy(
+                            hasAvailableUpdate = true,
+                            updateState = if (shouldShowDialog) updateResult else current.updateState
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore network errors in background update check
             }
         }
     }
@@ -252,6 +275,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(currentTab = index, categoryToSelectOnTabChange = null) }
         } else {
             _uiState.update { it.copy(currentTab = index) }
+        }
+        if (index == 4 && _uiState.value.hasAvailableUpdate && !hasShownAutoUpdatePopup && _uiState.value.updateState is UpdateUiState.Idle) {
+            hasShownAutoUpdatePopup = true
+            cachedUpdateResult?.let { updateState ->
+                _uiState.update { it.copy(updateState = updateState) }
+            }
         }
     }
 
@@ -526,15 +555,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun refreshStations() {
+    fun refreshStations(isManual: Boolean = true) {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             try {
-                stationRepository.refreshStations()
-                prefs.edit().putLong("last_update_time", System.currentTimeMillis()).apply()
-                Toast.makeText(context, getString(R.string.toast_updated), Toast.LENGTH_SHORT).show()
+                val result = stationRepository.refreshStations()
+                if (result.isSuccess) {
+                    prefs.edit().putLong("last_update_time", System.currentTimeMillis()).apply()
+                    val message = context.getString(R.string.toast_stations_updated, result.serverCount, result.userCount)
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                } else if (isManual) {
+                    val errorMsg = context.getString(R.string.toast_stations_update_failed)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                }
             } catch (e: Exception) {
-                // Ignore
+                if (isManual) {
+                    val errorMsg = context.getString(R.string.toast_stations_update_failed)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                }
             } finally {
                 _uiState.update { it.copy(isRefreshing = false) }
             }
@@ -801,14 +839,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- ÄPISISENE UUENDUS (IN-APP UPDATER) ---
+    val appVersion: String by lazy {
+        try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+            packageInfo.versionName ?: "1.0.0"
+        } catch (e: Exception) {
+            "1.0.0"
+        }
+    }
+
     val updateManager = AppUpdateManager(context)
     private var downloadJob: Job? = null
+    private var cachedUpdateResult: UpdateUiState? = null
+    private var hasShownAutoUpdatePopup = false
 
     fun checkForUpdates(currentVersion: String) {
         _uiState.update { it.copy(updateState = UpdateUiState.Checking) }
         viewModelScope.launch {
             val result = updateManager.checkForUpdate(currentVersion)
-            _uiState.update { it.copy(updateState = result) }
+            if (result is UpdateUiState.UpdateAvailable || result is UpdateUiState.ReadyToInstall) {
+                cachedUpdateResult = result
+                _uiState.update { it.copy(updateState = result, hasAvailableUpdate = true) }
+            } else {
+                _uiState.update { it.copy(updateState = result) }
+            }
         }
     }
 
@@ -816,6 +875,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         downloadJob?.cancel()
         downloadJob = viewModelScope.launch {
             updateManager.downloadApk(release, asset).collect { state ->
+                if (state is UpdateUiState.ReadyToInstall) {
+                    cachedUpdateResult = state
+                }
                 _uiState.update { it.copy(updateState = state) }
             }
         }

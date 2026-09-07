@@ -59,5 +59,6 @@ data class MainUiState(
     val showResetOrderDialog: Boolean = false,
 
     // --- UUENDUSTE OLEK ---
-    val updateState: UpdateUiState = UpdateUiState.Idle
+    val updateState: UpdateUiState = UpdateUiState.Idle,
+    val hasAvailableUpdate: Boolean = false
 )

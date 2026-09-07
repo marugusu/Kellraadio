@@ -221,7 +221,17 @@ fun RaadioEkraan(
                 NavigationRailItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = railItemColors)
                 NavigationRailItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = railItemColors)
                 NavigationRailItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = railItemColors)
-                NavigationRailItem(selected = state.currentTab == 4, onClick = { mainViewModel.onTabSelected(4) }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(navSettingsTitle) }, colors = railItemColors)
+                NavigationRailItem(
+                    selected = state.currentTab == 4,
+                    onClick = { mainViewModel.onTabSelected(4) },
+                    icon = {
+                        BadgedBox(badge = { if (state.hasAvailableUpdate) Badge() }) {
+                            Icon(Icons.Default.Settings, null)
+                        }
+                    },
+                    label = { Text(navSettingsTitle) },
+                    colors = railItemColors
+                )
                 Spacer(modifier = Modifier.weight(1f))
             }
             VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -328,7 +338,17 @@ fun RaadioEkraan(
                         NavigationBarItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = navItemColors)
                         NavigationBarItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = navItemColors)
                         NavigationBarItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = navItemColors)
-                        NavigationBarItem(selected = state.currentTab == 4, onClick = { mainViewModel.onTabSelected(4) }, icon = { Icon(Icons.Default.Settings, null) }, label = { Text(navSettingsTitle) }, colors = navItemColors)
+                        NavigationBarItem(
+                            selected = state.currentTab == 4,
+                            onClick = { mainViewModel.onTabSelected(4) },
+                            icon = {
+                                BadgedBox(badge = { if (state.hasAvailableUpdate) Badge() }) {
+                                    Icon(Icons.Default.Settings, null)
+                                }
+                            },
+                            label = { Text(navSettingsTitle) },
+                            colors = navItemColors
+                        )
                     }
                 }
             }
