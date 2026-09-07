@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import kotlinx.coroutines.flow.first
 
 import android.widget.Toast
@@ -42,6 +43,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val context = application.applicationContext
     private val prefs = context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE)
+
+    val appVersion: String by lazy {
+        try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+            packageInfo.versionName ?: "1.0.0"
+        } catch (e: Exception) {
+            "1.0.0"
+        }
+    }
+
+    val updateManager = AppUpdateManager(context)
+    private var downloadJob: Job? = null
+    private var cachedUpdateResult: UpdateUiState? = null
+    private var hasShownAutoUpdatePopup = false
 
     private val database = AppDatabase.getDatabase(context)
     val stationRepository = RadioStationRepository(
@@ -210,7 +230,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                Log.d("MainViewModel", "Käivitan taustal uuenduste kontrolli: appVersion=$appVersion")
                 val updateResult = updateManager.checkForUpdate(appVersion)
+                Log.d("MainViewModel", "Taustal uuenduste kontrolli tulemus: $updateResult")
                 if (updateResult is UpdateUiState.UpdateAvailable || updateResult is UpdateUiState.ReadyToInstall) {
                     cachedUpdateResult = updateResult
                     _uiState.update { current ->
@@ -225,7 +247,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                // Ignore network errors in background update check
+                Log.e("MainViewModel", "Viga taustal uuenduste kontrollimisel", e)
             }
         }
     }
@@ -839,25 +861,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- ÄPISISENE UUENDUS (IN-APP UPDATER) ---
-    val appVersion: String by lazy {
-        try {
-            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(context.packageName, 0)
-            }
-            packageInfo.versionName ?: "1.0.0"
-        } catch (e: Exception) {
-            "1.0.0"
-        }
-    }
-
-    val updateManager = AppUpdateManager(context)
-    private var downloadJob: Job? = null
-    private var cachedUpdateResult: UpdateUiState? = null
-    private var hasShownAutoUpdatePopup = false
-
     fun checkForUpdates(currentVersion: String) {
         _uiState.update { it.copy(updateState = UpdateUiState.Checking) }
         viewModelScope.launch {
@@ -866,7 +869,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 cachedUpdateResult = result
                 _uiState.update { it.copy(updateState = result, hasAvailableUpdate = true) }
             } else {
-                _uiState.update { it.copy(updateState = result) }
+                _uiState.update { it.copy(updateState = result, hasAvailableUpdate = false) }
             }
         }
     }
