@@ -84,6 +84,7 @@ class RadioService : Service() {
     private var metadataPushJob: kotlinx.coroutines.Job? = null
     private var pendingMetadataJob: kotlinx.coroutines.Job? = null
     private var bufferingWatchdogJob: kotlinx.coroutines.Job? = null
+    private var idleTimeoutJob: kotlinx.coroutines.Job? = null
     private var activeDataSource: RetryingHttpDataSource? = null
 
     private var lastDefaultNetwork: android.net.Network? = null
@@ -179,15 +180,17 @@ class RadioService : Service() {
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
             val result = MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
             
-            // Kui auto ühendub, saadame talle kohe jõuga viimati teadaolevad andmed (tervitus)
+            // Kui auto või muu kontroller ühendub, saadame talle viimati teadaoleva info asünkroonselt pärast kätlemise lõppu
             if (currentTitle.isNotEmpty() && currentStationName.isNotEmpty()) {
-                Log.d(TAG, "onConnect: Auto ühendus! Saadame ekraanile info: Title='$currentTitle', Artist='$currentArtist'")
-                
-                // Nullime kaitsed samamoodi nagu uue jaama laadimisel, et info kindlasti läbi läheks
-                lastSentTitle = ""
-                lastSentArtist = ""
-                lastSentTime = 0
-                updateExternalDevices(currentTitle, currentArtist)
+                Log.d(TAG, "onConnect: Kontroller ühendus (${controller.packageName}). Ajastame tervitusinfo saatmise...")
+                sessionScope.launch {
+                    delay(300)
+                    // Nullime kaitsed samamoodi nagu uue jaama laadimisel, et info kindlasti läbi läheks
+                    lastSentTitle = ""
+                    lastSentArtist = ""
+                    lastSentTime = 0
+                    updateExternalDevices(currentTitle, currentArtist)
+                }
             }
             
             return result
@@ -514,12 +517,14 @@ class RadioService : Service() {
                     // Tühistame puhverdamise valvuri kõne ajaks
                     bufferingWatchdogJob?.cancel()
                     bufferingWatchdogJob = null
+                    cancelIdleTimeout()
 
                     updateNotification()
                 }
                 Player.PLAYBACK_SUPPRESSION_REASON_NONE -> {
                     if (wasSuppressedByTransientLoss) {
                         wasSuppressedByTransientLoss = false
+                        cancelIdleTimeout()
                         Log.i(TAG, "Audiofookus taastus pärast kõnet/katkestust! Taastame reaalajas striimi...")
                         lastFocusGainTime = SystemClock.elapsedRealtime()
 
@@ -551,6 +556,7 @@ class RadioService : Service() {
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
+                cancelIdleTimeout()
                 val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
                 if (Build.VERSION.SDK_INT >= 34) {
                     startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -563,9 +569,17 @@ class RadioService : Service() {
                     if (wasSuppressedByTransientLoss) {
                         Log.i(TAG, "AUDIO_BECOMING_NOISY saabus kõne ajal (Bluetooth profiilivahetus). Salvestame taastamisvajaduse.")
                         wasNoisyDuringCall = true
+                    } else {
+                        // Klapid eemaldati väljaspool kõnet: katkestame aktiivse sokliühenduse kohe,
+                        // et vältida andmesidet ja koodeki korruptsiooni võrgu vahetudes (nt Wi-Fi -> 4G)
+                        activeDataSource?.invalidateConnection()
+                        if (wakeLock?.isHeld == true) wakeLock?.release()
                     }
                 }
                 updateNotification()
+                if (!wasSuppressedByTransientLoss) {
+                    startIdleTimeout()
+                }
             }
         }
 
@@ -1105,7 +1119,7 @@ class RadioService : Service() {
 
         updateNotification()
 
-        if (player.isPlaying) player.stop()
+        player.stop()
 
         val initialMeta = metadataHelper.buildMediaMetadata(
             title = currentTitle,
@@ -1151,6 +1165,7 @@ class RadioService : Service() {
     }
 
     private fun stopRadio(isError: Boolean = false) {
+        cancelIdleTimeout()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         wasSuppressedByTransientLoss = false
         wasNoisyDuringCall = false
@@ -1171,6 +1186,26 @@ class RadioService : Service() {
         if (!isError) LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    private fun startIdleTimeout() {
+        cancelIdleTimeout()
+        Log.d(TAG, "startIdleTimeout: Alustan ootetaimerit (${AppConfig.Player.IDLE_TIMEOUT_MS / 1000}s)...")
+        idleTimeoutJob = serviceScope.launch(Dispatchers.Main) {
+            delay(AppConfig.Player.IDLE_TIMEOUT_MS)
+            if (::player.isInitialized && !player.isPlaying && !player.playWhenReady && !wasSuppressedByTransientLoss) {
+                Log.i(TAG, "startIdleTimeout: Taimer (${AppConfig.Player.IDLE_TIMEOUT_MS / 1000}s) aegus. Peatame raadio ja vabastame Bluetoothi ning helikanalid.")
+                stopRadio()
+            }
+        }
+    }
+
+    private fun cancelIdleTimeout() {
+        if (idleTimeoutJob != null) {
+            Log.d(TAG, "cancelIdleTimeout: Taimer tühistatud.")
+            idleTimeoutJob?.cancel()
+            idleTimeoutJob = null
+        }
     }
 
     private fun startSleepTimer(minutes: Int) {
@@ -1272,6 +1307,7 @@ class RadioService : Service() {
     }
 
     override fun onDestroy() {
+        cancelIdleTimeout()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (e: Exception) {}
