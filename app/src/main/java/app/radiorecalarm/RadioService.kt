@@ -178,22 +178,8 @@ class RadioService : Service() {
 
     private val mediaSessionCallback = object : MediaSession.Callback {
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
-            val result = MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
-            
-            // Kui auto või muu kontroller ühendub, saadame talle viimati teadaoleva info asünkroonselt pärast kätlemise lõppu
-            if (currentTitle.isNotEmpty() && currentStationName.isNotEmpty()) {
-                Log.d(TAG, "onConnect: Kontroller ühendus (${controller.packageName}). Ajastame tervitusinfo saatmise...")
-                sessionScope.launch {
-                    delay(300)
-                    // Nullime kaitsed samamoodi nagu uue jaama laadimisel, et info kindlasti läbi läheks
-                    lastSentTitle = ""
-                    lastSentArtist = ""
-                    lastSentTime = 0
-                    updateExternalDevices(currentTitle, currentArtist)
-                }
-            }
-            
-            return result
+            Log.d(TAG, "onConnect: Kontroller ühendus (${controller.packageName})")
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
         }
 
         override fun onPlayerCommandRequest(session: MediaSession, controller: MediaSession.ControllerInfo, playerCommand: Int): Int {
@@ -535,10 +521,7 @@ class RadioService : Service() {
                             player.playWhenReady = true
                         }
 
-                        // Nullime kaitsed samamoodi nagu uue jaama laadimisel, et info kindlasti läbi läheks
-                        lastSentTitle = ""
-                        lastSentArtist = ""
-                        lastSentTime = 0
+                        // Taastame vealoenduri
                         consecutiveErrorCount = 0
 
                         serviceScope.launch(Dispatchers.Main) {
