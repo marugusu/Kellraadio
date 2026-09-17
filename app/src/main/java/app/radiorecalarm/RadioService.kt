@@ -69,6 +69,7 @@ class RadioService : Service() {
     private var isInitialStationPlayback = false
     private var currentCategory: String = ""
     private var lastBitrateInfo: String = ""
+    private var cachedStations: List<RadioStation> = emptyList()
 
     private var currentArtist: String = ""
     private var currentTitle: String = ""
@@ -217,44 +218,49 @@ class RadioService : Service() {
         
         currentCategory = prefs.getString("last_category", currentCategory) ?: currentCategory
         
-        serviceScope.launch {
+        val allStations = if (cachedStations.isNotEmpty()) {
+            cachedStations
+        } else {
             val db = AppDatabase.getDatabase(applicationContext)
-            val dao = db.radioStationDao()
-            val allStations = dao.getAllActiveStationsSync()
-            if (allStations.isEmpty()) return@launch
-
-            val navigationList = when (currentCategory) {
-                "Favorites" -> allStations.filter { it.isFavorite }
-                    .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
-                "My" -> allStations.filter { it.isUserStation }
-                "All", "" -> allStations
-                else -> {
-                    allStations.filter { it.category == currentCategory || it.countryCode == currentCategory }
+            kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                try {
+                    db.radioStationDao().getAllActiveStationsSync().also { cachedStations = it }
+                } catch (e: Exception) {
+                    emptyList()
                 }
-            }
-
-            val finalNavList = if (navigationList.isEmpty() || navigationList.none { it.name == currentStationName }) {
-                allStations
-            } else {
-                navigationList
-            }
-
-            val currentIndex = finalNavList.indexOfFirst { it.name == currentStationName }
-            val baseIndex = if (currentIndex == -1) 0 else currentIndex
-            val nextIndex = (baseIndex + offset + finalNavList.size) % finalNavList.size
-            val nextStation = finalNavList[nextIndex]
-
-            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
-                Intent(ACTION_STATION_SELECTED_BY_SERVICE).apply {
-                    putExtra("STATION_ID", nextStation.id)
-                }
-            )
-
-            withContext(Dispatchers.Main) {
-                isAlarmMode = false
-                playStation(nextStation.url, nextStation.name, "USER")
             }
         }
+        if (allStations.isEmpty()) return
+
+        val navigationList = when (currentCategory) {
+            "Favorites" -> allStations.filter { it.isFavorite }
+                .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
+            "My" -> allStations.filter { it.isUserStation }
+            "All", "" -> allStations
+            else -> {
+                allStations.filter { it.category == currentCategory || it.countryCode == currentCategory }
+            }
+        }
+
+        val finalNavList = if (navigationList.isEmpty() || navigationList.none { it.name == currentStationName }) {
+            allStations
+        } else {
+            navigationList
+        }
+
+        val currentIndex = finalNavList.indexOfFirst { it.name == currentStationName }
+        val baseIndex = if (currentIndex == -1) 0 else currentIndex
+        val nextIndex = (baseIndex + offset + finalNavList.size) % finalNavList.size
+        val nextStation = finalNavList[nextIndex]
+
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
+            Intent(ACTION_STATION_SELECTED_BY_SERVICE).apply {
+                putExtra("STATION_ID", nextStation.id)
+            }
+        )
+
+        isAlarmMode = false
+        playStation(nextStation.url, nextStation.name, "USER")
     }
 
     private fun updatePlayerMetadata(trackTitleFromStream: String?) {
@@ -640,10 +646,11 @@ class RadioService : Service() {
                                 stationName = currentStationName,
                                 artworkData = null
                             )
+                            val uniqueMediaId = initialMeta.extras?.getString("android.media.metadata.MEDIA_ID") ?: "station_recovery"
                             player.setMediaItem(
                                 MediaItem.Builder()
                                     .setUri(currentStreamUrl)
-                                    .setMediaId("Raadio")
+                                    .setMediaId(uniqueMediaId)
                                     .setMediaMetadata(initialMeta)
                                     .build()
                             )
@@ -894,6 +901,17 @@ class RadioService : Service() {
             connectivityManager.registerNetworkCallback(request, networkCallback)
         }
 
+        serviceScope.launch {
+            try {
+                val db = AppDatabase.getDatabase(applicationContext)
+                db.radioStationDao().getAllActiveStations().collect { stations ->
+                    cachedStations = stations
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Viga jaamade vahemälu laadimisel: ${e.message}")
+            }
+        }
+
         restoreLastState()
     }
     
@@ -922,10 +940,11 @@ class RadioService : Service() {
             )
             
             player.updateTrackMetadata(initialMeta)
+            val uniqueMediaId = initialMeta.extras?.getString("android.media.metadata.MEDIA_ID") ?: "station_initial"
             player.setMediaItem(
                 MediaItem.Builder()
                     .setUri(currentStreamUrl)
-                    .setMediaId("Raadio")
+                    .setMediaId(uniqueMediaId)
                     .setMediaMetadata(initialMeta)
                     .build()
             )
@@ -1113,10 +1132,11 @@ class RadioService : Service() {
 
         Log.d(TAG, "playStation: Sending INITIAL metadata: Title='$currentTitle', Artist='$currentArtist', Album='$currentStationName'")
 
+        val uniqueMediaId = initialMeta.extras?.getString("android.media.metadata.MEDIA_ID") ?: "station_${SystemClock.elapsedRealtime()}"
         player.setMediaItem(
             MediaItem.Builder()
                 .setUri(streamUrl)
-                .setMediaId("Raadio")
+                .setMediaId(uniqueMediaId)
                 .setMediaMetadata(initialMeta)
                 .build()
         )

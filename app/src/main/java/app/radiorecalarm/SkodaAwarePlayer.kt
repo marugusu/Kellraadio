@@ -120,7 +120,11 @@ class SkodaAwarePlayer(
     override fun getCurrentMediaItem(): MediaItem? {
         val item = super.getCurrentMediaItem() ?: return null
         val metadata = currentTrackMetadata ?: item.mediaMetadata
-        return item.buildUpon().setMediaMetadata(metadata).build()
+        val uniqueMediaId = metadata.extras?.getString("android.media.metadata.MEDIA_ID") ?: item.mediaId
+        return item.buildUpon()
+            .setMediaId(uniqueMediaId)
+            .setMediaMetadata(metadata)
+            .build()
     }
 
     override fun getMediaMetadata(): MediaMetadata {
