@@ -108,7 +108,7 @@ class RadioNotificationManager(private val context: Context) {
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(isPlaying || isAlarmMode)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setCategory(if (isAlarmMode) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_TRANSPORT)
             .setPriority(priority)
             .setDefaults(if (isAlarmMode) Notification.DEFAULT_ALL else 0)
             .setContentIntent(mediaSession.sessionActivity)

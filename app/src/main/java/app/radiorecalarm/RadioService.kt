@@ -979,6 +979,10 @@ class RadioService : Service() {
                 player.pause()
                 if (wakeLock?.isHeld == true) wakeLock?.release()
                 metadataPushJob?.cancel()
+                if (isAlarmMode) {
+                    isAlarmMode = false
+                    notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
+                }
                 updateNotification()
                 return START_STICKY
             }
@@ -1058,6 +1062,9 @@ class RadioService : Service() {
                     isAlarmMode = true
                     val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
                     notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
+                } else if (isAlarmMode) {
+                    isAlarmMode = false
+                    notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
                 }
                 updateNotification()
             } else {
@@ -1079,11 +1086,12 @@ class RadioService : Service() {
         sendBitrateUpdate()
         wakeLock?.acquire(10 * 60 * 1000L)
 
-        updateNotification()
-
         currentStreamUrl = streamUrl
         currentStationName = stationName ?: "Radio"
         isAlarmMode = triggeredBy == "ALARM"
+        if (!isAlarmMode) {
+            notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
+        }
         currentStationBitmap = app.radiorecalarm.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
 
         currentArtist = getString(R.string.live_broadcast)
