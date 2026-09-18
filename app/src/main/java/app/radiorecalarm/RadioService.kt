@@ -77,6 +77,7 @@ class RadioService : Service() {
 
     private var lastSentArtist: String = ""
     private var lastSentTitle: String = ""
+    private var lastSentStationName: String = ""
     private var lastSentTime: Long = 0
 
     private var isAlarmMode: Boolean = false
@@ -187,17 +188,17 @@ class RadioService : Service() {
             when (playerCommand) {
                 Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
                     changeStation(1)
-                    return SessionResult.RESULT_SUCCESS
+                    return SessionResult.RESULT_INFO_SKIPPED
                 }
                 Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
                     changeStation(-1)
-                    return SessionResult.RESULT_SUCCESS
+                    return SessionResult.RESULT_INFO_SKIPPED
                 }
                 Player.COMMAND_PLAY_PAUSE -> {
                     val now = SystemClock.elapsedRealtime()
                     if (now - lastFocusGainTime < 1500L) {
                         Log.i(TAG, "Ignoreerime auto automaatset PLAY_PAUSE käsku vahetult pärast kõne lõppu (race condition kaitse).")
-                        return SessionResult.RESULT_SUCCESS
+                        return SessionResult.RESULT_INFO_SKIPPED
                     }
                     if (player.isPlaying) {
                         player.pause()
@@ -206,7 +207,7 @@ class RadioService : Service() {
                             playStation(currentStreamUrl, currentStationName, "USER_RESUME")
                         }
                     }
-                    return SessionResult.RESULT_SUCCESS
+                    return SessionResult.RESULT_INFO_SKIPPED
                 }
             }
             return super.onPlayerCommandRequest(session, controller, playerCommand)
@@ -324,14 +325,17 @@ class RadioService : Service() {
         if (timeSinceLast < 500) {
             Log.d(TAG, "updateExternalDevices: Debouncing update ($timeSinceLast ms since last) for Title='$title', Artist='$artist'")
             pendingMetadataJob?.cancel()
+            val targetStation = currentStationName
             pendingMetadataJob = sessionScope.launch {
                 delay(500 - timeSinceLast)
-                updateExternalDevices(title, artist)
+                if (targetStation == currentStationName) {
+                    updateExternalDevices(title, artist)
+                }
             }
             return
         }
 
-        if (title == lastSentTitle && artist == lastSentArtist) {
+        if (title == lastSentTitle && artist == lastSentArtist && currentStationName == lastSentStationName) {
             return
         }
 
@@ -342,6 +346,7 @@ class RadioService : Service() {
 
         lastSentTitle = title
         lastSentArtist = artist
+        lastSentStationName = currentStationName
         lastSentTime = currentTime
 
         val newMetadata = metadataHelper.buildMediaMetadata(
@@ -467,14 +472,6 @@ class RadioService : Service() {
                     player.streamStartTime = SystemClock.elapsedRealtime()
                     updateExternalDevices(currentTitle, currentArtist)
 
-                    metadataPushJob?.cancel()
-                    metadataPushJob = sessionScope.launch {
-                        delay(5000)
-                        Log.d(TAG, "metadataPushJob: Initial station connection 5s refresh")
-                        if (player.isPlaying && !isChangingStation) {
-                            updateExternalDevices(currentTitle, currentArtist)
-                        }
-                    }
                 } else {
                     // Striimi taastumine võrgukatkestusest või lühiajalisest puhverdamisest:
                     // Uuendame autot ainult siis, kui laul on vahepeal päriselt muutunud!
@@ -883,7 +880,10 @@ class RadioService : Service() {
             .setHandleAudioBecomingNoisy(true).build()
 
         realPlayer.addListener(playerListener)
-        player = SkodaAwarePlayer(realPlayer, listeners)
+        player = SkodaAwarePlayer(realPlayer, listeners).apply {
+            onSkipNext = { changeStation(1) }
+            onSkipPrevious = { changeStation(-1) }
+        }
         mediaSession = MediaSession.Builder(this, player).setSessionActivity(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)).setCallback(mediaSessionCallback).build()
         LocalBroadcastManager.getInstance(this).registerReceiver(statusReceiver, IntentFilter(ACTION_GET_STATUS))
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -1077,6 +1077,11 @@ class RadioService : Service() {
     private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?) {
         Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy'")
 
+        pendingMetadataJob?.cancel()
+        pendingMetadataJob = null
+        metadataPushJob?.cancel()
+        metadataPushJob = null
+
         stopRecording()
         hasSuccessfullyStartedPlaying = false
         consecutiveErrorCount = 0
@@ -1100,6 +1105,7 @@ class RadioService : Service() {
         
         lastSentTitle = ""
         lastSentArtist = ""
+        lastSentStationName = ""
         lastSentTime = 0
 
         serviceScope.launch {

@@ -2,6 +2,7 @@ package app.radiorecalarm
 
 import android.os.SystemClock
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -10,27 +11,40 @@ import androidx.media3.common.util.UnstableApi
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
- * See on spetsiaalne mängija (Wrapper), mis lahendab Skoda/VW/Audi Bluetoothi probleemid.
- * Probleem: Autod arvavad, et striim on "Live" ja ei uuenda metaandmeid (laulu nime),
- * kui kestus on teadmata või 0.
+ * Spetsiaalne mängija (ForwardingPlayer wrapper) raadiovoo ja auto (sh Skoda/VW/Audi) Bluetoothi toeks.
  *
- * Lahendus: Me "valetame" autole, et see on 5-minutiline fail (300000ms) ja arvutame
- * ise jooksva aja (Fake Progress). See sunnib autot ekraani uuendama.
+ * 1. Metaandmete dünaamiline uuendamine:
+ *    ExoPlayer ei võimalda otse reaalajas striimi keskel MediaItemi metaandmeid muuta ilma striimi taaskäivitamata.
+ *    See wrapper kirjutab üle meetodi `getMediaMetadata()` ja teavitab kuulajaid puhta `onMediaMetadataChanged` kaudu.
+ *
+ * 2. Bluetooth AVRCP sünkroonimise parandus:
+ *    Eemaldame `COMMAND_GET_TIMELINE`, mis keelab MediaSessionil 1-elemendilise vananenud esitusjärjekorra (Queue)
+ *    loomise. See kaotab Androidi Bluetooth AVRCP pinus (`MediaPlayerWrapper.java`) tekkinud 2000 ms viivituse.
+ *
+ * 3. Roolinuppude (Next / Previous) delegeerimine:
+ *    Delegeerib käsud `seekToNext` ja `seekToPrevious` otse raadiojaama vahetusele, vältides ExoPlayeri
+ *    vaikimisi käitumist, mis teeks reaalajas voole seek(0) ja rikuks puhvri.
+ *
+ * 4. Pardaarvuti progressi ja režiimi tugi:
+ *    Raadiovoo puhul tagastatakse kindel kestus (300000ms ehk 5 min) ja jooksva aja arvutus, et auto pardaarvuti
+ *    (eriti VAG MIB2/MIB3) ei lülituks "tühja AUX režiimi", kus lauluinfo uuendamine keelatakse.
+ *    Salvestiste (kohalikud failid) puhul kasutatakse reaalset faili kestust ja positsiooni.
  */
 @OptIn(UnstableApi::class)
 class SkodaAwarePlayer(
     player: Player,
-    private val internalListeners: CopyOnWriteArraySet<Player.Listener>
+    private val internalListeners: CopyOnWriteArraySet<Player.Listener> = CopyOnWriteArraySet()
 ) : ForwardingPlayer(player) {
 
     private var positionAtPause: Long = 0L
+
+    var onSkipNext: (() -> Unit)? = null
+    var onSkipPrevious: (() -> Unit)? = null
 
     // Seda muutujat muudab RadioService, kui uus jaam algab
     var streamStartTime: Long = 0L
         set(value) {
             field = value
-            // NULLIME ASUKOHA UUE JAAMA LAADIMISEL, 
-            // et auto saaks aru: algas täiesti uus lugu!
             positionAtPause = 0L
         }
 
@@ -46,6 +60,9 @@ class SkodaAwarePlayer(
 
     override fun getAvailableCommands(): Player.Commands {
         return super.getAvailableCommands().buildUpon()
+            // Eemaldame GET_TIMELINE, et MediaSession ei looks vale Queue'd,
+            // mis viib Androidi Bluetooth AVRCP pinus 2-sekundilise viivituseni.
+            .remove(Player.COMMAND_GET_TIMELINE)
             .add(Player.COMMAND_SEEK_TO_NEXT)
             .add(Player.COMMAND_SEEK_TO_PREVIOUS)
             .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
@@ -56,6 +73,7 @@ class SkodaAwarePlayer(
 
     override fun isCommandAvailable(command: Int): Boolean {
         return when (command) {
+            Player.COMMAND_GET_TIMELINE -> false
             Player.COMMAND_SEEK_TO_NEXT,
             Player.COMMAND_SEEK_TO_PREVIOUS,
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
@@ -65,18 +83,50 @@ class SkodaAwarePlayer(
         }
     }
 
-    // --- SKODA FIX 1: Fikseeritud kestus (5 minutit) ---
+    override fun seekToNext() {
+        if (onSkipNext != null) {
+            onSkipNext?.invoke()
+        } else {
+            super.seekToNext()
+        }
+    }
+
+    override fun seekToPrevious() {
+        if (onSkipPrevious != null) {
+            onSkipPrevious?.invoke()
+        } else {
+            super.seekToPrevious()
+        }
+    }
+
+    override fun seekToNextMediaItem() {
+        if (onSkipNext != null) {
+            onSkipNext?.invoke()
+        } else {
+            super.seekToNextMediaItem()
+        }
+    }
+
+    override fun seekToPreviousMediaItem() {
+        if (onSkipPrevious != null) {
+            onSkipPrevious?.invoke()
+        } else {
+            super.seekToPreviousMediaItem()
+        }
+    }
+
+    // --- Kestus: 5 minutit raadiovoole, reaalne kestus kohalikule failile ---
     override fun getDuration(): Long {
         if (isLocalPlayback()) {
             val realDuration = super.getDuration()
-            if (realDuration != androidx.media3.common.C.TIME_UNSET) {
+            if (realDuration != C.TIME_UNSET) {
                 return realDuration
             }
         }
         return 300000L
     }
 
-    // --- SKODA FIX 2: Võlts-progress ---
+    // --- Positsioon: auto progressiriba tugi ---
     override fun getCurrentPosition(): Long {
         if (isLocalPlayback()) {
             return super.getCurrentPosition()
@@ -98,19 +148,11 @@ class SkodaAwarePlayer(
 
     fun updateTrackMetadata(metadata: MediaMetadata) {
         currentTrackMetadata = metadata
-        try {
-            super.setPlaylistMetadata(metadata)
-        } catch (e: Exception) {
-            // Ignore if unsupported
-        }
-        val currentItem = getCurrentMediaItem()
+        // Teavitame kuulajaid (sh MediaSession) ametliku onMediaMetadataChanged kaudu.
+        // Eemaldatud kunstlik onMediaItemTransition, mis tekitas tarbetut olekumuutuste müra.
         internalListeners.forEach { listener ->
             try {
                 listener.onMediaMetadataChanged(metadata)
-                listener.onPlaylistMetadataChanged(metadata)
-                if (currentItem != null) {
-                    listener.onMediaItemTransition(currentItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
-                }
             } catch (e: Exception) {
                 // Ignore listener exceptions
             }

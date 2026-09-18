@@ -219,7 +219,7 @@ class RadioMetadataHelper(
         val finalArtist = if (cleanArtist.isNotBlank()) cleanArtist else getLiveBroadcastString()
 
         // Unikaalne ID aitab autol aru saada, et lugu muutus
-        val uniqueId = "radiow_${(finalTitle + finalArtist).hashCode()}"
+        val uniqueId = "radiow_${(safeStation + finalTitle + finalArtist).hashCode()}"
 
         val extras = Bundle().apply {
             putString("android.media.metadata.MEDIA_ID", uniqueId)
