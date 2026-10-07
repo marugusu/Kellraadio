@@ -44,3 +44,9 @@ Rules and guardrails for developing the Kellraadio Android app. Every agent modi
 *   **Feature Branching**: Always create a new feature branch (e.g., `feature/<name>`) for new features and tasks. Never commit or merge directly into `master` without explicit user review and permission.
 *   **Unstaged Work Protection**: The user frequently has uncommitted visual/UX experiments (notably in `MainActivity.kt` and `ui/SongInfoSheet.kt`). **NEVER** overwrite, discard (`git checkout --`, `git restore`), or blindly stage (`git add .`) these unstaged modifications. Always inspect `git diff` before staging.
 *   **Release Automation**: Releases are published using `tools/publish_release.py`. Never perform manual browser release uploads.
+
+## Versioning Guardrails
+
+*   **Version Synchronization**: `versionName` viimane number (patch number, nt `1.1.X`) **PEAB ALATI** olema täpselt võrdne `versionCode` väärtusega:
+    *   Valem: `versionName = "1.1.<versionCode>"` (nt `versionCode = 20` -> `versionName = "1.1.20"`).
+    *   Uue versiooni loomisel suurendatakse `versionCode` 1 võrra ning `versionName` viimane number seatakse sellega samaks.

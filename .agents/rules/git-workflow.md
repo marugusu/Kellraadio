@@ -21,7 +21,8 @@ Guardrails and protocols for Git operations and version control in the Kellraadi
     3.  Always check `git status` and `git diff` before staging, and stage specific files explicitly by path.
     4.  If switching branches or merging requires a clean working tree, use `git stash push -m "User UI tweaks" <files>` and immediately `git stash pop` after the operation, verifying the user's modifications are intact.
 
-## 4. Release Protocol
+## 4. Release Protocol & Versioning
 
 *   Release builds must be published using the automated [tools/publish_release.py](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/tools/publish_release.py) script.
 *   Do not upload releases manually via a web browser.
+*   **Version Synchronization**: `versionName` viimane number (patch number, nt `1.1.X`) **PEAB ALATI** olema võrdne `versionCode` väärtusega (`versionName = "1.1.<versionCode>"`). Igal uuel reliisil suurendatakse `versionCode` 1 võrra ja `versionName` viimane number viiakse sellega samaks.

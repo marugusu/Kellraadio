@@ -152,11 +152,26 @@ def publish_release(repo_owner, repo_name, tag_name, release_name, body_text, ap
 
 if __name__ == "__main__":
     import shutil
+    import re
     repo_owner = "marugusu"
     repo_name = "Kellraadio"
     tag_name = sys.argv[1] if len(sys.argv) > 1 else "v1.1.1"
     release_name = f"Kellraadio {tag_name.lstrip('v')}"
     body_text = sys.argv[2] if len(sys.argv) > 2 else "- Automaatne paigalduse jätkamine pärast seadetes loa andmist\n- Äpisisene uuendussüsteem\n- Stabiilsuse parandused"
+    
+    # Kontrolli reeglit: versionName viimane number peab olema võrdne versionCode-ga
+    gradle_path = os.path.join("app", "build.gradle.kts")
+    if os.path.exists(gradle_path):
+        with open(gradle_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        vc_m = re.search(r'versionCode\s*=\s*(\d+)', content)
+        vn_m = re.search(r'versionName\s*=\s*"([^"]+)"', content)
+        if vc_m and vn_m:
+            vc = int(vc_m.group(1))
+            vn = vn_m.group(1)
+            parts = vn.split(".")
+            if parts and parts[-1].isdigit() and int(parts[-1]) != vc:
+                print(f"[HOIATUS] Versioonide ebakõla: versionCode={vc}, aga versionName='{vn}'! Reegel: versionName viimane number peab olema versionCode (nt 1.1.{vc}).")
     
     apk_path = f"Kellraadio-{tag_name}.apk"
     if not os.path.exists(apk_path):

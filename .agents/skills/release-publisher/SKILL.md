@@ -21,8 +21,11 @@ Use this skill when you need to issue a new release of the Kellraadio applicatio
 
 ### Step 1: Update Version in build.gradle.kts
 Open [app/build.gradle.kts](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/build.gradle.kts) and update `defaultConfig`:
-1.  Increment `versionCode` by 1 (e.g., from `4` to `5`).
-2.  Set `versionName` to the desired semantic version (e.g., `"1.1.3"`).
+1.  Increment `versionCode` by 1 (nt kui hetkel on `19`, siis `20`).
+2.  **KOHUSTUSLIK REEGEL**: `versionName` viimane number (patch number) **PEAB ALATI** olema täpselt võrdne `versionCode` numbriga:
+    *   Valem: `versionName = "1.1.<versionCode>"`
+    *   Näide: Kui `versionCode = 20`, siis `versionName = "1.1.20"`.
+    *   (Kui versioonid olid nihkes nagu `versionCode = 19` ja `versionName = "1.1.17"`, siis järgmises versioonitõusus ühtlustatakse viimane number automaatselt: nt `versionCode = 20` ja `versionName = "1.1.20"`).
 
 ### Step 2: Build the APK
 Build the debug-signed APK using Gradle:
