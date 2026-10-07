@@ -60,29 +60,20 @@ Need reeglid on absoluutsed. Nende rikkumine ei ole lubatud üheski olukorras.
 
 ## 🎯 2. ARENDUSSTANDARDID JA KODUKORD
 
-### 2.1. Haptiline tagasiside (Haptic Feedback)
-* Tavalistel klõpsudel (nupud, jaamaruudud, dialoogid) kasutada funktsiooni `view.performHapticTap()` failist [HapticUtils.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/ui/HapticUtils.kt).
-  * See genereerib pehme mehaanilise mikrotiksu (`HapticFeedbackConstants.CLOCK_TICK` või `KEYBOARD_TAP`).
-  * **ÄRA KASUTA** tugevat `VIRTUAL_KEY` ega lippu `FLAG_IGNORE_VIEW_SETTING`, mis tekitab liiga tugeva ja ebameeldiva mootoripõmmu.
-* Pikal vajutusel (lemmikuks määramine, seaded) kasutada standardset `haptic.performHapticFeedback(HapticFeedbackType.LongPress)`.
-
-### 2.2. Aku ja taustaprotsesside hügieen (Battery & WakeLock)
-* **ÄRA HOIA `PARTIAL_WAKE_LOCK`i tavalise raadio kuulamise ajal!** Tavapärane heli esitamine toimub ExoPlayeri ja heliriistvara kaudu ning Android hoiab audiolõime ise ärkvel.
+### 2.1. Aku ja taustaprotsesside hügieen (Battery & WakeLock)
+* **ÄRA HOIA `PARTIAL_WAKE_LOCK`i tavalise raadio kuulamise ajal!** Heli esitamine toimub ExoPlayeri ja heliriistvara kaudu ning Android hoiab audiolõime ise ärkvel.
 * `WakeLock` on rangelt lubatud **AINULT äratuskella käivitumisel** (`TRIGGERED_BY == "ALARM"`), et ekraani lukustuse taga äratus kindlasti helisema hakkaks.
 * Vabasta äratuse WakeLock kohe, kui esitamine algab (`isPlaying == true`) või kasutaja peatab äratuse (kaitseks automaatne 30-sekundiline aegumistähtaeg).
 * Tegevuse elutsükkel: lauluinfo päringud (`fetchSongInfo`) tuleb peatada, kui äpp läheb taustale (kontrolli `lifecycleState.isAtLeast(Lifecycle.State.RESUMED)` ja kasuta `cancelFetch()`).
 * Avakuva vidinad: [HomeWidgetReceiver.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/widget/HomeWidgetReceiver.kt) ei tohi vidina uuendamiseks käivitada `RadioService` teenust.
 
-### 2.3. Autoraadio (Bluetooth & Škoda/VW) ühilduvus
-* Paljud automakid (nt Škoda Bolero/Amundsen, VW MIB) eeldavad metaandmete värskendamiseks kestuse ja positsiooni progressi. Seda säilitatakse failis [RadioService.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/RadioService.kt) simuleeritud meediapositsiooni loogikaga.
-
-### 2.4. Kohanduv UI (Responsive Layout)
+### 2.2. Kohanduv UI (Responsive Layout)
 * Toetatud peavad olema nii püstpaigutus (Portrait) kui rõhtpaigutus (Landscape).
 * Laiadel ekraanidel (laius $\ge$ `AppConfig.UI.Layout.WIDTH_THRESHOLD_WIDE_SCREEN_DP`) kasutatakse jagatud veerupaigutust.
 * Igal Compose komponendil peab olema `@Preview` funktsioon visuaalseks eelvaateks.
 * Kasutajale nähtavad tekstid peavad asuma failides `res/values/strings.xml` ja `res/values-et/strings.xml` (eesti keel on peamine lokaat).
 
-### 2.5. Andmebaasi migratsioonid (Room DB)
+### 2.3. Andmebaasi migratsioonid (Room DB)
 * Kui muudad mistahes Room entity't:
   1. Tõsta andmebaasi versiooni failis [AppDatabase.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/data/AppDatabase.kt).
   2. Kirjuta vastav SQLite migratsioon faili [DatabaseMigrations.kt](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/app/src/main/java/app/radiorecalarm/data/DatabaseMigrations.kt).
