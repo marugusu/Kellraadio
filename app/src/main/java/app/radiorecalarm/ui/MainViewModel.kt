@@ -624,10 +624,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setWidgetTransparency(value: Float) {
         _uiState.update { it.copy(widgetTransparency = value) }
         prefs.edit().putFloat("widget_transparency", value).apply()
-        val i = Intent(context, RadioService::class.java).apply {
-            action = RadioService.ACTION_FORCE_WIDGET_UPDATE
+        viewModelScope.launch(Dispatchers.IO) {
+            app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
         }
-        context.startService(i)
     }
 
     fun clearHistory() {

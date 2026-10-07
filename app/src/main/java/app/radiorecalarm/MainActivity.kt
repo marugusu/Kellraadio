@@ -86,11 +86,18 @@ fun RaadioEkraan(
     // Teaser on nähtav, kui songInfo objektis on reaalset sisu (pilt või album)
     val showTeaser = songInfo?.coverArtUrl != null || songInfo?.album != null
 
-    LaunchedEffect(state.parsedArtist, state.parsedTitle) {
-        playerViewModel.fetchSongInfo(state.parsedArtist, state.parsedTitle)
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+
+    // Päri lauluinfot (kaanepilt, laulusõnad) VAID siis, kui äpp on ekraanil nähtav (RESUMED)
+    // See hoiab ära telefoni aku ja modemi kurnamise taustal esitamisel.
+    LaunchedEffect(state.parsedArtist, state.parsedTitle, lifecycleState) {
+        if (lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+            playerViewModel.fetchSongInfo(state.parsedArtist, state.parsedTitle)
+        } else {
+            playerViewModel.cancelFetch()
+        }
     }
 
-    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     LaunchedEffect(lifecycleState) {
         if (lifecycleState == androidx.lifecycle.Lifecycle.State.RESUMED) {
             LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))

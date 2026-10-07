@@ -148,6 +148,10 @@ class RadioService : Service() {
     }
 
     companion object {
+        @Volatile
+        var isCurrentlyPlaying: Boolean = false
+            private set
+
         const val ACTION_UPDATE_STATION_NAME = "app.radiorecalarm.UPDATE_NAME"
         const val ACTION_FORCE_WIDGET_UPDATE = "app.radiorecalarm.FORCE_WIDGET_UPDATE"
 
@@ -450,6 +454,10 @@ class RadioService : Service() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            isCurrentlyPlaying = isPlaying
+            if (isPlaying && wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
             updateNotification()
             updateWidget()
 
@@ -550,6 +558,7 @@ class RadioService : Service() {
                     startForeground(1, notification)
                 }
             } else {
+                if (wakeLock?.isHeld == true) wakeLock?.release()
                 if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
                     Log.w(TAG, "onPlayWhenReadyChanged: AUDIO_BECOMING_NOISY tuvastatud!")
                     if (wasSuppressedByTransientLoss) {
@@ -963,7 +972,10 @@ class RadioService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        wakeLock?.acquire(10 * 60 * 1000L)
+        if (intent?.getStringExtra("TRIGGERED_BY") == "ALARM") {
+            // Äratuse käivitumisel hoiame CPU-d ärkvel kuni helivoo avanemiseni (kuni 30s)
+            wakeLock?.acquire(30 * 1000L)
+        }
         val action = intent?.action
 
         when(action) {
@@ -1036,7 +1048,10 @@ class RadioService : Service() {
             }
             ACTION_FORCE_WIDGET_UPDATE -> {
                 updateWidget()
-                return START_STICKY
+                if (::player.isInitialized && !player.isPlaying && !player.playWhenReady) {
+                    stopRadio()
+                }
+                return START_NOT_STICKY
             }
             ACTION_SEEK -> {
                 val positionMs = intent.getLongExtra(EXTRA_SEEK_POSITION, 0L)
@@ -1089,11 +1104,13 @@ class RadioService : Service() {
         isInitialStationPlayback = true
         lastBitrateInfo = ""
         sendBitrateUpdate()
-        wakeLock?.acquire(10 * 60 * 1000L)
+        isAlarmMode = triggeredBy == "ALARM"
+        if (isAlarmMode) {
+            wakeLock?.acquire(30 * 1000L)
+        }
 
         currentStreamUrl = streamUrl
         currentStationName = stationName ?: "Radio"
-        isAlarmMode = triggeredBy == "ALARM"
         if (!isAlarmMode) {
             notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
         }
@@ -1182,6 +1199,7 @@ class RadioService : Service() {
     }
 
     private fun stopRadio(isError: Boolean = false) {
+        isCurrentlyPlaying = false
         cancelIdleTimeout()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         wasSuppressedByTransientLoss = false
@@ -1267,9 +1285,6 @@ class RadioService : Service() {
     }
 
     private fun updateWidget() {
-        val bgTransparency = prefs.getFloat("widget_transparency", 0.25f)
-        
-        // PARANDUS: Kui player on null või initialize-imata, siis isPlaying = false
         val isPlaying = if (::player.isInitialized) player.isPlaying else false
         val stationName = currentStationName
         val title = currentTitle
@@ -1278,52 +1293,20 @@ class RadioService : Service() {
         val currentBitrate = lastBitrateInfo
 
         serviceScope.launch {
-            var nextAlarmString = ""
-            try {
-                val db = AppDatabase.getDatabase(applicationContext)
-                val enabledAlarms = db.alarmDao().getAllEnabledAlarms()
-                if (enabledAlarms.isNotEmpty()) {
-                    val nextAlarm = enabledAlarms.map {
-                        it to AlarmUtils.findNextAlarmTime(it.hour, it.minute, it.days)
-                    }.minByOrNull { it.second }
-
-                    if (nextAlarm != null) {
-                        val timeAndDays = AlarmUtils.getAlarmText(this@RadioService, nextAlarm.first.hour, nextAlarm.first.minute, nextAlarm.first.days)
-                        nextAlarmString = "$timeAndDays • ${nextAlarm.first.stationName}"
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Äratuse lugemise viga: ${e.message}")
-            }
-
-            try {
-                val context = applicationContext
-                val manager = GlanceAppWidgetManager(context)
-                val widget = app.radiorecalarm.widget.HomeWidget()
-                val glanceIds = manager.getGlanceIds(widget.javaClass)
-
-                glanceIds.forEach { glanceId ->
-                    updateAppWidgetState(context, glanceId) { prefs ->
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.stationName] = stationName
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.title] = title
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.artist] = artist
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.bitrate] = currentBitrate
-                        val statusText = if (isPlaying) getString(R.string.status_playing) else getString(R.string.status_stopped)
-                        val extraInfo = if (extra.isNotBlank()) "$extra • $statusText" else statusText
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.status] = extraInfo
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.alarm] = nextAlarmString
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.isPlaying] = isPlaying
-                        prefs[app.radiorecalarm.widget.HomeWidget.Prefs.bgTransparency] = bgTransparency
-                    }
-                    widget.update(context, glanceId)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Vidinat ei saanud uuendada: ${e.message}")
-            }
+            app.radiorecalarm.widget.HomeWidgetUpdater.update(
+                context = applicationContext,
+                stationName = stationName,
+                title = title,
+                artist = artist,
+                extra = extra,
+                bitrate = currentBitrate,
+                isPlaying = isPlaying
+            )
         }
     }
 
     override fun onDestroy() {
+        isCurrentlyPlaying = false
         cancelIdleTimeout()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

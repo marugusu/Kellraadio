@@ -27,6 +27,18 @@ class PlayerViewModel : ViewModel() {
     private var lastArtist = ""
     private var lastTitle = ""
 
+    fun cancelFetch() {
+        if (_isFetching.value) {
+            fetchJob?.cancel()
+            fetchJob = null
+            _isFetching.value = false
+            if (_songInfo.value == null) {
+                lastArtist = ""
+                lastTitle = ""
+            }
+        }
+    }
+
     fun fetchSongInfo(artist: String, title: String) {
         // 1. Kontrollime, kas on üldse vaja otsida
         if (artist.isBlank() || title.isBlank()) {
@@ -35,8 +47,8 @@ class PlayerViewModel : ViewModel() {
             return
         }
 
-        // Kui laul on sama, mis juba ees, ära tee midagi (stabiilsus)
-        if (artist == lastArtist && title == lastTitle) return
+        // Kui laul on sama, mis juba ees ja info on juba leitud, ära tee midagi (stabiilsus)
+        if (artist == lastArtist && title == lastTitle && _songInfo.value != null) return
 
         // 2. Uus laul -> Salvestame ja tühistame eelmise otsingu
         lastArtist = artist
