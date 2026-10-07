@@ -208,7 +208,7 @@ python tools/publish_release.py v1.1.3 "Summary of new features"
 ## 📜 Agent Guidelines & Rules
 
 This project adheres to the **Antigravity Customization Standard**. AI agents working on this project must consult:
-* [PROJECT_RULES.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/PROJECT_RULES.md) — Index of all agent instructions.
+* [AGENTS.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/AGENTS.md) — Universal AI Pair Programming Guide & Inviolable Guardrails.
 * [.agents/rules/general.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/.agents/rules/general.md) — Architectural standards & conventions.
 * [.agents/rules/git-workflow.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/.agents/rules/git-workflow.md) — Branching policies & protecting unstaged user tweaks.
 * [.agents/skills/release-publisher/SKILL.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/.agents/skills/release-publisher/SKILL.md) — Release automation runbook.
