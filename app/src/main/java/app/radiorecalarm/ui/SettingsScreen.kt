@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -564,6 +565,7 @@ fun PrecisionColumnSelector(
     onSelected: (Int) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -595,7 +597,7 @@ fun PrecisionColumnSelector(
                         .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
                         .clickable {
                             if (!isSelected) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                view.performHapticTap()
                                 onSelected(count)
                             }
                         },

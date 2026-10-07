@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,6 +31,7 @@ fun SleepTimerDialog(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
 
     var sliderValue by remember {
         mutableFloatStateOf(if (initialMillis > 0) (initialMillis / 60000f).coerceIn(5f, 120f) else 30f)
@@ -97,7 +99,7 @@ fun SleepTimerDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    view.performHapticTap()
                     val intent = Intent(context, RadioService::class.java).apply {
                         action = RadioService.ACTION_SET_TIMER
                         putExtra(RadioService.EXTRA_TIMER_DURATION, sliderValue.toInt())
@@ -113,7 +115,7 @@ fun SleepTimerDialog(
         dismissButton = {
             TextButton(
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    view.performHapticTap()
                     val intent = Intent(context, RadioService::class.java).apply {
                         action = RadioService.ACTION_SET_TIMER
                         putExtra(RadioService.EXTRA_TIMER_DURATION, 0)

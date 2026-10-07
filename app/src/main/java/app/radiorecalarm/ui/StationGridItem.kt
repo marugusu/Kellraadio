@@ -24,6 +24,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +47,7 @@ fun StationGridItem(
     showFlag: Boolean
 ) {
     val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -104,7 +106,7 @@ fun StationGridItem(
                     if (isLongPressDetected) {
                         onLongClick()
                     } else {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        view.performHapticTap()
                         onClick()
                     }
                     isLongPressDetected = false
@@ -119,7 +121,7 @@ fun StationGridItem(
                         onLongClick()
                     },
                     onTap = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        view.performHapticTap()
                         onClick()
                     },
                     onPress = {

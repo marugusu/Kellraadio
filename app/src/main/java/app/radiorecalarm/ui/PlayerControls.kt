@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +67,7 @@ fun PlayerControls(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
 
     val titleColor = if (isPlaying) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     val artistColor = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -91,7 +93,7 @@ fun PlayerControls(
                 .clickable(
                     enabled = songInfo != null,
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        view.performHapticTap()
                         onInfoClick()
                     }
                 )
@@ -208,21 +210,21 @@ fun PlayerControls(
 
             if (isPlaying) {
                 FilledIconButton(
-                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onPlayPause() },
+                    onClick = { view.performHapticTap(); onPlayPause() },
                     modifier = baseButtonModifier.border(1.5.dp, MaterialTheme.colorScheme.primary, buttonShape),
                     shape = buttonShape,
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.Black)
                 ) { Icon(Icons.Default.Pause, stringResource(R.string.action_pause), modifier = Modifier.size(32.dp)) }
             } else {
                 FilledTonalIconButton(
-                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); selectedStation?.let { onPlayStation(it) } },
+                    onClick = { view.performHapticTap(); selectedStation?.let { onPlayStation(it) } },
                     enabled = selectedStation != null,
                     modifier = baseButtonModifier.border(1.dp, MaterialTheme.colorScheme.outline, buttonShape),
                     shape = buttonShape
                 ) { Icon(Icons.Default.PlayArrow, stringResource(R.string.action_play), modifier = Modifier.size(32.dp)) }
             }
             FilledTonalIconButton(
-                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onToggleFavorite() },
+                onClick = { view.performHapticTap(); onToggleFavorite() },
                 enabled = selectedStation != null,
                 modifier = baseButtonModifier.border(if (isFavorite) 1.5.dp else 1.dp, if (isFavorite) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline, buttonShape),
                 shape = buttonShape,
@@ -233,7 +235,7 @@ fun PlayerControls(
                 }
             ) { Icon(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, null, modifier = Modifier.size(28.dp)) }
             FilledTonalIconButton(
-                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onRecordClick() },
+                onClick = { view.performHapticTap(); onRecordClick() },
                 enabled = isPlaying && selectedStation != null,
                 modifier = baseButtonModifier.border(if (isRecording) 1.5.dp else 1.dp, if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline, buttonShape),
                 shape = buttonShape,
@@ -252,7 +254,7 @@ fun PlayerControls(
             }
             val isTimerSet = sleepTimerMillis > 0
             FilledTonalIconButton(
-                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSleepClick() },
+                onClick = { view.performHapticTap(); onSleepClick() },
                 enabled = isPlaying || isTimerSet,
                 modifier = baseButtonModifier.border(if (isTimerSet) 1.5.dp else 1.dp, if (isTimerSet) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline, buttonShape),
                 shape = buttonShape,
@@ -265,7 +267,7 @@ fun PlayerControls(
                     .combinedClickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
-                        onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onAlarmClick() },
+                        onClick = { view.performHapticTap(); onAlarmClick() },
                         onLongClick = {
                             if (isAlarmSet) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress); onAlarmLongClick()

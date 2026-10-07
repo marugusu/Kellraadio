@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.buildAnnotatedString
@@ -39,6 +40,7 @@ fun AlarmDialog(
     onAlarmSaved: (hour: Int, minute: Int, days: Set<Int>) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
     val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     val currentTime = Calendar.getInstance()
@@ -137,7 +139,7 @@ fun AlarmDialog(
             Button(
                 enabled = selectedStation != null,
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    view.performHapticTap()
                     onAlarmSaved(timePickerState.hour, timePickerState.minute, days.toSet())
                     onDismiss()
                 },
@@ -150,7 +152,7 @@ fun AlarmDialog(
             if (onDelete != null) {
                 TextButton(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        view.performHapticTap()
                         onDelete()
                         onDismiss()
                     },
@@ -163,7 +165,7 @@ fun AlarmDialog(
 
             TextButton(
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    view.performHapticTap()
                     onDismiss()
                 },
                 shape = RoundedCornerShape(8.dp)
