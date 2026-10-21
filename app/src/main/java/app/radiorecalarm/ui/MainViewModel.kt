@@ -840,11 +840,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             stationUrl = backupAlarm.stationUrl,
                             isEnabled = backupAlarm.isEnabled
                         )
-                        val newId = alarmDao.insert(newAlarm).toInt()
-                        if (newAlarm.isEnabled) {
-                            AlarmUtils.reScheduleRepeatingAlarm(context, newAlarm.copy(id = newId))
-                        }
+                        alarmDao.insert(newAlarm)
                     }
+                    AlarmUtils.scheduleNextAlarmInternal(context)
+                    app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
                 }
 
                 viewModelScope.launch(Dispatchers.Main) {

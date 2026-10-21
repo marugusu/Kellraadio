@@ -35,15 +35,16 @@ class AlarmReceiver : BroadcastReceiver() {
                 }
 
                 // 3. Kontrolli, kas äratus on korduv või ühekordne
-                if (alarm.days.isNotEmpty()) {
-                    // KORDUV: Seadistame kohe järgmise äratuse taustal sama ID-ga
-                    AlarmUtils.reScheduleRepeatingAlarm(context, alarm)
-                } else {
+                if (alarm.days.isEmpty()) {
                     // ÜHEKORDNE: Märgime äratuse andmebaasis mitteaktiivseks
                     val updatedAlarm = alarm.copy(isEnabled = false)
                     db.alarmDao().update(updatedAlarm)
                     Log.d("AlarmReceiver", "Ühekordne äratus (ID: $alarmId) deaktiveeritud.")
                 }
+
+                // Planeerime kohe süsteemis kronoloogiliselt järgmise äratuse
+                AlarmUtils.scheduleNextAlarmInternal(context)
+                app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
 
                 // 4. Teavita UI-d (kui see on avatud), et see saaks oma olekut uuendada
                 val uiUpdateIntent = Intent("app.radiorecalarm.ALARMS_CHANGED")

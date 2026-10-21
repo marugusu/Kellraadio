@@ -1072,12 +1072,8 @@ class RadioService : Service() {
                 prefs.edit().putString("last_category", category).apply()
             }
 
-            if (currentStreamUrl == streamUrl && player.isPlaying && triggeredBy != "USER_RESUME") {
-                if (triggeredBy == "ALARM") {
-                    isAlarmMode = true
-                    val alarmNotification = notificationManager.createAlarmNotification(currentStationName)
-                    notificationManager.notify(RadioNotificationManager.ALARM_NOTIFICATION_ID, alarmNotification)
-                } else if (isAlarmMode) {
+            if (currentStreamUrl == streamUrl && player.isPlaying && triggeredBy != "USER_RESUME" && triggeredBy != "ALARM") {
+                if (isAlarmMode) {
                     isAlarmMode = false
                     notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
                 }

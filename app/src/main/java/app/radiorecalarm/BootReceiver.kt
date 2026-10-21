@@ -17,13 +17,9 @@ class BootReceiver : BroadcastReceiver() {
             val scope = CoroutineScope(Dispatchers.IO)
             scope.launch {
                 try {
-                    val db = AppDatabase.getDatabase(context)
-                    val enabledAlarms = db.alarmDao().getAllEnabledAlarms()
-
-                    enabledAlarms.forEach { alarm ->
-                        AlarmUtils.reScheduleRepeatingAlarm(context, alarm)
-                        Log.d("BootReceiver", "Äratus taastatud: ${alarm.hour}:${alarm.minute} (ID: ${alarm.id})")
-                    }
+                    AlarmUtils.scheduleNextAlarmInternal(context)
+                    app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
+                    Log.d("BootReceiver", "Järgmine äratus edukalt taastatud.")
                 } catch (e: Exception) {
                     Log.e("BootReceiver", "Viga äratuste taastamisel: ${e.message}")
                 } finally {
