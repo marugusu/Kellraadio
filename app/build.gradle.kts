@@ -39,6 +39,12 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        unitTests.all {
+            it.useJUnit()
+        }
+    }
 }
 
 dependencies {
@@ -66,7 +72,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:1.2.0")
     implementation(libs.androidx.compose.foundation)
 
-    // Testimine (pole hetkel kriitiline, aga et vigu ei tuleks)
+    // Testimine
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

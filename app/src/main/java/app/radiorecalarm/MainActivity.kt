@@ -543,7 +543,7 @@ fun ContentScreens(
                 onWidgetTransparencyChange = viewModel::setWidgetTransparency,
                 onExportData = {
                     val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
-                    exportLauncher.launch("RadioW_Backup_$timestamp.json")
+                    exportLauncher.launch("Kellraadio_Backup_$timestamp.json")
                 },
                 onImportData = {
                     importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))

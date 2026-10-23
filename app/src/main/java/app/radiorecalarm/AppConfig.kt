@@ -20,8 +20,8 @@ object AppConfig {
         const val GITHUB_REPO_OWNER = "marugusu"
         const val GITHUB_REPO_NAME = "Kellraadio"
 
-        // Viisakas on öelda API-le, kes me oleme
-        const val USER_AGENT = "radiow/1.0 ( radiow.ct.ws@gmail.com )"
+        // Veebipäringute User-Agent
+        const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     }
 
     // --- 2. METAANDMETE FILTREERIMINE ---
@@ -103,5 +103,13 @@ object AppConfig {
     object Player {
         // Kui kaua hoiame teenust elus, kui on PAUS (30 minutit)
         const val IDLE_TIMEOUT_MS = 30 * 60 * 1000L
+    }
+
+    // --- 5. ÄRATUSE SEADED JA WAKELOCK ---
+    object Alarm {
+        // Tag WakeLocki identifitseerimiseks süsteemis ja logides
+        const val WAKELOCK_TAG = "kellraadio::AlarmReceiverWakeLock"
+        // Turvalimiit (30 sekundit), et vältida aku tühjenemist vea korral
+        const val WAKELOCK_TIMEOUT_MS = 30_000L
     }
 }

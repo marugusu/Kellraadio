@@ -896,7 +896,7 @@ class RadioService : Service() {
         mediaSession = MediaSession.Builder(this, player).setSessionActivity(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)).setCallback(mediaSessionCallback).build()
         LocalBroadcastManager.getInstance(this).registerReceiver(statusReceiver, IntentFilter(ACTION_GET_STATUS))
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-        wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "radiow::RadioWakeLock")
+        wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "kellraadio::RadioWakeLock")
         wakeLock?.setReferenceCounted(false)
         
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -974,7 +974,7 @@ class RadioService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.getStringExtra("TRIGGERED_BY") == "ALARM") {
             // Äratuse käivitumisel hoiame CPU-d ärkvel kuni helivoo avanemiseni (kuni 30s)
-            wakeLock?.acquire(30 * 1000L)
+            wakeLock?.acquire(AppConfig.Alarm.WAKELOCK_TIMEOUT_MS)
         }
         val action = intent?.action
 
@@ -1102,7 +1102,7 @@ class RadioService : Service() {
         sendBitrateUpdate()
         isAlarmMode = triggeredBy == "ALARM"
         if (isAlarmMode) {
-            wakeLock?.acquire(30 * 1000L)
+            wakeLock?.acquire(AppConfig.Alarm.WAKELOCK_TIMEOUT_MS)
         }
 
         currentStreamUrl = streamUrl

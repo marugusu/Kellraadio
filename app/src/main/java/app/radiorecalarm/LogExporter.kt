@@ -18,7 +18,7 @@ object LogExporter {
             if (!logDir.exists()) logDir.mkdirs()
 
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "radiow_log_$timestamp.txt"
+            val fileName = "kellraadio_log_$timestamp.txt"
             val logFile = File(logDir, fileName)
 
             val pid = android.os.Process.myPid()

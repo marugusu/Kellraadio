@@ -3,71 +3,83 @@ package app.radiorecalarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class AlarmReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        Log.d("AlarmReceiver", "Äratus käivitus!")
+class AlarmReceiver(
+    private val coordinatorFactory: ((Context, WakeLockHandle) -> AlarmTriggerCoordinator)? = null
+) : BroadcastReceiver() {
 
-        // 1. Hangi äratuse ID intent'ist. Kui seda pole, ei saa midagi teha.
+    // Sekundaarne 0-parameetriga konstruktor Androidi süsteemse komponendi loomiseks
+    constructor() : this(null)
+
+    override fun onReceive(context: Context, intent: Intent) {
+        Log.d(TAG, "Äratus käivitus!")
+
+        // 1. Haara koheselt osaline protsessori ärkvelolekulukk (PARTIAL_WAKE_LOCK)
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val rawWakeLock = powerManager?.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            AppConfig.Alarm.WAKELOCK_TAG
+        )?.apply {
+            setReferenceCounted(false)
+        }
+        val wakeLockHandle: WakeLockHandle = rawWakeLock?.let { AndroidWakeLockHandle(it) } ?: NoOpWakeLockHandle
+
+        val coordinator = coordinatorFactory?.invoke(context, wakeLockHandle) ?: run {
+            val db = AppDatabase.getDatabase(context)
+            val launcher = AndroidAlarmPlaybackLauncher(context)
+            AlarmTriggerCoordinator(
+                wakeLock = wakeLockHandle,
+                alarmDao = db.alarmDao(),
+                playbackLauncher = launcher,
+                onAlarmRescheduled = {
+                    AlarmUtils.scheduleNextAlarmInternal(context)
+                    app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
+                    val uiUpdateIntent = Intent("app.radiorecalarm.ALARMS_CHANGED")
+                    LocalBroadcastManager.getInstance(context).sendBroadcast(uiUpdateIntent)
+                }
+            )
+        }
+
+        // Haara WakeLock turvalimiidiga enne asünkroonse korutiini käivitamist
+        coordinator.acquireWakeLock()
+
+        // 2. Hangi äratuse ID intent'ist
         val alarmId = intent.getIntExtra("ALARM_ID", -1)
         if (alarmId == -1) {
-            Log.e("AlarmReceiver", "ALARM_ID puudub, ei saa jätkata.")
+            Log.e(TAG, "ALARM_ID puudub, vabastame luku ja lõpetame.")
+            if (wakeLockHandle.isHeld) {
+                wakeLockHandle.release()
+            }
             return
         }
 
-        // 2. Käivita Coroutine goAsync abil, et hoida protsessor ärkvel kuni andmebaasipäring ja teenus on käivitatud
-        val pendingResult = goAsync()
+        // 3. Käivita asünkroonne töö goAsync abil, hoides WakeLocki kuni teenuse käivituseni
+        val pendingResult = try {
+            goAsync()
+        } catch (e: Exception) {
+            null
+        }
+
         val scope = CoroutineScope(Dispatchers.IO)
         scope.launch {
             try {
-                val db = AppDatabase.getDatabase(context)
-                val alarm = db.alarmDao().getAlarmById(alarmId)
-
-                if (alarm == null) {
-                    Log.e("AlarmReceiver", "Andmebaasist ei leitud äratust ID-ga $alarmId")
-                    return@launch
-                }
-
-                // 3. Kontrolli, kas äratus on korduv või ühekordne
-                if (alarm.days.isEmpty()) {
-                    // ÜHEKORDNE: Märgime äratuse andmebaasis mitteaktiivseks
-                    val updatedAlarm = alarm.copy(isEnabled = false)
-                    db.alarmDao().update(updatedAlarm)
-                    Log.d("AlarmReceiver", "Ühekordne äratus (ID: $alarmId) deaktiveeritud.")
-                }
-
-                // Planeerime kohe süsteemis kronoloogiliselt järgmise äratuse
-                AlarmUtils.scheduleNextAlarmInternal(context)
-                app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
-
-                // 4. Teavita UI-d (kui see on avatud), et see saaks oma olekut uuendada
-                val uiUpdateIntent = Intent("app.radiorecalarm.ALARMS_CHANGED")
-                LocalBroadcastManager.getInstance(context).sendBroadcast(uiUpdateIntent)
-
-                // 5. Käivita raadio (Foreground Service)
-                // Kasutame andmeid otse 'alarm' objektist, mis on alati ajakohane.
-                val serviceIntent = Intent(context, RadioService::class.java).apply {
-                    putExtra("STREAM_URL", alarm.stationUrl)
-                    putExtra("STATION_NAME", alarm.stationName)
-                    putExtra("TRIGGERED_BY", "ALARM")
-                }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
+                coordinator.processAlarm(alarmId)
             } catch (e: Exception) {
-                Log.e("AlarmReceiver", "Viga äratuse käivitamisel: ${e.message}", e)
+                Log.e(TAG, "Viga äratuse käivitamisel: ${e.message}", e)
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }
+
+    companion object {
+        private const val TAG = "AlarmReceiver"
+    }
 }
+
