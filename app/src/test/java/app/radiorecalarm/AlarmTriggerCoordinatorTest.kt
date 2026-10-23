@@ -30,7 +30,10 @@ class AlarmTriggerCoordinatorTest {
         }
     }
 
-    private class FakeAlarmDao(initialAlarms: List<Alarm> = emptyList()) : AlarmDao {
+    private class FakeAlarmDao(
+        initialAlarms: List<Alarm> = emptyList(),
+        private val onUpdateCallback: (() -> Unit)? = null
+    ) : AlarmDao {
         val alarms = initialAlarms.associateBy { it.id }.toMutableMap()
         val updatedAlarms = mutableListOf<Alarm>()
 
@@ -42,6 +45,7 @@ class AlarmTriggerCoordinatorTest {
         override suspend fun update(alarm: Alarm) {
             alarms[alarm.id] = alarm
             updatedAlarms.add(alarm)
+            onUpdateCallback?.invoke()
         }
 
         override suspend fun delete(alarm: Alarm) {
@@ -61,12 +65,15 @@ class AlarmTriggerCoordinatorTest {
         }
     }
 
-    private class FakePlaybackLauncher : AlarmPlaybackLauncher {
+    private class FakePlaybackLauncher(
+        private val onLaunchCallback: (() -> Unit)? = null
+    ) : AlarmPlaybackLauncher {
         var launchedUrl: String? = null
         var launchedStation: String? = null
         var shouldThrow = false
 
         override fun launchPlaybackService(streamUrl: String, stationName: String) {
+            onLaunchCallback?.invoke()
             if (shouldThrow) {
                 throw RuntimeException("Simulated service start failure")
             }
@@ -245,6 +252,84 @@ class AlarmTriggerCoordinatorTest {
         assertEquals("Teenust ei tohi käivitada vigase ID korral", null, fakeLauncher.launchedStation)
         assertFalse("WakeLock peab olema vabastatud", fakeWakeLock.isHeld)
         assertEquals(1, fakeWakeLock.releaseCallCount)
+    }
+
+    @Test
+    fun testOneTimeAlarmNotDeactivatedWhenServiceLaunchThrows() = runBlocking {
+        val fakeWakeLock = FakeWakeLockHandle()
+        val oneTimeAlarm = Alarm(
+            id = 101,
+            hour = 6,
+            minute = 30,
+            days = emptySet(),
+            stationName = "Retro FM",
+            stationUrl = "https://stream.retro.ee/retro",
+            isEnabled = true
+        )
+        val fakeDao = FakeAlarmDao(listOf(oneTimeAlarm))
+        val fakeLauncher = FakePlaybackLauncher().apply { shouldThrow = true }
+        var rescheduleCalled = false
+
+        val coordinator = AlarmTriggerCoordinator(
+            wakeLock = fakeWakeLock,
+            alarmDao = fakeDao,
+            playbackLauncher = fakeLauncher,
+            onAlarmRescheduled = { rescheduleCalled = true }
+        )
+
+        coordinator.acquireWakeLock()
+        var exceptionThrown = false
+        try {
+            coordinator.processAlarm(101)
+        } catch (e: Exception) {
+            exceptionThrown = true
+        }
+
+        assertTrue("Teenuse käivitamise erand peab edasi kanduma", exceptionThrown)
+        assertTrue("Ühekordne äratus peab andmebaasis säilima aktiivsena (isEnabled = true)", fakeDao.getAlarmById(101)?.isEnabled == true)
+        assertTrue("Andmebaasis ei tohtinud ühekordset äratust uuendada enne teenuse käivitamist", fakeDao.updatedAlarms.isEmpty())
+        assertFalse("Järgmise äratuse ümberplaneerimist ei tohi käivitada kui teenus ei startinud", rescheduleCalled)
+        assertFalse("WakeLock peab olema vabastatud", fakeWakeLock.isHeld)
+    }
+
+    @Test
+    fun testOneTimeAlarmExecutionOrderServiceBeforeDeactivationAndReschedule() = runBlocking {
+        val executionOrder = mutableListOf<String>()
+        val fakeWakeLock = FakeWakeLockHandle()
+        val oneTimeAlarm = Alarm(
+            id = 102,
+            hour = 7,
+            minute = 15,
+            days = emptySet(),
+            stationName = "Star FM",
+            stationUrl = "https://stream.starfm.ee/star",
+            isEnabled = true
+        )
+        val fakeDao = FakeAlarmDao(listOf(oneTimeAlarm), onUpdateCallback = {
+            executionOrder.add("alarm_deactivated")
+        })
+        val fakeLauncher = FakePlaybackLauncher(onLaunchCallback = {
+            executionOrder.add("service_launched")
+        })
+
+        val coordinator = AlarmTriggerCoordinator(
+            wakeLock = fakeWakeLock,
+            alarmDao = fakeDao,
+            playbackLauncher = fakeLauncher,
+            onAlarmRescheduled = {
+                executionOrder.add("alarm_rescheduled")
+            }
+        )
+
+        coordinator.acquireWakeLock()
+        coordinator.processAlarm(102)
+
+        assertEquals(
+            listOf("service_launched", "alarm_deactivated", "alarm_rescheduled"),
+            executionOrder
+        )
+        assertEquals(false, fakeDao.getAlarmById(102)?.isEnabled)
+        assertFalse(fakeWakeLock.isHeld)
     }
 }
 

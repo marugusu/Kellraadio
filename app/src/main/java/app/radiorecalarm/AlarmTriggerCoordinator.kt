@@ -26,9 +26,10 @@ class AlarmTriggerCoordinator(
      * Käivitab äratuse elutsükli:
      * 1. Kontrollib alarmId kehtivust
      * 2. Loeb andmebaasist jaama andmed
-     * 3. Uuendab ühekordse äratuse staatust ja planeerib järgmise äratuse
-     * 4. Käivitab raadioteenuse äratuse parameetritega
-     * 5. Tagab WakeLocki vabastamise finally plokis
+     * 3. Käivitab raadioteenuse äratuse parameetritega
+     * 4. Deaktiveerib ühekordse äratuse andmebaasis alles pärast edukat teenuse käivitust
+     * 5. Planeerib järgmise äratuse ja uuendab vidina/UI
+     * 6. Tagab WakeLocki vabastamise finally plokis
      */
     suspend fun processAlarm(alarmId: Int) {
         try {
@@ -43,15 +44,18 @@ class AlarmTriggerCoordinator(
                 return
             }
 
+            // 1. Käivita esmalt raadioteenus äratuse parameetritega
+            playbackLauncher.launchPlaybackService(alarm.stationUrl, alarm.stationName)
+
+            // 2. Kui teenuse käivitamine õnnestus, deaktiveeri ühekordne äratus andmebaasis
             if (alarm.days.isEmpty()) {
                 val updatedAlarm = alarm.copy(isEnabled = false)
                 alarmDao.update(updatedAlarm)
                 Log.d(TAG, "Ühekordne äratus (ID: $alarmId) deaktiveeritud.")
             }
 
+            // 3. Planeeri järgmine äratus ja teavita komponente
             onAlarmRescheduled?.invoke()
-
-            playbackLauncher.launchPlaybackService(alarm.stationUrl, alarm.stationName)
         } catch (e: Exception) {
             Log.e(TAG, "Viga äratuse töötlemisel: ${e.message}", e)
             throw e
