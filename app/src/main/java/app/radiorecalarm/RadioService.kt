@@ -974,7 +974,7 @@ class RadioService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.getStringExtra("TRIGGERED_BY") == "ALARM") {
             // Äratuse käivitumisel hoiame CPU-d ärkvel kuni helivoo avanemiseni (kuni 30s)
-            wakeLock?.acquire(30 * 1000L)
+            wakeLock?.acquire(AppConfig.Alarm.WAKELOCK_TIMEOUT_MS)
         }
         val action = intent?.action
 
@@ -1102,7 +1102,7 @@ class RadioService : Service() {
         sendBitrateUpdate()
         isAlarmMode = triggeredBy == "ALARM"
         if (isAlarmMode) {
-            wakeLock?.acquire(30 * 1000L)
+            wakeLock?.acquire(AppConfig.Alarm.WAKELOCK_TIMEOUT_MS)
         }
 
         currentStreamUrl = streamUrl

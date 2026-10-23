@@ -104,4 +104,12 @@ object AppConfig {
         // Kui kaua hoiame teenust elus, kui on PAUS (30 minutit)
         const val IDLE_TIMEOUT_MS = 30 * 60 * 1000L
     }
+
+    // --- 5. ÄRATUSE SEADED JA WAKELOCK ---
+    object Alarm {
+        // Tag WakeLocki identifitseerimiseks süsteemis ja logides
+        const val WAKELOCK_TAG = "radiow::AlarmReceiverWakeLock"
+        // Turvalimiit (30 sekundit), et vältida aku tühjenemist vea korral
+        const val WAKELOCK_TIMEOUT_MS = 30_000L
+    }
 }
