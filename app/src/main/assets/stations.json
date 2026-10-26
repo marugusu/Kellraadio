@@ -272,7 +272,7 @@
   {
     "id": 7,
     "name": "Rock FM",
-    "url": "https://stream.skymedia.ee/live/rck",
+    "url": "https://edge02.cdn.bitflip.ee:8888/rck",
     "isActive": true,
     "priority": 1300,
     "category": "Sky",
@@ -281,7 +281,7 @@
   {
     "id": 10,
     "name": "Retro FM",
-    "url": "https://stream.skymedia.ee/live/RETRO",
+    "url": "https://edge02.cdn.bitflip.ee:8888/RETRO?_i=258f436b",
     "isActive": true,
     "priority": 1310,
     "category": "Sky",
@@ -308,7 +308,7 @@
   {
     "id": 19,
     "name": "Legendaarne",
-    "url": "https://stream.skymedia.ee/live/Legendaarne",
+    "url": "https://streaming.radio.co/s36a57fb00/listen",
     "isActive": true,
     "priority": 1340,
     "category": "Sky",
@@ -317,7 +317,7 @@
   {
     "id": 57,
     "name": "Relax FM",
-    "url": "https://stream.skymedia.ee/live/relax_HD",
+    "url": "https://stream.skymedia.ee/live/relax",
     "isActive": true,
     "priority": 1350,
     "category": "Sky",
@@ -344,7 +344,7 @@
   {
     "id": 48,
     "name": "Retro Love",
-    "url": "https://stream.skymedia.ee/live/RetroJ6ulud",
+    "url": "https://edge03.cdn.bitflip.ee:8888/RetroJ6ulud?_i=c2964188",
     "isActive": true,
     "priority": 1380,
     "category": "Sky",
