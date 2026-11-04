@@ -23,13 +23,15 @@ class AlarmTriggerCoordinator(
     }
 
     /**
-     * Käivitab äratuse elutsükli:
+     * Käivitab äratuse elutsükli tõrkekindlalt (ADR-0002):
      * 1. Kontrollib alarmId kehtivust
      * 2. Loeb andmebaasist jaama andmed
-     * 3. Käivitab raadioteenuse äratuse parameetritega
-     * 4. Deaktiveerib ühekordse äratuse andmebaasis alles pärast edukat teenuse käivitust
-     * 5. Planeerib järgmise äratuse ja uuendab vidina/UI
+     * 3. Käivitab raadioteenuse äratuse parameetritega (tõrge logitakse, ei katkesta ahelat)
+     * 4. Deaktiveerib ühekordse äratuse andmebaasis sõltumata esituse õnnestumisest
+     * 5. Planeerib järgmise äratuse ja uuendab vidina/UI sõltumata esituse õnnestumisest
      * 6. Tagab WakeLocki vabastamise finally plokis
+     *
+     * Iga samm on isoleeritud, et ühe sammu tõrge ei takistaks järgmisi. Erandeid välja ei visata.
      */
     suspend fun processAlarm(alarmId: Int) {
         try {
@@ -38,27 +40,40 @@ class AlarmTriggerCoordinator(
                 return
             }
 
-            val alarm = alarmDao.getAlarmById(alarmId)
+            val alarm = try {
+                alarmDao.getAlarmById(alarmId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Viga äratuse (ID: $alarmId) lugemisel andmebaasist: ${e.message}", e)
+                null
+            }
+
             if (alarm == null) {
                 Log.e(TAG, "Andmebaasist ei leitud äratust ID-ga $alarmId")
-                return
+            } else {
+                // 1. Käivita raadioteenus; tõrge ei tohi katkestada äratuste ahelat
+                try {
+                    playbackLauncher.launchPlaybackService(alarm.stationUrl, alarm.stationName)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Raadioteenuse käivitamine ebaõnnestus (ID: $alarmId): ${e.message}", e)
+                }
+
+                // 2. Deaktiveeri ühekordne äratus, et vigane äratus homseks ei korduks
+                if (alarm.days.isEmpty()) {
+                    try {
+                        alarmDao.update(alarm.copy(isEnabled = false))
+                        Log.d(TAG, "Ühekordne äratus (ID: $alarmId) deaktiveeritud.")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Ühekordse äratuse (ID: $alarmId) deaktiveerimine ebaõnnestus: ${e.message}", e)
+                    }
+                }
             }
 
-            // 1. Käivita esmalt raadioteenus äratuse parameetritega
-            playbackLauncher.launchPlaybackService(alarm.stationUrl, alarm.stationName)
-
-            // 2. Kui teenuse käivitamine õnnestus, deaktiveeri ühekordne äratus andmebaasis
-            if (alarm.days.isEmpty()) {
-                val updatedAlarm = alarm.copy(isEnabled = false)
-                alarmDao.update(updatedAlarm)
-                Log.d(TAG, "Ühekordne äratus (ID: $alarmId) deaktiveeritud.")
+            // 3. Planeeri järgmine äratus ja teavita komponente (ka siis, kui äratust ei leitud)
+            try {
+                onAlarmRescheduled?.invoke()
+            } catch (e: Exception) {
+                Log.e(TAG, "Järgmise äratuse ajastamine ebaõnnestus: ${e.message}", e)
             }
-
-            // 3. Planeeri järgmine äratus ja teavita komponente
-            onAlarmRescheduled?.invoke()
-        } catch (e: Exception) {
-            Log.e(TAG, "Viga äratuse töötlemisel: ${e.message}", e)
-            throw e
         } finally {
             try {
                 if (wakeLock.isHeld) {

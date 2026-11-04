@@ -217,6 +217,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(RadioService.ACTION_GET_STATUS))
 
+        healAlarmSchedule()
+
         viewModelScope.launch(Dispatchers.IO) {
             stationRepository.loadOfflineStationsIfEmpty(context)
             val stations = stationRepository.allStations.first()
@@ -248,6 +250,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Viga taustal uuenduste kontrollimisel", e)
+            }
+        }
+    }
+
+    /**
+     * Rakenduse käivitamisel tehtav vaikne isetervenemine: loeb andmebaasist aktiivsed äratused,
+     * registreerib järgmise äratuse uuesti süsteemses AlarmManageris ja uuendab avakuva vidina.
+     * Nii kaob igasugune lahknevus süsteemi ja andmebaasi seisu vahel (nt kui OEM-i akuhaldur
+     * on registreeringu kustutanud). Töötab taustalõimes, ei blokeeri UI-d ega näita Toaste.
+     */
+    private fun healAlarmSchedule() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AlarmUtils.scheduleNextAlarmInternal(context)
+                app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
+                Log.d("MainViewModel", "Äratuste isetervenemine käivitusel lõpetatud.")
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Viga äratuste isetervenemisel käivitusel", e)
             }
         }
     }

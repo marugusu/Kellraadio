@@ -143,14 +143,9 @@ class AlarmTriggerCoordinatorTest {
         coordinator.acquireWakeLock()
         assertTrue("WakeLock peab olema algselt haaratud", fakeWakeLock.isHeld)
 
-        var thrown = false
-        try {
-            coordinator.processAlarm(10)
-        } catch (e: Exception) {
-            thrown = true
-        }
+        // Koordinaator käsitleb esitustõrke ise (logib), erand ei tohi ahelat katkestada
+        coordinator.processAlarm(10)
 
-        assertTrue("Teenuse käivitamise viga pidi edasi levima", thrown)
         assertFalse("WakeLock peab olema vabastatud ka vea korral", fakeWakeLock.isHeld)
         assertEquals(1, fakeWakeLock.releaseCallCount)
     }
@@ -255,7 +250,7 @@ class AlarmTriggerCoordinatorTest {
     }
 
     @Test
-    fun testOneTimeAlarmNotDeactivatedWhenServiceLaunchThrows() = runBlocking {
+    fun testOneTimeAlarmDeactivatedAndRescheduledEvenWhenServiceLaunchThrows() = runBlocking {
         val fakeWakeLock = FakeWakeLockHandle()
         val oneTimeAlarm = Alarm(
             id = 101,
@@ -268,28 +263,113 @@ class AlarmTriggerCoordinatorTest {
         )
         val fakeDao = FakeAlarmDao(listOf(oneTimeAlarm))
         val fakeLauncher = FakePlaybackLauncher().apply { shouldThrow = true }
-        var rescheduleCalled = false
+        var rescheduleCount = 0
 
         val coordinator = AlarmTriggerCoordinator(
             wakeLock = fakeWakeLock,
             alarmDao = fakeDao,
             playbackLauncher = fakeLauncher,
-            onAlarmRescheduled = { rescheduleCalled = true }
+            onAlarmRescheduled = { rescheduleCount++ }
         )
 
         coordinator.acquireWakeLock()
-        var exceptionThrown = false
-        try {
-            coordinator.processAlarm(101)
-        } catch (e: Exception) {
-            exceptionThrown = true
-        }
+        coordinator.processAlarm(101)
 
-        assertTrue("Teenuse käivitamise erand peab edasi kanduma", exceptionThrown)
-        assertTrue("Ühekordne äratus peab andmebaasis säilima aktiivsena (isEnabled = true)", fakeDao.getAlarmById(101)?.isEnabled == true)
-        assertTrue("Andmebaasis ei tohtinud ühekordset äratust uuendada enne teenuse käivitamist", fakeDao.updatedAlarms.isEmpty())
-        assertFalse("Järgmise äratuse ümberplaneerimist ei tohi käivitada kui teenus ei startinud", rescheduleCalled)
+        assertEquals(
+            "Ühekordne äratus peab olema deaktiveeritud ka esitustõrke korral",
+            false,
+            fakeDao.getAlarmById(101)?.isEnabled
+        )
+        assertEquals("Järgmine äratus peab olema ajastatud ka esitustõrke korral", 1, rescheduleCount)
         assertFalse("WakeLock peab olema vabastatud", fakeWakeLock.isHeld)
+        assertEquals(1, fakeWakeLock.releaseCallCount)
+    }
+
+    @Test
+    fun testRecurringAlarmRescheduledOnSuccessfulLaunch() = runBlocking {
+        val fakeWakeLock = FakeWakeLockHandle()
+        val recurringAlarm = Alarm(
+            id = 103,
+            hour = 7,
+            minute = 0,
+            days = setOf(1, 2, 3, 4, 5),
+            stationName = "Vikerraadio",
+            stationUrl = "https://stream.err.ee/viker",
+            isEnabled = true
+        )
+        val fakeDao = FakeAlarmDao(listOf(recurringAlarm))
+        var rescheduleCount = 0
+
+        val coordinator = AlarmTriggerCoordinator(
+            wakeLock = fakeWakeLock,
+            alarmDao = fakeDao,
+            playbackLauncher = FakePlaybackLauncher(),
+            onAlarmRescheduled = { rescheduleCount++ }
+        )
+
+        coordinator.acquireWakeLock()
+        coordinator.processAlarm(103)
+
+        assertEquals("Järgmine äratus peab olema ajastatud", 1, rescheduleCount)
+        assertFalse(fakeWakeLock.isHeld)
+    }
+
+    @Test
+    fun testRecurringAlarmRescheduledAndKeptEnabledWhenServiceLaunchThrows() = runBlocking {
+        val fakeWakeLock = FakeWakeLockHandle()
+        val recurringAlarm = Alarm(
+            id = 104,
+            hour = 7,
+            minute = 0,
+            days = setOf(1, 2, 3, 4, 5),
+            stationName = "Vikerraadio",
+            stationUrl = "https://stream.err.ee/viker",
+            isEnabled = true
+        )
+        val fakeDao = FakeAlarmDao(listOf(recurringAlarm))
+        var rescheduleCount = 0
+
+        val coordinator = AlarmTriggerCoordinator(
+            wakeLock = fakeWakeLock,
+            alarmDao = fakeDao,
+            playbackLauncher = FakePlaybackLauncher().apply { shouldThrow = true },
+            onAlarmRescheduled = { rescheduleCount++ }
+        )
+
+        coordinator.acquireWakeLock()
+        coordinator.processAlarm(104)
+
+        assertEquals("Korduv äratus peab jääma aktiivseks", true, fakeDao.getAlarmById(104)?.isEnabled)
+        assertEquals("Järgmine äratus peab olema ajastatud ka esitustõrke korral", 1, rescheduleCount)
+        assertFalse(fakeWakeLock.isHeld)
+    }
+
+    @Test
+    fun testWakeLockReleasedWhenReschedulingThrows() = runBlocking {
+        val fakeWakeLock = FakeWakeLockHandle()
+        val oneTimeAlarm = Alarm(
+            id = 105,
+            hour = 6,
+            minute = 0,
+            days = emptySet(),
+            stationName = "Kuku",
+            stationUrl = "https://stream.kuku.ee/kuku",
+            isEnabled = true
+        )
+        val fakeDao = FakeAlarmDao(listOf(oneTimeAlarm))
+
+        val coordinator = AlarmTriggerCoordinator(
+            wakeLock = fakeWakeLock,
+            alarmDao = fakeDao,
+            playbackLauncher = FakePlaybackLauncher(),
+            onAlarmRescheduled = { throw IllegalStateException("Simulated AlarmManager failure") }
+        )
+
+        coordinator.acquireWakeLock()
+        coordinator.processAlarm(105)
+
+        assertEquals(false, fakeDao.getAlarmById(105)?.isEnabled)
+        assertFalse("WakeLock peab olema vabastatud ka ajastamise tõrke korral", fakeWakeLock.isHeld)
     }
 
     @Test

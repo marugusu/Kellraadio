@@ -1,0 +1,4 @@
+# Süsteemsete äratuste taastamine ja püsivus (Alarm Persistence & Recovery)
+
+Androidi operatsioonisüsteem tühjendab seadme taaskäivitamisel (reboot) mälus asuva `AlarmManager`i sisu, samas kui äpi krahhi (crash) korral jääb süsteemne äratus alles. Otsustasime hoida aktiivseid äratusi Room andmebaasis ning taastada järgmine süsteemne äratus automaatselt `BootReceiver`i kaudu seadme käivitumisel (`BOOT_COMPLETED`), äpi uuendamisel (`MY_PACKAGE_REPLACED`) ning ajamuutuste korral (`TIME_SET`, `TIMEZONE_CHANGED`), lisaks äpi käivitamisel isetervenemise teel. Teadlikult jäetakse esialgu toetamata Direct Boot (`LOCKED_BOOT_COMPLETED`), kuna seadme esmase avamise eelsel režiimil puudub ligipääs krüpteeritud andmebaasile ning võrgupõhine raadiostriim ei ole lukustusekraanil usaldusväärselt tagatud.
+
