@@ -44,6 +44,8 @@
     <string name="alarm_add_new">Lisa äratus</string>
     <string name="alarm_set_title">Sea äratus</string>
     <string name="alarm_edit_title">Muuda äratust</string>
+    <string name="alarm_record_audio_title">Salvesta äratus</string>
+    <string name="alarm_record_audio_desc">Alusta äratuse helisedes automaatselt jaama salvestamist</string>
     <string name="alarm_toast_saved">Äratus salvestatud!</string>
     <string name="alarm_toast_deleted">Äratus kustutatud!</string>
     <string name="timer_dialog_title">Unetaimer</string>
@@ -185,6 +187,16 @@
     <string name="notification_recording_title">🔴 Salvestan: %1$s</string>
     <string name="recording_saved_count">(%1$d salvestatud)</string>
     <string name="recording_tracks_saved">%1$d pala</string>
+    <string name="recording_low_storage_warning">Salvestus peatatud: vaba kettamaht alla 500 MB</string>
+
+    <!-- Recording Settings -->
+    <string name="settings_group_recording">Salvestamine</string>
+    <string name="settings_continuous_recording">Pidev salvestus</string>
+    <string name="settings_continuous_recording_desc">Salvesta helivoogu automaatselt iga kord, kui mistahes jaam mängib</string>
+    <string name="settings_storage_safeguard">Kettamahu kaitse</string>
+    <string name="settings_storage_safeguard_desc">Peatab salvestamise automaatselt, kui seadme vaba maht langeb alla 500 MB</string>
+    <string name="settings_recording_folder">Salvestiste asukoht</string>
+    <string name="storage_500mb">500 MB</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Varundus ja kolimine</string>

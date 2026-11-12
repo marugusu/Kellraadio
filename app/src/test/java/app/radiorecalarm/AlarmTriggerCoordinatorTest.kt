@@ -73,15 +73,17 @@ class AlarmTriggerCoordinatorTest {
     ) : AlarmPlaybackLauncher {
         var launchedUrl: String? = null
         var launchedStation: String? = null
+        var launchedRecordAudio: Boolean = false
         var shouldThrow = false
 
-        override fun launchPlaybackService(streamUrl: String, stationName: String) {
+        override fun launchPlaybackService(streamUrl: String, stationName: String, recordAudio: Boolean) {
             onLaunchCallback?.invoke()
             if (shouldThrow) {
                 throw RuntimeException("Simulated service start failure")
             }
             launchedUrl = streamUrl
             launchedStation = stationName
+            launchedRecordAudio = recordAudio
         }
     }
 
@@ -413,6 +415,64 @@ class AlarmTriggerCoordinatorTest {
         )
         assertEquals(false, fakeDao.getAlarmById(102)?.isEnabled)
         assertFalse(fakeWakeLock.isHeld)
+    }
+
+    @Test
+    fun processAlarm_whenAlarmHasRecordAudioTrue_passesRecordAudioTrueToLauncher() = runBlocking {
+        val fakeWakeLock = FakeWakeLockHandle()
+        val alarmWithRecording = Alarm(
+            id = 201,
+            hour = 6,
+            minute = 45,
+            days = setOf(1, 2, 3),
+            stationName = "Vikerraadio",
+            stationUrl = "https://otse.err.ee/vikerraadio",
+            isEnabled = true,
+            recordAudio = true
+        )
+        val fakeDao = FakeAlarmDao(listOf(alarmWithRecording))
+        val fakeLauncher = FakePlaybackLauncher()
+
+        val coordinator = AlarmTriggerCoordinator(
+            wakeLock = fakeWakeLock,
+            alarmDao = fakeDao,
+            playbackLauncher = fakeLauncher
+        )
+
+        coordinator.processAlarm(201)
+
+        assertEquals("https://otse.err.ee/vikerraadio", fakeLauncher.launchedUrl)
+        assertEquals("Vikerraadio", fakeLauncher.launchedStation)
+        assertTrue("Launcher should receive recordAudio = true", fakeLauncher.launchedRecordAudio)
+    }
+
+    @Test
+    fun processAlarm_whenAlarmHasRecordAudioFalse_passesRecordAudioFalseToLauncher() = runBlocking {
+        val fakeWakeLock = FakeWakeLockHandle()
+        val alarmWithoutRecording = Alarm(
+            id = 202,
+            hour = 8,
+            minute = 0,
+            days = emptySet(),
+            stationName = "Raadio 2",
+            stationUrl = "https://otse.err.ee/raadio2",
+            isEnabled = true,
+            recordAudio = false
+        )
+        val fakeDao = FakeAlarmDao(listOf(alarmWithoutRecording))
+        val fakeLauncher = FakePlaybackLauncher()
+
+        val coordinator = AlarmTriggerCoordinator(
+            wakeLock = fakeWakeLock,
+            alarmDao = fakeDao,
+            playbackLauncher = fakeLauncher
+        )
+
+        coordinator.processAlarm(202)
+
+        assertEquals("https://otse.err.ee/raadio2", fakeLauncher.launchedUrl)
+        assertEquals("Raadio 2", fakeLauncher.launchedStation)
+        assertFalse("Launcher should receive recordAudio = false", fakeLauncher.launchedRecordAudio)
     }
 }
 

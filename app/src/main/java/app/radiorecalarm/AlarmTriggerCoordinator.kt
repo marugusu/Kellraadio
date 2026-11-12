@@ -52,7 +52,7 @@ class AlarmTriggerCoordinator(
             } else {
                 // 1. Käivita raadioteenus; tõrge ei tohi katkestada äratuste ahelat
                 try {
-                    playbackLauncher.launchPlaybackService(alarm.stationUrl, alarm.stationName)
+                    playbackLauncher.launchPlaybackService(alarm.stationUrl, alarm.stationName, alarm.recordAudio)
                 } catch (e: Exception) {
                     Log.e(TAG, "Raadioteenuse käivitamine ebaõnnestus (ID: $alarmId): ${e.message}", e)
                 }

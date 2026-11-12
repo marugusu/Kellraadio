@@ -40,6 +40,11 @@ Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksima
 18. As a user recording a song that was already recorded earlier in the day, I want the new file to automatically receive a suffix index (e.g. `_01`, `_02`), so that previous recordings are never overwritten or lost.
 19. As a radio listener listening to songs not listed in iTunes, I want the recording to gracefully fall back to a `Teadmata album/` folder with null fields in the sidecar JSON, so that unindexed local music is still captured reliably.
 20. As a phone user, I want the background recording to stream directly from the network data source to disk without accumulating large audio chunks in RAM, so that the app cannot crash with OutOfMemory errors.
+21. As a radio listener waking up to a morning broadcast, I want my alarm to automatically start recording the station, so that I capture the broadcast while waking up without having to manually start recording.
+22. As an avid radio recorder, I want a setting to record continuously whenever the radio is streaming, so that all stations I listen to are automatically archived.
+23. As a listener switching stations while recording, I want the recording session to remain active, closing the previous station's file cleanly and immediately starting to record the new station.
+24. As a user with limited phone storage, I want recording to halt automatically if free storage drops below 500 MB, with a clear notification, so that my phone never runs out of space.
+25. As an alarm user, I want each alarm card to indicate if recording is enabled, so that I can see at a glance which alarms will record.
 
 ## Implementation Decisions
 
@@ -97,6 +102,25 @@ Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksima
 - **Network Dropout Resilience**:
   - If the player reconnects following a brief connection loss (handled by `RetryingHttpDataSource`) and the incoming metadata matches the currently recorded track, recording stream continues into the same open file without resetting duration or splitting.
 
+- **Alarm-Triggered Recording (ADR-0005)**:
+  - Configured per-alarm via a "Salvesta äratus" toggle in `AlarmDialog`.
+  - Persisted in Room database `Alarm` entity: `val recordAudio: Boolean = false` (Database schema version 10 via `MIGRATION_9_10`).
+  - When the alarm triggers, `AlarmTriggerCoordinator` launches playback with `EXTRA_RECORD = true`.
+  - Recording continues as long as audio plays; dismissing/snoozing the alarm does not cancel recording unless playback itself is stopped.
+  - Alarms with recording enabled display a red recording dot/badge in `AlarmsScreen`.
+
+- **Continuous Stream Recording (ADR-0005)**:
+  - General Settings (`SettingsScreen`) provides a dedicated "Salvestamine" section with a "Pidev salvestus" (`continuous_recording`) preference.
+  - When enabled, any playback initiation (manual, widget, notification, alarm) automatically begins stream recording.
+  - Continuous recording supersedes per-alarm settings (all playback sessions record).
+  - Manual tap of "Peata salvestus" stops recording for the active station without terminating playback; tuning to a new station resumes recording.
+
+- **Station-Switch Continuity**:
+  - When changing stations during an active recording session (`isRecording = true`), the coordinator cleanly finalizes the previous station's file/sidecar (pruning if < 30s) and immediately routes the incoming station's stream into a new file and folder without requiring user re-activation.
+
+- **Storage Safeguard (Low Disk Space Protection)**:
+  - Coordinator checks available device storage (`StatFs`). If free disk space drops below 500 MB, recording automatically stops, the current file is flushed cleanly, and a system notification warns the user ("Salvestus peatatud: vaba kettamaht alla 500 MB").
+
 ## Testing Decisions
 
 - **What makes a good test**:
@@ -122,5 +146,5 @@ Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksima
 
 ## Further Notes
 
-- This specification adheres to architecture decision record [docs/adr/0004-stream-recording-architecture.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/docs/adr/0004-stream-recording-architecture.md) and domain definitions in [GLOSSARY.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/GLOSSARY.md).
+- This specification adheres to architecture decision records [docs/adr/0004-stream-recording-architecture.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/docs/adr/0004-stream-recording-architecture.md) and [docs/adr/0005-alarm-and-continuous-recording.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/docs/adr/0005-alarm-and-continuous-recording.md), as well as domain definitions in [GLOSSARY.md](file:///c:/Users/margusra/AndroidStudioProjects/Kellraadio/GLOSSARY.md).
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,9 +36,10 @@ fun AlarmDialog(
     initialHour: Int? = null,
     initialMinute: Int? = null,
     initialDays: Set<Int> = emptySet(),
+    initialRecordAudio: Boolean = false,
     onDismiss: () -> Unit,
     onDelete: (() -> Unit)? = null,
-    onAlarmSaved: (hour: Int, minute: Int, days: Set<Int>) -> Unit
+    onAlarmSaved: (hour: Int, minute: Int, days: Set<Int>, recordAudio: Boolean) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
@@ -54,6 +56,7 @@ fun AlarmDialog(
     )
 
     val days = remember { mutableStateListOf<Int>().apply { addAll(initialDays) } }
+    var recordAudio by remember { mutableStateOf(initialRecordAudio) }
 
     val weekDays = listOf(
         Calendar.MONDAY to stringResource(R.string.day_mon),
@@ -133,6 +136,49 @@ fun AlarmDialog(
                         }
                     }
                 }
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { recordAudio = !recordAudio }
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.FiberManualRecord,
+                                contentDescription = null,
+                                tint = if (recordAudio) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.alarm_record_audio_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.alarm_record_audio_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = recordAudio,
+                        onCheckedChange = { recordAudio = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.error
+                        )
+                    )
+                }
             }
         },
         confirmButton = {
@@ -140,7 +186,7 @@ fun AlarmDialog(
                 enabled = selectedStation != null,
                 onClick = {
                     view.performHapticTap()
-                    onAlarmSaved(timePickerState.hour, timePickerState.minute, days.toSet())
+                    onAlarmSaved(timePickerState.hour, timePickerState.minute, days.toSet(), recordAudio)
                     onDismiss()
                 },
                 shape = RoundedCornerShape(8.dp)

@@ -367,7 +367,16 @@ fun RaadioEkraan(
     if (state.showAlarmDialog) {
         val currentAlarmToEdit = state.alarmToEdit
         val stationForDialog = if (currentAlarmToEdit != null) { displayStations.find { it.name == currentAlarmToEdit.stationName } ?: RadioStation(0, currentAlarmToEdit.stationName, currentAlarmToEdit.stationUrl) } else { displayStations.find { it.id == state.selectedStationId } }
-        AlarmDialog(selectedStation = stationForDialog, initialHour = currentAlarmToEdit?.hour, initialMinute = currentAlarmToEdit?.minute, initialDays = currentAlarmToEdit?.days ?: emptySet(), onDismiss = mainViewModel::closeAlarmDialog, onDelete = if (currentAlarmToEdit != null && currentAlarmToEdit.id != 0) { { mainViewModel.deleteAlarm(currentAlarmToEdit) } } else null, onAlarmSaved = mainViewModel::saveAlarm)
+        AlarmDialog(
+            selectedStation = stationForDialog,
+            initialHour = currentAlarmToEdit?.hour,
+            initialMinute = currentAlarmToEdit?.minute,
+            initialDays = currentAlarmToEdit?.days ?: emptySet(),
+            initialRecordAudio = currentAlarmToEdit?.recordAudio ?: false,
+            onDismiss = mainViewModel::closeAlarmDialog,
+            onDelete = if (currentAlarmToEdit != null && currentAlarmToEdit.id != 0) { { mainViewModel.deleteAlarm(currentAlarmToEdit) } } else null,
+            onAlarmSaved = mainViewModel::saveAlarm
+        )
     }
     if (state.showActionSheetForStation != null) {
         val liveStation = displayStations.find { it.id == state.showActionSheetForStation!!.id } ?: state.showActionSheetForStation!!
@@ -516,6 +525,8 @@ fun ContentScreens(
                 showFlags = state.showFlags,
                 hideRemoteStations = state.hideRemoteStations,
                 widgetTransparency = state.widgetTransparency,
+                continuousRecording = state.continuousRecording,
+                onToggleContinuousRecording = viewModel::setContinuousRecording,
                 onToggleShowFlags = viewModel::toggleFlags,
                 onToggleHideRemoteStations = viewModel::toggleHideRemoteStations,
                 onColsPortraitChange = viewModel::setColsPortrait,

@@ -39,6 +39,8 @@
     <string name="alarm_add_new">알람 추가</string>
     <string name="alarm_set_title">알람 설정</string>
     <string name="alarm_edit_title">알람 편집</string>
+    <string name="alarm_record_audio_title">방송 녹음</string>
+    <string name="alarm_record_audio_desc">알람이 울릴 때 자동으로 방송 녹음 시작</string>
     <string name="alarm_toast_saved">알람 저장됨!</string>
     <string name="alarm_toast_deleted">알람 삭제됨!</string>
     <string name="timer_dialog_title">취침 타이머</string>
@@ -185,6 +187,16 @@
     <string name="notification_recording_title">🔴 녹음 중: %1$s</string>
     <string name="recording_saved_count">(%1$d개 저장됨)</string>
     <string name="recording_tracks_saved">%1$d곡</string>
+    <string name="recording_low_storage_warning">저장 공간 부족(500MB 미만)으로 녹음이 중지되었습니다</string>
+
+    <!-- Recording Settings -->
+    <string name="settings_group_recording">녹음</string>
+    <string name="settings_continuous_recording">연속 스트림 녹음</string>
+    <string name="settings_continuous_recording_desc">라디오 방송이 재생될 때마다 자동으로 스트림 녹음</string>
+    <string name="settings_storage_safeguard">저장 공간 보호</string>
+    <string name="settings_storage_safeguard_desc">여유 공간이 500MB 미만으로 떨어지면 자동으로 녹음을 중지합니다</string>
+    <string name="settings_recording_folder">녹음 저장 위치</string>
+    <string name="storage_500mb">500 MB</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">백업 및 마이그레이션</string>

@@ -31,6 +31,8 @@
 <string name="alarm_add_new">"Līsa āratõmiz"</string>
 <string name="alarm_set_title">"Sāddõ āratõmiz"</string>
 <string name="alarm_edit_title">"Mūot āratõmiz"</string>
+<string name="alarm_record_audio_title">"Salbõst ärātõst"</string>
+<string name="alarm_record_audio_desc">"Algā automātlizt salbõstamist ku ärātõz līb"</string>
 <string name="alarm_toast_saved">"Āratõmiz tāļtõd!"</string>
 <string name="alarm_toast_deleted">"Āratõmiz kistūtõd!"</string>
 <string name="timer_dialog_title">"Magāntaimer"</string>
@@ -157,6 +159,16 @@
     <string name="notification_recording_title">"🔴 Tāļtõb: %1$s"</string>
     <string name="recording_saved_count">"(%1$d tāļtõd)"</string>
     <string name="recording_tracks_saved">"%1$d lōltõ"</string>
+    <string name="recording_low_storage_warning">"Salbõstamin kistūtõd: vaba pīela um allõl 500 MB"</string>
+
+    <!-- Recording Settings -->
+    <string name="settings_group_recording">"Salbõstamin"</string>
+    <string name="settings_continuous_recording">"Piddõz salbõstamin"</string>
+    <string name="settings_continuous_recording_desc">"Salbõst helīvoogõ automātlizt ku stacij mäņgõb"</string>
+    <string name="settings_storage_safeguard">"Pīela kaitzõmin"</string>
+    <string name="settings_storage_safeguard_desc">"Kistūtab salbõstamist ku vaba pīela lǟb allõl 500 MB"</string>
+    <string name="settings_recording_folder">"Tāļtõmizt kūož"</string>
+    <string name="storage_500mb">"500 MB"</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">"Tāļtõks ja koltšimi"</string>

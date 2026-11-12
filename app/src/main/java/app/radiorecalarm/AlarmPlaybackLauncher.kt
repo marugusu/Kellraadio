@@ -8,15 +8,16 @@ import android.os.Build
  * Õmblus (seam) raadioteenuse käivitamiseks äratuse režiimis.
  */
 interface AlarmPlaybackLauncher {
-    fun launchPlaybackService(streamUrl: String, stationName: String)
+    fun launchPlaybackService(streamUrl: String, stationName: String, recordAudio: Boolean = false)
 }
 
 class AndroidAlarmPlaybackLauncher(private val context: Context) : AlarmPlaybackLauncher {
-    override fun launchPlaybackService(streamUrl: String, stationName: String) {
+    override fun launchPlaybackService(streamUrl: String, stationName: String, recordAudio: Boolean) {
         val serviceIntent = Intent(context, RadioService::class.java).apply {
             putExtra("STREAM_URL", streamUrl)
             putExtra("STATION_NAME", stationName)
             putExtra("TRIGGERED_BY", "ALARM")
+            putExtra(RadioService.EXTRA_RECORD, recordAudio)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

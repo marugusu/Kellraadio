@@ -66,6 +66,8 @@ fun SettingsScreen(
     showFlags: Boolean,
     hideRemoteStations: Boolean,
     widgetTransparency: Float,
+    continuousRecording: Boolean = false,
+    onToggleContinuousRecording: (Boolean) -> Unit = {},
     onToggleShowFlags: (Boolean) -> Unit,
     onToggleHideRemoteStations: (Boolean) -> Unit,
     onColsPortraitChange: (Int) -> Unit,
@@ -280,6 +282,51 @@ fun SettingsScreen(
                 SettingsWidgetTransparencyRow(
                     transparency = widgetTransparency,
                     onValueChange = onWidgetTransparencyChange
+                )
+            }
+
+            // GRUPP: SALVESTAMINE (ADR-0005)
+            SettingsSection(title = stringResource(R.string.settings_group_recording)) {
+                SettingsRow(
+                    headline = stringResource(R.string.settings_continuous_recording),
+                    supporting = stringResource(R.string.settings_continuous_recording_desc),
+                    icon = Icons.Default.FiberManualRecord,
+                    onClick = { onToggleContinuousRecording(!continuousRecording) },
+                    trailingContent = {
+                        Switch(
+                            checked = continuousRecording,
+                            onCheckedChange = { onToggleContinuousRecording(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = MaterialTheme.colorScheme.error
+                            )
+                        )
+                    }
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    headline = stringResource(R.string.settings_storage_safeguard),
+                    supporting = stringResource(R.string.settings_storage_safeguard_desc),
+                    icon = Icons.Default.SdStorage,
+                    trailingContent = {
+                        Text(
+                            text = stringResource(R.string.storage_500mb),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    headline = stringResource(R.string.settings_recording_folder),
+                    supporting = "Android/data/app.radiorecalarm/files/Music",
+                    icon = Icons.Default.Folder,
+                    onClick = null
                 )
             }
 

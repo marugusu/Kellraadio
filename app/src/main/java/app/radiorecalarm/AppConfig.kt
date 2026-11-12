@@ -122,5 +122,7 @@ object AppConfig {
         const val DIR_SHOWS = "Saated"
         const val DIR_UNKNOWN_ALBUM = "Teadmata album"
         const val DEFAULT_AUDIO_DIR = "Music"
+        const val PREF_CONTINUOUS_RECORDING = "continuous_recording"
+        const val MIN_FREE_STORAGE_BYTES = 500L * 1024L * 1024L // 500 MB (ADR-0005)
     }
 }

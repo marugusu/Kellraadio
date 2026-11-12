@@ -49,13 +49,35 @@ data class SidecarMetadata(
     val partial: Boolean = false
 )
 
+fun interface StorageSpaceChecker {
+    fun getAvailableBytes(dir: File): Long
+}
+
+class AndroidStorageSpaceChecker : StorageSpaceChecker {
+    override fun getAvailableBytes(dir: File): Long {
+        return try {
+            if (!dir.exists()) dir.mkdirs()
+            val space = dir.usableSpace
+            if (space > 0L) {
+                space
+            } else {
+                android.os.StatFs(dir.absolutePath).availableBytes
+            }
+        } catch (e: Throwable) {
+            Long.MAX_VALUE
+        }
+    }
+}
+
 class StreamRecordingCoordinator(
     private val baseDirProvider: () -> File,
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val metadataHelper: RadioMetadataHelper = RadioMetadataHelper(),
     private val metadataFetcher: MetadataFetcher = MetadataFetcher { _, _ -> null },
     private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false },
-    private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS
+    private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
+    private val storageSpaceChecker: StorageSpaceChecker = AndroidStorageSpaceChecker(),
+    private val onLowStorage: (() -> Unit)? = null
 ) {
     @Volatile
     var isRecording: Boolean = false
@@ -99,6 +121,22 @@ class StreamRecordingCoordinator(
         }
     }
 
+    fun checkStorageSafeguard(): Boolean {
+        synchronized(lock) {
+            val baseDir = baseDirProvider()
+            val availableBytes = storageSpaceChecker.getAvailableBytes(baseDir)
+            if (availableBytes < AppConfig.Recording.MIN_FREE_STORAGE_BYTES) {
+                if (isRecording) {
+                    isRecording = false
+                    closeCurrentTrack()
+                }
+                onLowStorage?.invoke()
+                return false
+            }
+            return true
+        }
+    }
+
     fun startRecording(
         stationName: String,
         streamUrl: String,
@@ -107,6 +145,7 @@ class StreamRecordingCoordinator(
     ) {
         synchronized(lock) {
             if (isRecording) return
+            if (!checkStorageSafeguard()) return
 
             currentStationName = stationName
             currentStreamUrl = streamUrl
@@ -149,6 +188,8 @@ class StreamRecordingCoordinator(
             if (cleaned == currentRawMetadata) {
                 return
             }
+
+            if (!checkStorageSafeguard()) return
 
             closeCurrentTrack()
             isPartialTrack = false // Subsequent tracks started at the track transition boundary
