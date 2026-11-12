@@ -31,3 +31,23 @@ _Avoid_: Kategooria, alamfilter kui omadus
 **Lemmik (Favorite)**:
 Kasutaja poolt esiletõstetud jaam, mis kuulub püsiva järjekorraga kiirvaliku vaatesse.
 _Avoid_: Lemmikkanal
+
+**Salvestus (Recording)**:
+Raadio helivoo reaalajas talletamine failisüsteemi bit-perfect helifailina.
+_Avoid_: Audio rip, striimitõmmis
+
+**Pala (Track)**:
+Tuvastatud esitaja ja pealkirjaga muusikateos, millele päritakse laiendatud metaandmed ja kaanepilt.
+_Avoid_: Lugu, laul kui tehniline salvestis
+
+**Saade (Broadcast / Show)**:
+Mitte-muusikaline raadioprogramm, uudisteplokk või jaama üldine otseeeter, millel puudub konkreetne muusikapala metainfo.
+_Avoid_: Otseeeter kui failitüüp, jutt
+
+**Kõrvafail (Sidecar File)**:
+Helifailiga kaasas käiv struktureeritud `.json` metaandmefail koos kaanepildiga (`cover.jpg`) hilisemaks sildistamiseks.
+_Avoid_: Info fail, txt fail, nfo
+
+**Automaatne tükeldus (Auto-splitting)**:
+Salvestusvoo poolitamine uude faili reaalajas jaama metainfo muutumise hetkel.
+_Avoid_: Segmentimine, lõikamine
