@@ -222,6 +222,8 @@ class RadioService : Service() {
         isChangingStation = true
         
         currentCategory = prefs.getString("last_category", currentCategory) ?: currentCategory
+        val hideCuratedStations = prefs.getBoolean("hide_remote_stations", false)
+        val selectedSubCategories = prefs.getStringSet("last_sub_categories", emptySet()) ?: emptySet()
         
         val allStations = if (cachedStations.isNotEmpty()) {
             cachedStations
@@ -235,20 +237,17 @@ class RadioService : Service() {
                 }
             }
         }
-        if (allStations.isEmpty()) return
+        val visibleStations = StationListFilter.visibleStations(allStations, hideCuratedStations)
+        if (visibleStations.isEmpty()) return
 
-        val navigationList = when (currentCategory) {
-            "Favorites" -> allStations.filter { it.isFavorite }
-                .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
-            "My" -> allStations.filter { it.isUserStation }
-            "All", "" -> allStations
-            else -> {
-                allStations.filter { it.category == currentCategory || it.countryCode == currentCategory }
-            }
-        }
+        val navigationList = StationListFilter.filterAndSortStations(
+            stations = visibleStations,
+            category = currentCategory,
+            subCategories = selectedSubCategories
+        )
 
         val finalNavList = if (navigationList.isEmpty() || navigationList.none { it.name == currentStationName }) {
-            allStations
+            visibleStations
         } else {
             navigationList
         }
@@ -1033,11 +1032,23 @@ class RadioService : Service() {
             }
             ACTION_UPDATE_STATION_NAME -> {
                 val newName = intent.getStringExtra("STATION_NAME")
+                val newUrl = intent.getStringExtra("STREAM_URL")
+                var changed = false
                 if (!newName.isNullOrEmpty() && newName != currentStationName) {
                     currentStationName = newName
                     currentStationBitmap = app.radiorecalarm.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+                    prefs.edit().putString("last_name", newName).apply()
+                    changed = true
+                }
+                if (!newUrl.isNullOrEmpty() && newUrl != currentStreamUrl) {
+                    currentStreamUrl = newUrl
+                    prefs.edit().putString("last_url", newUrl).apply()
+                    changed = true
+                }
+                if (changed) {
                     updateNotification()
                     updateExternalDevices(currentTitle, currentArtist)
+                    updateWidget()
                 }
                 return START_STICKY
             }

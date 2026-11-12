@@ -1,0 +1,4 @@
+# Jaamade rühmitamine, lemmikute järjestamine ja äratuste sünkroonimine
+
+Kellraadio peab toetama ühtaegu kiiret ühekäe-kasutust telefonis, roolinuppudega juhtimist autos ning D-pad kaugjuhtimist Android TV-s. Otsustasime hoida jaamade andmemudelis **Allika** (*kureeritud* vs *kasutaja lisatud*) ja **Alamgrupi** (`category` — Eestis pakkuja, mujal žanr) rangelt lahus ning vältida tühjalt lisatud oma jaamade paigutamist kunstliku `"My"` alamfiltri alla. Lemmikute ümberjärjestamine jääb `StationActionSheet`-i suunanuppude peale (loobudes puudutuspõhisest lohistamisest), et säiliks täielik Android TV / D-pad tugi ja `66.dp` jaamakaardid püsiksid ikoonimürata. Samuti jäävad äratused (`Alarm`) Room andmebaasis seotuks `(stationName, stationUrl)` väärtustega ilma skeemimigratsioonita ning kasutaja jaama muutmisel sünkroonitakse vastavad äratused rakenduse kihis.
+

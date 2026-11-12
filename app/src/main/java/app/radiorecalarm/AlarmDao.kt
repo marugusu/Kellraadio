@@ -56,6 +56,9 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms ORDER BY hour ASC, minute ASC")
     suspend fun getAllAlarmsList(): List<Alarm>
 
+    @Query("SELECT * FROM alarms WHERE stationName = :stationName AND stationUrl = :stationUrl")
+    suspend fun findAlarmsForStation(stationName: String, stationUrl: String): List<Alarm>
+
     @Query("DELETE FROM alarms")
     suspend fun deleteAllAlarms()
 }

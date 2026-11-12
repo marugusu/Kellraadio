@@ -28,13 +28,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioStation
+import app.radiorecalarm.StationListFilter
 import app.radiorecalarm.getFlagEmoji
 import app.radiorecalarm.getCachedCountryDisplayName
-import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -46,16 +48,18 @@ fun StationList(
     selectedCategory: String,
     selectedSubCategories: Set<String>,
     selectedStationId: Int,
-    playerStatus: String,
-    isRefreshing: Boolean,
+    playbackState: StationPlaybackState,
+    isInitiallyLoading: Boolean,
+    hideCuratedStations: Boolean,
     columnCountPortrait: Int,
     columnCountLandscape: Int,
     showFlags: Boolean,
     onCategorySelect: (String) -> Unit,
     onSubCategoryToggle: (String) -> Unit,
-    onRefresh: () -> Unit,
     onStationSelect: (RadioStation) -> Unit,
     onStationLongClick: (RadioStation) -> Unit,
+    onAddStationClick: () -> Unit,
+    onShowCuratedClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -64,47 +68,67 @@ fun StationList(
     val favoritesLabel = stringResource(R.string.cat_favorites)
     val myStationsLabel = stringResource(R.string.cat_my_stations)
     val allLabel = stringResource(R.string.cat_all)
-    val myFilterLabel = stringResource(R.string.filter_my)
-    val playingStatusText = stringResource(R.string.status_playing)
 
     fun getCategoryDisplayName(categoryId: String): String {
         return when {
-            categoryId == "Favorites" -> favoritesLabel
-            categoryId == "My" -> myStationsLabel
-            categoryId == "All" -> allLabel
+            categoryId == StationListFilter.CATEGORY_FAVORITES -> favoritesLabel
+            categoryId == StationListFilter.CATEGORY_MY -> myStationsLabel
+            categoryId == StationListFilter.CATEGORY_ALL -> allLabel
             categoryId.length == 2 -> getCachedCountryDisplayName(categoryId)
             else -> categoryId
         }
     }
 
-    if (stations.isEmpty() || categories.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    if (isInitiallyLoading && stations.isEmpty() && !hideCuratedStations) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
         return
     }
 
-    val pagerState = rememberPagerState(initialPage = 0) { categories.size }
+    if (stations.isEmpty() || categories.isEmpty()) {
+        StationListEmptyState(
+            hideCuratedStations = hideCuratedStations,
+            onAddStationClick = onAddStationClick,
+            onShowCuratedClick = onShowCuratedClick,
+            modifier = modifier
+        )
+        return
+    }
 
-    LaunchedEffect(selectedCategory) {
+    val initialPage = remember(categories) {
+        categories.indexOf(selectedCategory).coerceAtLeast(0)
+    }
+    val pagerState = rememberPagerState(initialPage = initialPage) { categories.size }
+
+    LaunchedEffect(selectedCategory, categories) {
         val targetIndex = categories.indexOf(selectedCategory)
-        if (targetIndex >= 0 && pagerState.currentPage != targetIndex) {
-            pagerState.scrollToPage(targetIndex)
+        if (targetIndex >= 0 && pagerState.currentPage != targetIndex && !pagerState.isScrollInProgress) {
+            pagerState.animateScrollToPage(targetIndex)
         }
     }
 
-    LaunchedEffect(pagerState.currentPage) {
-        val categoryOnPage = categories.getOrNull(pagerState.currentPage)
+    LaunchedEffect(pagerState.settledPage, categories) {
+        val categoryOnPage = categories.getOrNull(pagerState.settledPage)
         if (categoryOnPage != null && categoryOnPage != selectedCategory) {
             onCategorySelect(categoryOnPage)
         }
     }
 
     val topRowListState = androidx.compose.foundation.lazy.rememberLazyListState()
-    LaunchedEffect(selectedCategory) {
+    LaunchedEffect(selectedCategory, categories) {
         val index = categories.indexOf(selectedCategory)
         if (index >= 0) {
-            topRowListState.animateScrollToItem(index, scrollOffset = -400)
+            val layoutInfo = topRowListState.layoutInfo
+            val visibleItem = layoutInfo.visibleItemsInfo.find { it.index == index }
+            val isFullyVisible = visibleItem != null &&
+                visibleItem.offset >= layoutInfo.viewportStartOffset &&
+                (visibleItem.offset + visibleItem.size) <= layoutInfo.viewportEndOffset
+            if (!isFullyVisible) {
+                val viewportWidth = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+                val targetOffset = if (viewportWidth > 0) -(viewportWidth / 3) else 0
+                topRowListState.animateScrollToItem(index, scrollOffset = targetOffset)
+            }
         }
     }
 
@@ -204,13 +228,11 @@ fun StationList(
                             items(subCategories.size) { index ->
                                 val sub = subCategories[index]
                                 val isSelected = selectedSubCategories.contains(sub)
-                                
-                                val displayLabel = if (sub == "My") myFilterLabel else sub
 
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = { onSubCategoryToggle(sub) },
-                                    label = { Text(displayLabel, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                                    label = { Text(sub, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                                     modifier = Modifier.height(32.dp),
                                     leadingIcon = if (isSelected) {
                                         { Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp)) }
@@ -245,34 +267,46 @@ fun StationList(
                 if (pageCategory == selectedCategory) {
                     filteredStations
                 } else {
-                    when (pageCategory) {
-                        // PARANDUS: Ühtne sorteerimine (favoriteOrder, siis priority, siis nimi)
-                        "Favorites" -> stations.filter { it.isFavorite }
-                            .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
-                        "My" -> stations.filter { it.isUserStation }
-                        "All" -> stations
-                        else -> stations.filter { it.countryCode == pageCategory }
-                    }
+                    StationListFilter.filterAndSortStations(stations, pageCategory)
                 }
             }
 
             val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-            var hasScrolledInitial by remember { mutableStateOf(false) }
+            var hasScrolledInitial by remember(pageCategory) { mutableStateOf(false) }
             LaunchedEffect(selectedStationId, stationsForThisPage) {
                 val index = stationsForThisPage.indexOfFirst { it.id == selectedStationId }
                 if (index >= 0) {
+                    val layoutInfo = gridState.layoutInfo
+                    val visibleItem = layoutInfo.visibleItemsInfo.find { it.index == index }
                     if (!hasScrolledInitial) {
-                        gridState.scrollToItem(index = index, scrollOffset = -400)
+                        if (visibleItem == null) {
+                            gridState.scrollToItem(index = index)
+                        }
                         hasScrolledInitial = true
                     } else {
-                        gridState.animateScrollToItem(index = index, scrollOffset = -400)
+                        val isFullyVisible = visibleItem != null &&
+                            visibleItem.offset.y >= layoutInfo.viewportStartOffset &&
+                            (visibleItem.offset.y + visibleItem.size.height) <= layoutInfo.viewportEndOffset
+                        if (!isFullyVisible) {
+                            gridState.animateScrollToItem(index = index)
+                        }
                     }
                 }
             }
 
             if (stationsForThisPage.isEmpty()) {
+                val emptyText = when (pageCategory) {
+                    StationListFilter.CATEGORY_FAVORITES -> stringResource(R.string.empty_favorites)
+                    StationListFilter.CATEGORY_MY -> stringResource(R.string.empty_my_stations)
+                    else -> stringResource(R.string.search_no_results)
+                }
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.search_no_results), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = emptyText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
                 }
             } else {
                 LazyVerticalGrid(
@@ -285,21 +319,102 @@ fun StationList(
                 ) {
                     items(stationsForThisPage, key = { it.id }) { station ->
                         val isSelected = station.id == selectedStationId
-                        val shouldShowFlagInThisCategory = pageCategory == "Favorites" || 
-                                                           pageCategory == "My" || 
-                                                           pageCategory == "All"
+                        val shouldShowFlagInThisCategory = pageCategory == StationListFilter.CATEGORY_FAVORITES ||
+                            pageCategory == StationListFilter.CATEGORY_MY ||
+                            pageCategory == StationListFilter.CATEGORY_ALL
                         StationGridItem(
                             station = station,
                             isSelected = isSelected,
-                            isPlaying = playerStatus.contains(playingStatusText),
+                            playbackState = playbackState,
                             onClick = { onStationSelect(station) },
                             onLongClick = { onStationLongClick(station) },
-                            showFavoriteIcon = pageCategory != "Favorites",
+                            showFavoriteIcon = pageCategory != StationListFilter.CATEGORY_FAVORITES,
                             showFlag = showFlags && shouldShowFlagInThisCategory
                         )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StationListEmptyState(
+    hideCuratedStations: Boolean,
+    onAddStationClick: () -> Unit,
+    onShowCuratedClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = stringResource(R.string.empty_stations_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(
+                if (hideCuratedStations) R.string.empty_stations_hidden_desc else R.string.empty_stations_desc
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Button(
+            onClick = onAddStationClick,
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(stringResource(R.string.add_station))
+        }
+        if (hideCuratedStations) {
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onShowCuratedClick,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.action_show_curated))
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun StationListPreview() {
+    val sampleStations = listOf(
+        RadioStation(id = 1, name = "Vikerraadio", url = "https://icecast.err.ee/vikerraadio.mp3", countryCode = "EE", category = "Jutusaated", isFavorite = true),
+        RadioStation(id = 2, name = "Rock FM", url = "https://stream.skymedia.ee/live/RockFM", countryCode = "EE", category = "Rock", isFavorite = false),
+        RadioStation(id = 3, name = "Minu Raadio", url = "https://example.com/my.mp3", countryCode = "EE", isUserStation = true)
+    )
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        StationList(
+            stations = sampleStations,
+            filteredStations = sampleStations,
+            categories = listOf("Favorites", "My", "EE", "All"),
+            subCategories = listOf("Jutusaated", "Rock"),
+            selectedCategory = "EE",
+            selectedSubCategories = emptySet(),
+            selectedStationId = 2,
+            playbackState = StationPlaybackState.PLAYING,
+            isInitiallyLoading = false,
+            hideCuratedStations = false,
+            columnCountPortrait = 3,
+            columnCountLandscape = 3,
+            showFlags = true,
+            onCategorySelect = {},
+            onSubCategoryToggle = {},
+            onStationSelect = {},
+            onStationLongClick = {},
+            onAddStationClick = {},
+            onShowCuratedClick = {}
+        )
     }
 }

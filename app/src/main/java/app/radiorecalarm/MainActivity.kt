@@ -118,83 +118,34 @@ fun RaadioEkraan(
     }
 
     val displayStations = remember(state.stations, state.hideRemoteStations) {
-        if (state.hideRemoteStations) {
-            state.stations.filter { it.isUserStation }
-        } else {
-            state.stations
+        StationListFilter.visibleStations(state.stations, state.hideRemoteStations)
+    }
+
+    val favoriteStations = remember(displayStations) {
+        StationListFilter.filterAndSortStations(displayStations, StationListFilter.CATEGORY_FAVORITES)
+    }
+
+    val mainCategories = remember(displayStations, state.hideRemoteStations) {
+        StationListFilter.buildMainCategories(displayStations, state.hideRemoteStations) {
+            getCachedCountryDisplayName(it)
         }
     }
 
-    val categoriesData = remember(displayStations) {
-        val favs = displayStations.filter { it.isFavorite }
-            .sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
-            
-        val userStations = displayStations.filter { it.isUserStation }
-        
-        val countryCodes = displayStations
-            .map { it.countryCode }
-            .filter { it.isNotEmpty() }
-            .distinct()
-            .toMutableList()
-
-        val baseGroups = mutableListOf<String>()
-        if (favs.isNotEmpty()) baseGroups.add("Favorites")
-        if (userStations.isNotEmpty()) baseGroups.add("My")
-        
-        val sortedCountries = countryCodes.sortedWith(compareBy<String> { code ->
-            val index = AppConfig.UI.PREFERRED_COUNTRY_ORDER.indexOf(code)
-            if (index != -1) index else Int.MAX_VALUE
-        }.thenBy { getCachedCountryDisplayName(it) })
-
-        baseGroups.addAll(sortedCountries)
-        if (!state.hideRemoteStations) {
-            baseGroups.add("All")
+    LaunchedEffect(mainCategories, state.selectedCategory) {
+        if (mainCategories.isNotEmpty()) {
+            val validCategory = StationListFilter.resolveValidCategory(state.selectedCategory, mainCategories)
+            if (validCategory != state.selectedCategory) {
+                mainViewModel.onCategorySelected(validCategory)
+            }
         }
-
-        Pair(favs, baseGroups)
     }
-    val favoriteStations = categoriesData.first
-    val mainCategories = categoriesData.second
 
     val currentSubCategories = remember(state.selectedCategory, displayStations) {
-        if (state.selectedCategory.length == 2 || state.selectedCategory == "All") {
-            val stationsInGroup = displayStations.filter { 
-                if (state.selectedCategory == "All") true 
-                else it.countryCode == state.selectedCategory 
-            }
-
-            val categories = stationsInGroup
-                .map { it.category }
-                .filter { it.isNotBlank() }
-                .distinct()
-                .toMutableList()
-
-            val customOrder = if (state.selectedCategory == "EE") AppConfig.UI.ESTONIAN_SUB_CATEGORY_ORDER else emptyList()
-            
-            categories.sortedWith(compareBy<String> { sub ->
-                val index = customOrder.indexOf(sub)
-                if (index != -1) index else Int.MAX_VALUE
-            }.thenBy { it })
-        } else {
-            emptyList()
-        }
+        StationListFilter.buildSubCategories(state.selectedCategory, displayStations)
     }
 
-    val filteredStations = remember(state.selectedCategory, state.selectedSubCategories, displayStations, favoriteStations) {
-        val baseList = when (state.selectedCategory) {
-            "Favorites" -> favoriteStations
-            "My" -> displayStations.filter { it.isUserStation }
-            "All" -> displayStations
-            else -> displayStations.filter { it.countryCode == state.selectedCategory }
-        }
-
-        if (state.selectedSubCategories.isEmpty()) {
-            baseList
-        } else {
-            baseList.filter { station ->
-                state.selectedSubCategories.contains(station.category)
-            }
-        }
+    val filteredStations = remember(state.selectedCategory, state.selectedSubCategories, displayStations) {
+        StationListFilter.filterAndSortStations(displayStations, state.selectedCategory, state.selectedSubCategories)
     }
 
     val nextAlarmInfo = remember(state.alarms) {
@@ -418,23 +369,41 @@ fun RaadioEkraan(
     }
     if (state.showActionSheetForStation != null) {
         val liveStation = displayStations.find { it.id == state.showActionSheetForStation!!.id } ?: state.showActionSheetForStation!!
-        val favorites = displayStations.filter { it.isFavorite }.sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
-        val index = favorites.indexOfFirst { it.id == liveStation.id }
+        val index = favoriteStations.indexOfFirst { it.id == liveStation.id }
         val displayOrder = if (index != -1) index + 1 else 0
-        StationActionSheet(station = liveStation, favoritePosition = displayOrder, onDismiss = mainViewModel::closeStationActionSheet, onToggleFavorite = { mainViewModel.onToggleFavorite(liveStation); mainViewModel.closeStationActionSheet() }, onSetAlarm = { mainViewModel.openAlarmDialog(Alarm(hour = 7, minute = 0, days = emptySet(), stationName = liveStation.name, stationUrl = liveStation.url)) }, onEdit = { mainViewModel.openEditStationDialog(liveStation) }, onDelete = { mainViewModel.confirmDeleteStation(liveStation) }, onMoveUp = { mainViewModel.moveStationUp(liveStation) }, onMoveDown = { mainViewModel.moveStationDown(liveStation) }, onMoveToTop = { mainViewModel.moveStationToTop(liveStation) }, onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) })
+        StationActionSheet(
+            station = liveStation,
+            favoritePosition = displayOrder,
+            totalFavorites = favoriteStations.size,
+            onDismiss = mainViewModel::closeStationActionSheet,
+            onToggleFavorite = { mainViewModel.onToggleFavorite(liveStation); mainViewModel.closeStationActionSheet() },
+            onSetAlarm = { mainViewModel.openAlarmDialog(Alarm(hour = 7, minute = 0, days = emptySet(), stationName = liveStation.name, stationUrl = liveStation.url)) },
+            onEdit = { mainViewModel.openEditStationDialog(liveStation) },
+            onDelete = { mainViewModel.confirmDeleteStation(liveStation) },
+            onMoveUp = { mainViewModel.moveStationUp(liveStation) },
+            onMoveDown = { mainViewModel.moveStationDown(liveStation) },
+            onMoveToTop = { mainViewModel.moveStationToTop(liveStation) },
+            onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) }
+        )
     }
     val stationToDelete = state.stationToDelete
     if (stationToDelete != null) { AlertDialog(onDismissRequest = mainViewModel::cancelDeleteStation, title = { Text(stringResource(R.string.delete_station_confirm_title)) }, text = { Text(stringResource(R.string.delete_station_confirm_text, stationToDelete.name)) }, confirmButton = { TextButton(onClick = mainViewModel::deleteUserStation, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.action_delete)) } }, dismissButton = { TextButton(onClick = mainViewModel::cancelDeleteStation) { Text(stringResource(R.string.action_cancel)) } }) }
     if (state.showResetOrderDialog) { AlertDialog(onDismissRequest = mainViewModel::closeResetOrderDialog, title = { Text(stringResource(R.string.reset_order_confirm_title)) }, text = { Text(stringResource(R.string.reset_order_confirm_text)) }, confirmButton = { TextButton(onClick = mainViewModel::resetFavoriteOrder) { Text(stringResource(R.string.action_reset)) } }, dismissButton = { TextButton(onClick = mainViewModel::closeResetOrderDialog) { Text(stringResource(R.string.action_cancel)) } }) }
     val stationToEdit = state.stationToEdit
     if (stationToEdit != null) {
-        EditStationDialog(
-            stationName = stationToEdit.name,
-            stationUrl = stationToEdit.url,
-            stationCountry = stationToEdit.countryCode,
-            stationCategory = stationToEdit.category,
+        val initialSubgroup = if (stationToEdit.isUserStation && stationToEdit.category.equals(StationListFilter.CATEGORY_MY, ignoreCase = true)) {
+            ""
+        } else {
+            stationToEdit.category
+        }
+        StationEditorDialog(
+            title = stringResource(R.string.action_edit_station),
+            initialName = stationToEdit.name,
+            initialUrl = stationToEdit.url,
+            initialCountryCode = stationToEdit.countryCode,
+            initialSubgroup = initialSubgroup,
             allCountries = state.countries,
-            allCategories = state.allCategories,
+            allSubgroups = state.allCategories,
             onDismiss = mainViewModel::closeEditStationDialog,
             onTest = { name, url -> mainViewModel.playTestStation("$name (${context.getString(R.string.action_test)})", url) },
             onSave = { newName, newUrl, newCountry, newCategory -> mainViewModel.updateUserStation(newName, newUrl, newCountry, newCategory) }
@@ -454,6 +423,14 @@ fun ContentScreens(
     context: android.content.Context
 ) {
     val searchViewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(viewModel.stationRepository))
+    val bufferingStatusText = stringResource(R.string.status_buffering)
+    val errorStatusText = stringResource(R.string.status_error)
+    val playbackState = when {
+        state.playerStatus == errorStatusText -> StationPlaybackState.ERROR
+        state.playerStatus == bufferingStatusText -> StationPlaybackState.BUFFERING
+        state.isPlaying -> StationPlaybackState.PLAYING
+        else -> StationPlaybackState.IDLE
+    }
     when (state.currentTab) {
         0 -> StationList(
             stations = allStations,
@@ -463,16 +440,18 @@ fun ContentScreens(
             selectedCategory = state.selectedCategory,
             selectedSubCategories = state.selectedSubCategories,
             selectedStationId = state.selectedStationId,
-            playerStatus = state.playerStatus,
-            isRefreshing = state.isRefreshing,
+            playbackState = playbackState,
+            isInitiallyLoading = state.isRefreshing,
+            hideCuratedStations = state.hideRemoteStations,
             columnCountPortrait = state.colsPortrait,
             columnCountLandscape = state.colsLandscape,
             showFlags = state.showFlags,
             onCategorySelect = viewModel::onCategorySelected,
             onSubCategoryToggle = viewModel::toggleSubCategory,
-            onRefresh = viewModel::refreshStations,
             onStationSelect = viewModel::onStationClicked,
-            onStationLongClick = viewModel::openStationActionSheet
+            onStationLongClick = viewModel::openStationActionSheet,
+            onAddStationClick = { viewModel.onTabSelected(3) },
+            onShowCuratedClick = { viewModel.toggleHideRemoteStations(false) }
         )
         1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })
         2 -> HistoryScreen(
@@ -499,6 +478,7 @@ fun ContentScreens(
             allStations = allStations,
             allCategories = state.allCategories,
             activeUrl = state.activeStreamUrl,
+            isPlayerPlaying = state.isPlaying,
             onPlayTest = { name, url, isSaved ->
                 if (url == state.activeStreamUrl && state.isPlaying) {
                     val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
@@ -560,101 +540,3 @@ fun ContentScreens(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditStationDialog(
-    stationName: String,
-    stationUrl: String,
-    stationCountry: String,
-    stationCategory: String,
-    allCountries: List<RadioFilterItem>,
-    allCategories: List<String>,
-    onDismiss: () -> Unit,
-    onTest: (String, String) -> Unit,
-    onSave: (String, String, String, String) -> Unit
-) {
-    var name by remember { mutableStateOf(stationName) }
-    var url by remember { mutableStateOf(stationUrl) }
-    var countryCode by remember { mutableStateOf(stationCountry) }
-    var category by remember { mutableStateOf(stationCategory) }
-    var countryName by remember { mutableStateOf(allCountries.find { it.isoCode == stationCountry }?.name ?: "") }
-    var showCountryPicker by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.action_edit_station)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.station_name)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text(stringResource(R.string.stream_url)) }, modifier = Modifier.fillMaxWidth())
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text(stringResource(R.string.station_category)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        allCategories.forEach { selectionOption ->
-                            DropdownMenuItem(
-                                text = { Text(selectionOption) },
-                                onClick = {
-                                    category = selectionOption
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                OutlinedCard(onClick = { showCountryPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""
-                        if (flag.isNotEmpty()) {
-                            Text(flag, style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.width(12.dp))
-                        } else {
-                            Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.width(12.dp))
-                        }
-                        Text(
-                            text = if (countryName.isNotEmpty()) countryName else stringResource(R.string.filter_country),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (countryName.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(Icons.Default.ArrowDropDown, null)
-                    }
-                }
-            }
-        },
-        confirmButton = { Button(onClick = { onSave(name, url, countryCode, category) }) { Text(stringResource(R.string.action_save)) } },
-        dismissButton = {
-            Row {
-                TextButton(onClick = { if (url.isNotBlank()) onTest(if (name.isNotBlank()) name else "Tundmatu", url) }) { Text(stringResource(R.string.action_test)) }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-            }
-        }
-    )
-    if (showCountryPicker) {
-        FilterDialog(
-            title = stringResource(R.string.filter_country),
-            items = allCountries,
-            onDismiss = { showCountryPicker = false },
-            onSelect = { item ->
-                countryCode = item.isoCode ?: ""
-                countryName = item.name
-                showCountryPicker = false
-            }
-        )
-    }
-}

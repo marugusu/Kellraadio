@@ -25,6 +25,7 @@ import app.radiorecalarm.RadioService
 import app.radiorecalarm.RadioStation
 import app.radiorecalarm.RadioStationRepository
 import app.radiorecalarm.StationApiService
+import app.radiorecalarm.StationListFilter
 import app.radiorecalarm.update.AppUpdateManager
 import app.radiorecalarm.update.GitHubRelease
 import app.radiorecalarm.update.GitHubReleaseAsset
@@ -275,6 +276,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadPreferences() {
         _uiState.update { it.copy(
             selectedCategory = prefs.getString("last_category", "Favorites") ?: "Favorites",
+            selectedSubCategories = prefs.getStringSet("last_sub_categories", emptySet())?.toSet() ?: emptySet(),
             selectedStationId = prefs.getInt("last_selected_id", -1),
             colsPortrait = prefs.getInt("cols_portrait", 3),
             colsLandscape = prefs.getInt("cols_landscape", 3),
@@ -331,18 +333,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedCategory = category,
             selectedSubCategories = emptySet()
         )}
-        prefs.edit().putString("last_category", category).apply()
+        prefs.edit()
+            .putString("last_category", category)
+            .putStringSet("last_sub_categories", emptySet())
+            .apply()
     }
 
     fun toggleSubCategory(sub: String) {
+        var updatedSet = emptySet<String>()
         _uiState.update { currentState ->
             val newSet = if (currentState.selectedSubCategories.contains(sub)) {
                 currentState.selectedSubCategories - sub
             } else {
                 currentState.selectedSubCategories + sub
             }
+            updatedSet = newSet
             currentState.copy(selectedSubCategories = newSet)
         }
+        prefs.edit().putStringSet("last_sub_categories", updatedSet).apply()
     }
 
     fun onStationClicked(station: RadioStation) {
@@ -364,11 +372,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             val isLocal = _uiState.value.activeStreamUrl.startsWith("file://") || _uiState.value.activeStreamUrl.startsWith("file:/")
             if (isLocal) {
+                _uiState.update { it.copy(isPlaying = true, playerStatus = getString(R.string.status_buffering)) }
                 val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }
                 context.startService(i)
             } else {
                 val station = _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
                 if (station != null) {
+                    _uiState.update { it.copy(
+                        activeStationName = station.name,
+                        activeStreamUrl = station.url,
+                        isPlaying = true,
+                        playerStatus = getString(R.string.status_buffering)
+                    )}
                     startRadioService(station)
                 } else {
                     Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
@@ -573,24 +588,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveUserStation(name: String, url: String, countryCode: String, category: String) {
-        if (!isValidUrl(url)) {
+        val trimmedName = name.trim()
+        val trimmedUrl = url.trim()
+        val trimmedCountry = countryCode.trim()
+        val trimmedCategory = category.trim()
+
+        if (!isValidUrl(trimmedUrl)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
         
         viewModelScope.launch {
-            val newId = stationRepository.saveUserStation(name, url, countryCode, category)
-            Toast.makeText(context, context.getString(R.string.station_added, name), Toast.LENGTH_SHORT).show()
-            _uiState.update { it.copy(categoryToSelectOnTabChange = "My") }
+            val newId = stationRepository.saveUserStation(trimmedName, trimmedUrl, trimmedCountry, trimmedCategory)
+            Toast.makeText(context, context.getString(R.string.station_added, trimmedName), Toast.LENGTH_SHORT).show()
 
-            if (_uiState.value.activeStreamUrl == url && _uiState.value.isPlaying) {
+            val currentCat = _uiState.value.selectedCategory
+            val currentSubCategories = _uiState.value.selectedSubCategories
+            val staysVisibleInCurrentTab = currentCat == StationListFilter.CATEGORY_ALL ||
+                (trimmedCountry.isNotEmpty() && currentCat == trimmedCountry)
+            val visibleUnderSubFilter = currentSubCategories.isEmpty() ||
+                (trimmedCategory.isNotEmpty() && currentSubCategories.contains(trimmedCategory))
+            if (!staysVisibleInCurrentTab || !visibleUnderSubFilter) {
+                _uiState.update { it.copy(categoryToSelectOnTabChange = StationListFilter.CATEGORY_MY) }
+            }
+
+            if (_uiState.value.activeStreamUrl == trimmedUrl && _uiState.value.isPlaying) {
                 _uiState.update { it.copy(
                     selectedStationId = newId,
-                    activeStationName = name
+                    activeStationName = trimmedName
                 )}
-                prefs.edit().putInt("last_selected_id", newId).apply()
+                prefs.edit().putInt("last_selected_id", newId).putString("last_name", trimmedName).apply()
                 val i = Intent(RadioService.ACTION_STATION_CHANGED).apply {
-                    putExtra("STATION_NAME", name)
+                    putExtra("STATION_NAME", trimmedName)
                 }
                 LocalBroadcastManager.getInstance(context).sendBroadcast(i)
             }
@@ -654,7 +683,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateUserStation(newName: String, newUrl: String, newCountryCode: String, newCategory: String) {
-        if (!isValidUrl(newUrl)) {
+        val trimmedName = newName.trim()
+        val trimmedUrl = newUrl.trim()
+        val trimmedCountryCode = newCountryCode.trim()
+        val trimmedCategory = newCategory.trim()
+
+        if (!isValidUrl(trimmedUrl)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
             return
         }
@@ -662,15 +696,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val stationToUpdate = _uiState.value.stationToEdit
         if (stationToUpdate != null) {
             viewModelScope.launch {
-                stationRepository.updateUserStation(stationToUpdate, newName, newUrl, newCountryCode, newCategory)
-                if (stationToUpdate.id == _uiState.value.selectedStationId) {
-                    _uiState.update { it.copy(activeStationName = newName) }
-                    val serviceIntent = Intent(context, RadioService::class.java).apply {
-                        action = RadioService.ACTION_UPDATE_STATION_NAME
-                        putExtra("STATION_NAME", newName)
+                val oldName = stationToUpdate.name
+                val oldUrl = stationToUpdate.url
+                stationRepository.updateUserStation(stationToUpdate, trimmedName, trimmedUrl, trimmedCountryCode, trimmedCategory)
+
+                val identityChanged = trimmedName != oldName || trimmedUrl != oldUrl
+                if (identityChanged) {
+                    val matchingAlarms = alarmDao.findAlarmsForStation(oldName, oldUrl)
+                    if (matchingAlarms.isNotEmpty()) {
+                        matchingAlarms.forEach { alarm ->
+                            alarmDao.update(alarm.copy(stationName = trimmedName, stationUrl = trimmedUrl))
+                        }
+                        AlarmUtils.scheduleNextAlarmInternal(context)
                     }
-                    context.startService(serviceIntent)
                 }
+
+                val isSelectedStation = stationToUpdate.id == _uiState.value.selectedStationId ||
+                    (_uiState.value.activeStreamUrl == oldUrl && oldUrl.isNotEmpty())
+                if (isSelectedStation) {
+                    if (prefs.getInt("last_selected_id", -1) == stationToUpdate.id) {
+                        prefs.edit()
+                            .putString("last_name", trimmedName)
+                            .putString("last_url", trimmedUrl)
+                            .apply()
+                    }
+                    if (trimmedUrl != oldUrl && _uiState.value.isPlaying) {
+                        onStationClicked(
+                            stationToUpdate.copy(
+                                name = trimmedName,
+                                url = trimmedUrl,
+                                countryCode = trimmedCountryCode,
+                                category = trimmedCategory
+                            )
+                        )
+                    } else {
+                        _uiState.update { it.copy(
+                            activeStationName = trimmedName,
+                            activeStreamUrl = if (it.activeStreamUrl == oldUrl) trimmedUrl else it.activeStreamUrl
+                        )}
+                        if (_uiState.value.isPlaying) {
+                            val serviceIntent = Intent(context, RadioService::class.java).apply {
+                                action = RadioService.ACTION_UPDATE_STATION_NAME
+                                putExtra("STATION_NAME", trimmedName)
+                                putExtra("STREAM_URL", trimmedUrl)
+                            }
+                            context.startService(serviceIntent)
+                        } else {
+                            app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
+                        }
+                    }
+                } else if (identityChanged) {
+                    app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
+                }
+
                 closeEditStationDialog()
             }
         }

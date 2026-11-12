@@ -36,6 +36,7 @@ fun SearchScreen(
     allStations: List<RadioStation>,
     allCategories: List<String>,
     activeUrl: String,
+    isPlayerPlaying: Boolean,
     onPlayTest: (String, String, Boolean) -> Unit,
     onSaveStation: (String, String, String, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -225,41 +226,10 @@ fun SearchScreen(
                     items(results, key = { it.stationUuid }) { station ->
                         val isAlreadySaved = savedIdentifiers.contains(station.stationUuid) ||
                                 savedIdentifiers.contains(station.urlResolved)
-                        // Kontrollime, kas see jaam mängib.
-                        // Lisatingimus: onPlayTest saadab aktiivseks jaamaks selle jaama URL-i.
-                        // SearchScreenile tuleb sisse 'activeUrl', mis on pärit MainViewModeli uiState.activeStreamUrl-st.
-                        // MainViewModel uuendab seda playTestStation funktsioonis.
-                        // AGA seal on konks: MainViewModeli uiState.isPlaying peab ka olema true.
-                        // Kuna me SearchScreenis ei saa otse isPlaying olekut, siis eeldame, et kui URL klapib, siis mängib.
-                        // See on ebatäpne, aga SearchScreen parameetrites pole 'isPlaying' muutujat.
-                        // Õige oleks lisada SearchScreenile parameeter 'isPlaying'.
-                        
-                        // Vaatan MainActivity.kt faili, kuidas SearchScreen välja kutsutakse.
-                        // Seal on: activeUrl = state.activeStreamUrl
-                        // See tähendab, et siin on ainult URL.
-                        
-                        // KUID: Kui ma panen pausi peale, siis MainViewModelis:
-                        // _uiState.update { it.copy(isPlaying = false) }
-                        // activeStreamUrl jääb alles!
-                        
-                        // Järelikult siin SearchScreenis on 'activeUrl' endiselt vana jaama URL, isegi kui on paus.
-                        // See tähendab, et ikoon näitab ikka "Pause" (või Stop), isegi kui tegelikult on vaikus.
-                        
-                        // PARANDUS: SearchScreen vajab 'isPlaying' parameetrit.
-                        // Aga ma ei saa praegu MainActivityt muuta.
-                        
-                        // OOTA! SearchResultItem saab parameetri 'isPlaying'.
-                        // SearchScreen saab parameetri 'activeUrl'.
-                        // Seega, searchScreen arvab, et 'isPlaying = station.urlResolved == activeUrl'.
-                        // See ongi viga. See peaks olema 'isPlaying = station.urlResolved == activeUrl && tegelikultMängib'.
-                        
-                        // Kuna ma ei saa MainActivityt muuta (või ei taha teha liiga palju muudatusi korraga),
-                        // siis ma ei saa seda viga täielikult parandada siin failis.
-                        // AGA ma saan muuta ikooni Stop -> Pause.
-                        
+
                         SearchResultItem(
                             station = station,
-                            isPlaying = station.urlResolved == activeUrl,
+                            isPlaying = isPlayerPlaying && station.urlResolved == activeUrl,
                             isSaved = isAlreadySaved,
                             onPlay = { onPlayTest(station.name, station.urlResolved, isAlreadySaved) },
                             onAdd = {
@@ -293,12 +263,17 @@ fun SearchScreen(
     }
 
     if (showManualDialog) {
-        ManualAddDialog(
-            initialData = manualDialogInitialData,
+        val unknownName = stringResource(R.string.unknown_station_name)
+        StationEditorDialog(
+            title = stringResource(R.string.manual_dialog_title),
+            initialName = manualDialogInitialData.name,
+            initialUrl = manualDialogInitialData.url,
+            initialCountryCode = manualDialogInitialData.country,
+            initialSubgroup = "",
             allCountries = viewModel.countryListForManual(),
-            allCategories = allCategories,
+            allSubgroups = allCategories,
             onDismiss = { viewModel.closeManualAddDialog() },
-            onTest = { name, url -> onPlayTest(if(name.isNotBlank()) name else "Tundmatu", url, false) },
+            onTest = { name, url -> onPlayTest(name.ifBlank { unknownName }, url, false) },
             onSave = { name, url, country, category ->
                 onSaveStation(name, url, country, category)
                 viewModel.closeManualAddDialog()
@@ -374,142 +349,5 @@ fun SearchResultItem(
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ManualAddDialog(
-    initialData: SearchViewModel.ManualDialogData,
-    allCountries: List<RadioFilterItem>,
-    allCategories: List<String>,
-    onDismiss: () -> Unit,
-    onTest: (String, String) -> Unit,
-    onSave: (String, String, String, String) -> Unit
-) {
-    var name by remember { mutableStateOf(initialData.name) }
-    var url by remember { mutableStateOf(initialData.url) }
-    var countryCode by remember { mutableStateOf(initialData.country) }
-    var category by remember { mutableStateOf("") }
-    
-    var countryName by remember { 
-        mutableStateOf(allCountries.find { it.isoCode == initialData.country }?.name ?: "") 
-    }
-    
-    var showCountryPicker by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(12.dp),
-        title = { Text(stringResource(R.string.manual_dialog_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.station_name)) },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text(stringResource(R.string.stream_url)) },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text(stringResource(R.string.station_category)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        allCategories.forEach { selectionOption ->
-                            DropdownMenuItem(
-                                text = { Text(selectionOption) },
-                                onClick = {
-                                    category = selectionOption
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                
-                OutlinedCard(
-                    onClick = { showCountryPicker = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val flag = if (countryCode.isNotEmpty()) getFlagEmoji(countryCode) else ""
-                        if (flag.isNotEmpty()) {
-                            Text(flag, style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.width(12.dp))
-                        } else {
-                            Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.width(12.dp))
-                        }
-                        Text(
-                            text = if (countryName.isNotEmpty()) countryName else stringResource(R.string.filter_country),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (countryName.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(Icons.Default.ArrowDropDown, null)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onSave(name, url, countryCode, category) },
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(stringResource(R.string.action_save))
-            }
-        },
-        dismissButton = {
-            Row {
-                TextButton(
-                    onClick = { if(url.isNotBlank()) onTest(if(name.isNotBlank()) name else "Tundmatu", url) },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.action_test))
-                }
-                TextButton(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-        }
-    )
-
-    if (showCountryPicker) {
-        FilterDialog(
-            title = stringResource(R.string.filter_country),
-            items = allCountries,
-            onDismiss = { showCountryPicker = false },
-            onSelect = { item ->
-                countryCode = item.isoCode ?: ""
-                countryName = item.name
-                showCountryPicker = false
-            }
-        )
     }
 }

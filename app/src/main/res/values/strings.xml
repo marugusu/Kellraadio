@@ -82,8 +82,8 @@
     <string name="settings_group_radio">Radio &amp; Channels</string>
     <string name="settings_refresh">Refresh stations</string>
     <string name="settings_refresh_desc">Download latest channel list from server</string>
-    <string name="settings_hide_remote">Hide remote channels</string>
-    <string name="settings_hide_remote_desc">Only show manually added stations</string>
+    <string name="settings_hide_remote">Hide curated stations</string>
+    <string name="settings_hide_remote_desc">Only show user-added stations</string>
     <string name="settings_reset_order">Reset favorites channel order</string>
     <string name="settings_reset_order_desc">Restore original sorting of favorite channels</string>
     <string name="reset_order_confirm_title">Reset order?</string>
@@ -208,4 +208,19 @@
     <string name="update_already_latest">App is up to date (%1$s)</string>
     <string name="update_permission_required">Permission to install apps is required. Please enable it in Settings.</string>
     <string name="update_open_settings">Open Settings</string>
+
+    <!-- Station Organization & Empty States -->
+    <string name="station_subgroup">Subgroup</string>
+    <string name="unknown_station_name">Unknown</string>
+    <string name="add_station">Add station</string>
+    <string name="empty_stations_title">No stations found</string>
+    <string name="empty_stations_desc">Add your first station or refresh the curated list.</string>
+    <string name="empty_stations_hidden_desc">Curated stations are hidden and you have no user stations yet.</string>
+    <string name="empty_favorites">No favorites yet.\nLong-press a station to mark it as favorite.</string>
+    <string name="empty_my_stations">You have no user stations yet.</string>
+    <string name="action_show_curated">Show curated stations</string>
+    <string name="cd_move_top">Move to top</string>
+    <string name="cd_move_up">Move up</string>
+    <string name="cd_move_down">Move down</string>
+    <string name="cd_move_bottom">Move to bottom</string>
 </resources>

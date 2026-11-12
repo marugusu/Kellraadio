@@ -36,12 +36,12 @@ class RadioStationRepository(
         val maxId = stationDao.getMaxId() ?: 9999
         val newId = if (maxId < 10000) 10000 else maxId + 1
 
-        val stationCategory = category.ifBlank { "My" }
+        val stationCategory = category.trim()
 
         val newStation = RadioStation(
             id = newId,
-            name = name,
-            url = url,
+            name = name.trim(),
+            url = url.trim(),
             category = stationCategory,
             priority = 10000 + (newId - 10000),
             isUserStation = true,
@@ -54,8 +54,13 @@ class RadioStationRepository(
     }
 
     suspend fun updateUserStation(station: RadioStation, newName: String, newUrl: String, newCountryCode: String, newCategory: String) {
-        val stationCategory = newCategory.ifBlank { "My" }
-        val updatedStation = station.copy(name = newName, url = newUrl, countryCode = newCountryCode, category = stationCategory)
+        val stationCategory = newCategory.trim()
+        val updatedStation = station.copy(
+            name = newName.trim(),
+            url = newUrl.trim(),
+            countryCode = newCountryCode,
+            category = stationCategory
+        )
         stationDao.update(updatedStation)
     }
 
@@ -98,14 +103,27 @@ class RadioStationRepository(
 
     suspend fun moveStationToTop(station: RadioStation, currentFavorites: List<RadioStation>) {
         if (currentFavorites.isEmpty()) return
-        val minOrder = currentFavorites.minOfOrNull { it.favoriteOrder } ?: 0
-        stationDao.update(station.copy(favoriteOrder = minOrder - 1))
+        val favorites = ensureNormalized(currentFavorites)
+        val target = favorites.find { it.id == station.id } ?: return
+        val reordered = listOf(target) + favorites.filter { it.id != station.id }
+        applyFavoriteOrder(reordered)
     }
 
     suspend fun moveStationToBottom(station: RadioStation, currentFavorites: List<RadioStation>) {
         if (currentFavorites.isEmpty()) return
-        val maxOrder = currentFavorites.maxOfOrNull { it.favoriteOrder } ?: 0
-        stationDao.update(station.copy(favoriteOrder = maxOrder + 1))
+        val favorites = ensureNormalized(currentFavorites)
+        val target = favorites.find { it.id == station.id } ?: return
+        val reordered = favorites.filter { it.id != station.id } + target
+        applyFavoriteOrder(reordered)
+    }
+
+    private suspend fun applyFavoriteOrder(orderedFavorites: List<RadioStation>) {
+        orderedFavorites.forEachIndexed { index, item ->
+            val desiredOrder = index + 1
+            if (item.favoriteOrder != desiredOrder) {
+                stationDao.update(item.copy(favoriteOrder = desiredOrder))
+            }
+        }
     }
 
     suspend fun resetFavoriteOrder() {
