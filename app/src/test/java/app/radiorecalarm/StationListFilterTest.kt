@@ -118,7 +118,7 @@ class StationListFilterTest {
             subCategories = setOf("Sky")
         )
         // Favorites ignores subgroup filter and sorts by favoriteOrder -> priority -> name
-        assertEquals(listOf(5, 2, 1), favs.map { it.id })
+        assertEquals(listOf(2, 5, 1), favs.map { it.id })
 
         val eeFiltered = StationListFilter.filterAndSortStations(
             stations = sampleStations,

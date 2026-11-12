@@ -56,8 +56,12 @@ object StationListFilter {
         }
     }
 
+    private fun isCountryCategory(category: String): Boolean {
+        return category.length == 2 && category != CATEGORY_MY
+    }
+
     fun buildSubCategories(selectedCategory: String, stations: List<RadioStation>): List<String> {
-        if (selectedCategory.length != 2 && selectedCategory != CATEGORY_ALL) {
+        if (!isCountryCategory(selectedCategory) && selectedCategory != CATEGORY_ALL) {
             return emptyList()
         }
 
@@ -99,7 +103,7 @@ object StationListFilter {
             else -> stations.filter { it.countryCode == category }
         }
 
-        val supportsSubCategories = category.length == 2 || category == CATEGORY_ALL
+        val supportsSubCategories = isCountryCategory(category) || category == CATEGORY_ALL
         return if (!supportsSubCategories || subCategories.isEmpty()) {
             baseList
         } else {
