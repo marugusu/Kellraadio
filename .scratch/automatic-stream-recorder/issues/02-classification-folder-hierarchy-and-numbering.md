@@ -5,12 +5,12 @@ Tuvastatud salvestiste automaatne liigitamine ja paigutamine organiseeritud kaus
 
 **Blocked by:** 01: Tuumikkoordinaator ja voosisene baidipõhine tükeldus
 
-**Status:** ready-for-agent
+**Status:** done (feature/automatic-stream-recorder)
 
-- [ ] Metainfo analüsaator tuvastab, kas tegu on muusikalise Palaga või Saatega ("Otseeeter", jaama nimi või tühi väärtus suunab Saatesse).
-- [ ] Muusikapalade sihtkaust luuakse struktuuris `Muusika/<SanitizedArtist>/<SanitizedAlbum>/`. Kui album pole teada, kasutatakse kausta `Teadmata album`.
-- [ ] Failinimi algab kahekohalise numbriga (`01`, `02`, ...). Kui ametlikku palanumbrit pole, leitakse järgmine vaba järjekorranumber antud albumi kaustas.
-- [ ] Kui sama nimega fail juba eksisteerib, lisatakse automaatselt kordumatu järelliide `_01`, `_02`.
-- [ ] Saated salvestatakse eraldi kausta `Saated/<SanitizedStation>/<SanitizedStation>_<yyyyMMdd_HHmmss>.<ext>`.
-- [ ] JVM üksustestid verifitseerivad korrektse kaustapuu loomise, kahekohalise nummerduse genereerimise, duplikaatide käsitlemise ning ülemineku saade $\to$ lugu $\to$ saade.
+- [x] Metainfo analüsaator tuvastab, kas tegu on muusikalise Palaga või Saatega ("Otseeeter", jaama nimi või tühi väärtus suunab Saatesse).
+- [x] Muusikapalade sihtkaust luuakse struktuuris `Muusika/<SanitizedArtist>/<SanitizedAlbum>/`. Kui album pole teada, kasutatakse kausta `Teadmata album`.
+- [x] Failinimi algab kahekohalise numbriga (`01`, `02`, ...). Kui ametlikku palanumbrit pole, leitakse järgmine vaba järjekorranumber antud albumi kaustas.
+- [x] Kui sama nimega fail juba eksisteerib, lisatakse automaatselt kordumatu järelliide `_01`, `_02`.
+- [x] Saated salvestatakse eraldi kausta `Saated/<SanitizedStation>/<SanitizedStation>_<yyyyMMdd_HHmmss>.<ext>`.
+- [x] JVM üksustestid verifitseerivad korrektse kaustapuu loomise, kahekohalise nummerduse genereerimise, duplikaatide käsitlemise ning ülemineku saade $\to$ lugu $\to$ saade.
 

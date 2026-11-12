@@ -112,5 +112,96 @@ class StreamRecordingCoordinatorTest {
         assertEquals(1, files.size)
         assertTrue(files.first().name.endsWith(".aac"))
     }
+
+    @Test
+    fun `routes music tracks to Muusika folder with album and two-digit number`() {
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        val chunk = "QueenAudio".toByteArray()
+        coordinator.onStreamBytes(chunk, 0, chunk.size)
+        coordinator.stopRecording()
+
+        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
+        assertEquals(1, musicFiles.size)
+        val file = musicFiles.first()
+        // Should be inside Muusika/Queen/Teadmata album/
+        assertTrue(file.parentFile?.path?.contains("Muusika") == true)
+        assertTrue(file.parentFile?.path?.contains("Queen") == true)
+        assertTrue(file.parentFile?.path?.contains("Teadmata album") == true)
+        assertEquals("01 - Queen - Bohemian Rhapsody.mp3", file.name)
+        assertEquals("QueenAudio", file.readText())
+    }
+
+    @Test
+    fun `routes broadcast to Saated folder when metadata is live show or station name`() {
+        coordinator.startRecording(
+            stationName = "Vikerraadio",
+            streamUrl = "https://icecast.err.ee/vikerraadio.mp3",
+            initialRawMetadata = "Otseeeter"
+        )
+        val chunk = "TalkShowAudio".toByteArray()
+        coordinator.onStreamBytes(chunk, 0, chunk.size)
+        coordinator.stopRecording()
+
+        val showFiles = File(baseDir, "Saated").walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
+        assertEquals(1, showFiles.size)
+        val file = showFiles.first()
+        assertTrue(file.parentFile?.path?.contains("Saated") == true)
+        assertTrue(file.parentFile?.path?.contains("Vikerraadio") == true)
+        assertTrue(file.name.startsWith("Vikerraadio_"))
+        assertEquals("TalkShowAudio", file.readText())
+    }
+
+    @Test
+    fun `increments two-digit track number for subsequent tracks in the same album`() {
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        coordinator.onStreamBytes("Audio1".toByteArray(), 0, 6)
+
+        coordinator.onMetadataChanged("Queen - Love of My Life")
+        coordinator.onStreamBytes("Audio2".toByteArray(), 0, 6)
+
+        coordinator.stopRecording()
+
+        val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
+        val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
+
+        assertEquals(2, files.size)
+        assertEquals("01 - Queen - Bohemian Rhapsody.mp3", files[0].name)
+        assertEquals("02 - Queen - Love of My Life.mp3", files[1].name)
+    }
+
+    @Test
+    fun `appends duplicate index when identical track is recorded again`() {
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        coordinator.onStreamBytes("Audio1".toByteArray(), 0, 6)
+
+        // Another song played
+        coordinator.onMetadataChanged("Metallica - Enter Sandman")
+        coordinator.onStreamBytes("Audio2".toByteArray(), 0, 6)
+
+        // Bohemian Rhapsody played again
+        coordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
+        coordinator.onStreamBytes("Audio3".toByteArray(), 0, 6)
+
+        coordinator.stopRecording()
+
+        val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
+        val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
+
+        assertEquals(2, files.size)
+        assertEquals("01 - Queen - Bohemian Rhapsody.mp3", files[0].name)
+        assertEquals("01 - Queen - Bohemian Rhapsody_01.mp3", files[1].name)
+    }
 }
 
