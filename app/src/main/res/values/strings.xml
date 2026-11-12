@@ -187,6 +187,14 @@
     <string name="notification_recording_title">🔴 Recording: %1$s</string>
     <string name="recording_saved_count">(%1$d saved)</string>
     <string name="recording_tracks_saved">%1$d tracks</string>
+    <string name="recording_low_storage_warning">Recording stopped: free storage below 500 MB</string>
+
+    <!-- Recording Settings -->
+    <string name="settings_group_recording">Recording</string>
+    <string name="settings_continuous_recording">Continuous recording</string>
+    <string name="settings_continuous_recording_desc">Automatically record audio whenever any station is playing</string>
+    <string name="settings_storage_safeguard">Storage safeguard</string>
+    <string name="settings_storage_safeguard_desc">Automatically stops recording if free storage drops below 500 MB</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Backup and Migration</string>

@@ -286,7 +286,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             colsLandscape = prefs.getInt("cols_landscape", 3),
             showFlags = prefs.getBoolean("show_flags", true),
             widgetTransparency = prefs.getFloat("widget_transparency", 0.25f),
-            hideRemoteStations = prefs.getBoolean("hide_remote_stations", false)
+            hideRemoteStations = prefs.getBoolean("hide_remote_stations", false),
+            continuousRecording = prefs.getBoolean(app.radiorecalarm.AppConfig.Recording.PREF_CONTINUOUS_RECORDING, false)
         )}
     }
 
@@ -682,6 +683,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
         }
+    }
+
+    fun setContinuousRecording(enabled: Boolean) {
+        _uiState.update { it.copy(continuousRecording = enabled) }
+        prefs.edit().putBoolean(app.radiorecalarm.AppConfig.Recording.PREF_CONTINUOUS_RECORDING, enabled).apply()
     }
 
     fun clearHistory() {

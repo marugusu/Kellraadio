@@ -5,11 +5,10 @@ Tagada, et jaama vahetamisel aktiivne salvestussessioon ei katkeks. Kui kasutaja
 
 **Blocked by:** 03: Pidev helivoo salvestus üldseadetes (Continuous Stream Recording)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Jaama vahetamisel säilitab `RadioService` üldise salvestusoleku (`isRecording = true`).
-- [ ] Eelmise jaama pooleliolev helifail ja JSON-kõrvafail viimistletakse ja suletakse puhtalt; alla 30-sekundilised klipid kustutatakse kettalt.
-- [ ] Uue jaama võrguvoo ja metaandmete saabumisel alustatakse viivitamatult uue faili kirjutamist vastavalt jaama/esitaja kaustapuu reeglitele.
-- [ ] Kui "Pidev salvestus" oli sees ja kasutaja oli eelmise jaama ajal salvestuse käsitsi peatanud, taastub uue jaama valimisel automaatne salvestamine.
-- [ ] Jaamavahetuse sujuvust ja failide korrektset poolitamist katavad `StreamRecordingCoordinator` üksustestid.
-
+- [x] Jaama vahetamisel säilitab `RadioService` üldise salvestusoleku (`isRecording = true`).
+- [x] Eelmise jaama pooleliolev helifail ja JSON-kõrvafail viimistletakse ja suletakse puhtalt; alla 30-sekundilised klipid kustutatakse kettalt.
+- [x] Uue jaama võrguvoo ja metaandmete saabumisel alustatakse viivitamatult uue faili kirjutamist vastavalt jaama/esitaja kaustapuu reeglitele.
+- [x] Kui "Pidev salvestus" oli sees ja kasutaja oli eelmise jaama ajal salvestuse käsitsi peatanud, taastub uue jaama valimisel automaatne salvestamine.
+- [x] Jaamavahetuse sujuvust ja failide korrektset poolitamist katavad `StreamRecordingCoordinator` üksustestid.

@@ -525,6 +525,8 @@ fun ContentScreens(
                 showFlags = state.showFlags,
                 hideRemoteStations = state.hideRemoteStations,
                 widgetTransparency = state.widgetTransparency,
+                continuousRecording = state.continuousRecording,
+                onToggleContinuousRecording = viewModel::setContinuousRecording,
                 onToggleShowFlags = viewModel::toggleFlags,
                 onToggleHideRemoteStations = viewModel::toggleHideRemoteStations,
                 onColsPortraitChange = viewModel::setColsPortrait,

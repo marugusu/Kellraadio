@@ -42,6 +42,7 @@ data class MainUiState(
     val colsLandscape: Int = 3,
     val widgetTransparency: Float = 0.25f,
     val hideRemoteStations: Boolean = false,
+    val continuousRecording: Boolean = false,
 
     // --- NAVIGATSIOON JA VALIKUD ---
     val currentTab: Int = 0,

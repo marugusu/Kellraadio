@@ -485,5 +485,58 @@ class StreamRecordingCoordinatorTest {
         assertEquals(1, audioFiles.size)
         assertEquals("Part1Part2", audioFiles.first().readText())
     }
+
+    @Test
+    fun `refuses to start recording and triggers onLowStorage when storage is below 500 MB`() {
+        var lowStorageTriggered = false
+        val lowSpaceCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { 1000000L },
+            minDurationSeconds = 0L,
+            storageSpaceChecker = { 400L * 1024L * 1024L }, // 400 MB (below 500 MB)
+            onLowStorage = { lowStorageTriggered = true }
+        )
+
+        lowSpaceCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Radio Ga Ga"
+        )
+
+        assertFalse("Recording should not start when storage is below 500 MB", lowSpaceCoordinator.isRecording)
+        assertTrue("onLowStorage callback should be invoked", lowStorageTriggered)
+    }
+
+    @Test
+    fun `halts active recording and triggers onLowStorage when storage drops below 500 MB on track transition`() {
+        var lowStorageTriggered = false
+        var availableSpace = 600L * 1024L * 1024L // 600 MB initially
+        var currentTime = 1000000L
+
+        val dynamicSpaceCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 0L,
+            storageSpaceChecker = { availableSpace },
+            onLowStorage = { lowStorageTriggered = true }
+        )
+
+        dynamicSpaceCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Radio Ga Ga"
+        )
+        assertTrue(dynamicSpaceCoordinator.isRecording)
+
+        // Drop storage below 500 MB
+        availableSpace = 300L * 1024L * 1024L
+        currentTime += 35000L
+
+        // Track transitions to Song B
+        dynamicSpaceCoordinator.onMetadataChanged("Queen - We Will Rock You")
+
+        assertFalse("Recording should halt when storage drops below 500 MB", dynamicSpaceCoordinator.isRecording)
+        assertTrue("onLowStorage callback should be invoked on track transition", lowStorageTriggered)
+    }
 }
 

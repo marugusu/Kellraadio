@@ -120,12 +120,22 @@ class RadioService : Service() {
                 } catch (e: Exception) {
                     false
                 }
+            },
+            onLowStorage = {
+                serviceScope.launch(Dispatchers.Main) {
+                    Toast.makeText(applicationContext, getString(R.string.recording_low_storage_warning), Toast.LENGTH_LONG).show()
+                    sendRecordingStatus()
+                    updateNotification()
+                }
             }
         )
     }
     private val isRecording: Boolean get() = recordingCoordinator.isRecording
     private var recordingStartMillis = 0L
     private var recordingTimerJob: kotlinx.coroutines.Job? = null
+    private var pendingAutoRecord: Boolean = false
+    private var userManuallyStoppedRecordingForCurrentStation: Boolean = false
+    private fun isContinuousRecordingEnabled(): Boolean = prefs.getBoolean(AppConfig.Recording.PREF_CONTINUOUS_RECORDING, false)
     private var progressJob: kotlinx.coroutines.Job? = null
 
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -491,6 +501,9 @@ class RadioService : Service() {
             updateWidget()
 
             if (isPlaying) {
+                if ((pendingAutoRecord || isContinuousRecordingEnabled()) && !userManuallyStoppedRecordingForCurrentStation && !isRecording) {
+                    startRecording()
+                }
                 isChangingStation = false
                 saveToHistory(currentArtist, currentTitle)
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
@@ -521,6 +534,8 @@ class RadioService : Service() {
                     val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
                     val action = if (isLocal) ACTION_PLAYER_PAUSED else ACTION_PLAYER_STOPPED
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(action))
+                    stopRecording()
+                    pendingAutoRecord = false
                 }
                 metadataPushJob?.cancel()
                 pendingMetadataJob?.cancel()
@@ -984,10 +999,13 @@ class RadioService : Service() {
 
         when(action) {
             ACTION_START_RECORDING -> {
+                userManuallyStoppedRecordingForCurrentStation = false
                 startRecording()
                 return START_STICKY
             }
             ACTION_STOP_RECORDING -> {
+                userManuallyStoppedRecordingForCurrentStation = true
+                pendingAutoRecord = false
                 stopRecording()
                 return START_STICKY
             }
@@ -1083,6 +1101,7 @@ class RadioService : Service() {
             val stationName = intent.getStringExtra("STATION_NAME")
             val triggeredBy = intent.getStringExtra("TRIGGERED_BY")
             val category = intent.getStringExtra("CATEGORY_NAME")
+            val extraRecord = intent.getBooleanExtra("EXTRA_RECORD", false)
             if (category != null) {
                 currentCategory = category
                 prefs.edit().putString("last_category", category).apply()
@@ -1095,21 +1114,28 @@ class RadioService : Service() {
                 }
                 updateNotification()
             } else {
-                playStation(streamUrl, stationName, triggeredBy)
+                playStation(streamUrl, stationName, triggeredBy, shouldRecord = extraRecord)
             }
         }
         return START_STICKY
     }
 
-    private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?) {
-        Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy'")
+    private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?, shouldRecord: Boolean = false) {
+        Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy' shouldRecord=$shouldRecord")
 
         pendingMetadataJob?.cancel()
         pendingMetadataJob = null
         metadataPushJob?.cancel()
         metadataPushJob = null
 
+        val wasRecordingBeforeSwitch = isRecording
         stopRecording()
+        userManuallyStoppedRecordingForCurrentStation = false
+        if (wasRecordingBeforeSwitch || shouldRecord || isContinuousRecordingEnabled()) {
+            pendingAutoRecord = true
+        } else {
+            pendingAutoRecord = false
+        }
         hasSuccessfullyStartedPlaying = false
         consecutiveErrorCount = 0
         isChangingStation = true
@@ -1217,6 +1243,7 @@ class RadioService : Service() {
         wasSuppressedByTransientLoss = false
         wasNoisyDuringCall = false
         stopSleepTimer()
+        pendingAutoRecord = false
         stopRecording()
         stopProgressTracker()
         metadataPushJob?.cancel()
