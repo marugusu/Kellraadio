@@ -154,6 +154,9 @@
     <string name="recording_empty">"Tāļtõmizt äb ūo"</string>
     <string name="recording_playing">"Mäņgõb tāļtõmiz"</string>
     <string name="recording_failed">"Tāļtõmiz äb õņnistud!"</string>
+    <string name="notification_recording_title">"🔴 Tāļtõb: %1$s"</string>
+    <string name="recording_saved_count">"(%1$d tāļtõd)"</string>
+    <string name="recording_tracks_saved">"%1$d lōltõ"</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">"Tāļtõks ja koltšimi"</string>
