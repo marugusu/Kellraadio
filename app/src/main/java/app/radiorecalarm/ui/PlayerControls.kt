@@ -56,6 +56,7 @@ fun PlayerControls(
     songInfo: SongAdditionalInfo?,
     isRecording: Boolean,
     recordingDuration: Long,
+    recordingCount: Int = 0,
     onInfoClick: () -> Unit,
     onPlayPause: () -> Unit,
     onPlayStation: (RadioStation) -> Unit,
@@ -139,7 +140,8 @@ fun PlayerControls(
                     val recMin = (recordingDuration / 1000) / 60
                     val recSec = (recordingDuration / 1000) % 60
                     val recTimeStr = String.format("%02d:%02d", recMin, recSec)
-                    statusText += " • REC $recTimeStr"
+                    val countSuffix = if (recordingCount > 0) " ($recordingCount salvestatud)" else ""
+                    statusText += " • REC $recTimeStr$countSuffix"
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -44,6 +44,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.lastOrNull
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
@@ -98,9 +99,18 @@ class RadioService : Service() {
     private var lastFocusGainTime: Long = 0L
     private var wasNoisyDuringCall: Boolean = false
 
-    private var isRecording = false
-    private var recordingFile: java.io.File? = null
-    private var recordingOutputStream: java.io.FileOutputStream? = null
+    private val recordingCoordinator by lazy {
+        StreamRecordingCoordinator(
+            baseDirProvider = {
+                java.io.File(getExternalFilesDir(null), "Music").apply { if (!exists()) mkdirs() }
+            },
+            metadataHelper = metadataHelper,
+            metadataFetcher = { artist, title ->
+                MusicInfoRepository.fetchInfo(artist, title).lastOrNull()
+            }
+        )
+    }
+    private val isRecording: Boolean get() = recordingCoordinator.isRecording
     private var recordingStartMillis = 0L
     private var recordingTimerJob: kotlinx.coroutines.Job? = null
     private var progressJob: kotlinx.coroutines.Job? = null
@@ -291,6 +301,9 @@ class RadioService : Service() {
         
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
+        if (recordingCoordinator.isRecording) {
+            recordingCoordinator.onMetadataChanged(trackTitleFromStream ?: "")
+        }
         updateNotification()
         updateWidget()
     }
@@ -550,7 +563,7 @@ class RadioService : Service() {
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
                 cancelIdleTimeout()
-                val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
+                val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying, isRecording = isRecording)
                 if (Build.VERSION.SDK_INT >= 34) {
                     startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
                 } else {
@@ -699,6 +712,9 @@ class RadioService : Service() {
             putExtra("IS_RECORDING", isRecording)
             putExtra("RECORDING_DURATION", if (isRecording) android.os.SystemClock.elapsedRealtime() - recordingStartMillis else 0L)
             putExtra("RECORDING_STATION", currentStationName)
+            putExtra("RECORDING_TRACK", recordingCoordinator.currentTitle)
+            putExtra("RECORDING_ARTIST", recordingCoordinator.currentArtist)
+            putExtra("RECORDING_COUNT", recordingCoordinator.completedTrackCount)
         }
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
     }
@@ -737,39 +753,22 @@ class RadioService : Service() {
         }
 
         try {
-            val folder = java.io.File(getExternalFilesDir(null), "Recordings")
-            if (!folder.exists()) {
-                folder.mkdirs()
-            }
-
-            val cleanStation = currentStationName.replace("[\\\\/:*?\"<>|]".toRegex(), "_")
-            
-            val artistTitlePart = if (currentArtist.isNotEmpty() && currentArtist != getString(R.string.live_broadcast) && currentArtist != currentStationName) {
-                val cleanArtist = currentArtist.replace("[\\\\/:*?\"<>|]".toRegex(), "_").trim()
-                val cleanTitle = currentTitle.replace("[\\\\/:*?\"<>|]".toRegex(), "_").trim()
-                "_${cleanArtist}_$cleanTitle"
+            val rawMeta = if (currentArtist.isNotEmpty() && currentTitle.isNotEmpty()) {
+                "$currentArtist - $currentTitle"
             } else {
-                ""
+                currentStationName
             }
 
-            val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
-            
-            val ext = if (currentStreamUrl.contains(".aac", ignoreCase = true) || currentStreamUrl.contains("aac", ignoreCase = true)) {
-                "aac"
-            } else {
-                "mp3"
-            }
-
-            val filename = "Recording_${cleanStation}${artistTitlePart}_$timestamp.$ext"
-            val file = java.io.File(folder, filename)
-            
-            recordingOutputStream = java.io.FileOutputStream(file)
-            recordingFile = file
             recordingStartMillis = android.os.SystemClock.elapsedRealtime()
-            isRecording = true
-            
-            Log.i(TAG, "Alustati salvestamist faili: ${file.absolutePath}")
+            recordingCoordinator.startRecording(
+                stationName = currentStationName,
+                streamUrl = currentStreamUrl,
+                initialRawMetadata = rawMeta
+            )
+
+            Log.i(TAG, "Alustati salvestamist: jaam=$currentStationName")
             sendRecordingStatus()
+            updateNotification()
 
             recordingTimerJob?.cancel()
             recordingTimerJob = serviceScope.launch(Dispatchers.Main) {
@@ -788,34 +787,21 @@ class RadioService : Service() {
     private fun stopRecording(failed: Boolean = false) {
         if (!isRecording) return
 
-        isRecording = false
         recordingTimerJob?.cancel()
         recordingTimerJob = null
 
-        val fileToSave = recordingFile
-        try {
-            recordingOutputStream?.flush()
-            recordingOutputStream?.close()
-        } catch (e: Exception) {
-            Log.e(TAG, "Salvestise sulgemise viga: ${e.message}")
-        }
-        recordingOutputStream = null
-        recordingFile = null
+        recordingCoordinator.stopRecording()
+        val countAfter = recordingCoordinator.completedTrackCount
 
-        Log.i(TAG, "Salvestamine peatatud. Fail: ${fileToSave?.absolutePath}")
+        Log.i(TAG, "Salvestamine peatatud. Kokku salvestatud $countAfter pala.")
+        sendRecordingStatus()
+        updateNotification()
 
-        if (fileToSave != null) {
-            if (failed || fileToSave.length() < 10240) {
-                Log.w(TAG, "Salvestis on liiga väike (${fileToSave.length()} baiti) või ebaõnnestus, kustutame.")
-                fileToSave.delete()
-            } else {
-                serviceScope.launch(Dispatchers.Main) {
-                    Toast.makeText(applicationContext, getString(R.string.recording_toast_saved, fileToSave.name), Toast.LENGTH_LONG).show()
-                }
+        if (!failed && countAfter > 0) {
+            serviceScope.launch(Dispatchers.Main) {
+                Toast.makeText(applicationContext, getString(R.string.recording_toast_saved, "$countAfter pala"), Toast.LENGTH_LONG).show()
             }
         }
-
-        sendRecordingStatus()
     }
 
     override fun onCreate() {
@@ -862,7 +848,7 @@ class RadioService : Service() {
             val ds = RetryingHttpDataSource(dataSourceFactory.createDataSource()) { buffer, offset, length ->
                 if (isRecording) {
                     try {
-                        recordingOutputStream?.write(buffer, offset, length)
+                        recordingCoordinator.onStreamBytes(buffer, offset, length)
                     } catch (e: Exception) {
                         Log.e(TAG, "Kirjutamise viga salvestamisel: ${e.message}")
                         serviceScope.launch(Dispatchers.Main) {
@@ -1192,7 +1178,7 @@ class RadioService : Service() {
         val isSuppressed = player.playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE
         val shouldKeepForeground = player.isPlaying || isAlarmMode || isChangingStation || (player.playWhenReady && (isSuppressed || wasSuppressedByTransientLoss))
 
-        val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying)
+        val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying, isRecording = isRecording)
         if (shouldKeepForeground) {
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)

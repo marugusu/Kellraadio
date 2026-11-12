@@ -171,10 +171,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val isRec = intent.getBooleanExtra("IS_RECORDING", false)
                     val dur = intent.getLongExtra("RECORDING_DURATION", 0L)
                     val station = intent.getStringExtra("RECORDING_STATION") ?: ""
+                    val track = intent.getStringExtra("RECORDING_TRACK") ?: ""
+                    val count = intent.getIntExtra("RECORDING_COUNT", 0)
                     _uiState.update { it.copy(
                         isRecording = isRec,
                         recordingDuration = dur,
-                        recordingStation = station
+                        recordingStation = station,
+                        recordingTrack = track,
+                        recordingCount = count
                     )}
                 }
             }

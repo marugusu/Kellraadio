@@ -18,6 +18,8 @@ data class MainUiState(
     val isRecording: Boolean = false,
     val recordingDuration: Long = 0L,
     val recordingStation: String = "",
+    val recordingTrack: String = "",
+    val recordingCount: Int = 0,
 
     // --- METAANDMED ---
     val parsedArtist: String = "",

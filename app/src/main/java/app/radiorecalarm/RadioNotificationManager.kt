@@ -54,7 +54,8 @@ class RadioNotificationManager(private val context: Context) {
         trackArtist: String,
         bitmap: Bitmap?,
         isAlarmMode: Boolean,
-        isPlaying: Boolean
+        isPlaying: Boolean,
+        isRecording: Boolean = false
     ): Notification {
 
         // 1. Luua Intentid nuppude jaoks
@@ -93,8 +94,10 @@ class RadioNotificationManager(private val context: Context) {
             middleActionIntent = playPending
         }
 
-        val title = if (isAlarmMode) context.getString(R.string.notification_alarm)
+        val baseTitle = if (isAlarmMode) context.getString(R.string.notification_alarm)
         else (if (trackTitle.isNotBlank()) trackTitle else stationName)
+
+        val title = if (isRecording) "🔴 Salvestan: $baseTitle" else baseTitle
 
         val text = if (isAlarmMode) context.getString(R.string.notification_playing, stationName)
         else (if (trackArtist.isNotBlank()) trackArtist else stationName)
