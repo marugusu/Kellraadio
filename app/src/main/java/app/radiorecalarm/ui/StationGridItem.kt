@@ -1,6 +1,11 @@
 package app.radiorecalarm.ui
 
 import android.view.KeyEvent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusable
@@ -28,6 +33,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.radiorecalarm.RadioStation
@@ -35,12 +41,19 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+enum class StationPlaybackState {
+    IDLE,
+    BUFFERING,
+    PLAYING,
+    ERROR
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StationGridItem(
     station: RadioStation,
     isSelected: Boolean,
-    isPlaying: Boolean,
+    playbackState: StationPlaybackState,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     showFavoriteIcon: Boolean,
@@ -55,22 +68,41 @@ fun StationGridItem(
     var isLongPressDetected by remember { mutableStateOf(false) }
     var pressJob by remember { mutableStateOf<Job?>(null) }
 
+    val activeState = if (isSelected) playbackState else StationPlaybackState.IDLE
+    val pulseAlpha = if (activeState == StationPlaybackState.BUFFERING) {
+        val infiniteTransition = rememberInfiniteTransition(label = "station_buffering")
+        infiniteTransition.animateFloat(
+            initialValue = 0.35f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 700),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "buffering_border_alpha"
+        ).value
+    } else {
+        1f
+    }
+
     val containerColor = when {
-        isSelected && isPlaying -> MaterialTheme.colorScheme.primaryContainer
+        activeState == StationPlaybackState.ERROR -> MaterialTheme.colorScheme.errorContainer
+        activeState == StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primaryContainer
         isFocused -> MaterialTheme.colorScheme.secondaryContainer
+        activeState == StationPlaybackState.BUFFERING -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
-    
-    val contentColor = if (isSelected && isPlaying) {
-        MaterialTheme.colorScheme.onPrimaryContainer 
-    } else if (isFocused) {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
+
+    val contentColor = when {
+        activeState == StationPlaybackState.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+        activeState == StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onSurface
     }
-    
+
     val borderStroke = when {
-        isFocused || (isSelected && isPlaying) -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+        activeState == StationPlaybackState.ERROR -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.error)
+        activeState == StationPlaybackState.BUFFERING -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha))
+        isFocused || activeState == StationPlaybackState.PLAYING -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
         isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
         else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     }
@@ -160,10 +192,10 @@ fun StationGridItem(
                             fontSize = 9.sp,
                             letterSpacing = 0.5.sp
                         ),
-                        color = if (isSelected && isPlaying) {
-                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        color = when (activeState) {
+                            StationPlaybackState.ERROR -> MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                            StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         },
                         fontWeight = FontWeight.Bold
                     )
@@ -197,13 +229,45 @@ fun StationGridItem(
                         lineHeight = 16.sp,
                         letterSpacing = 0.sp
                     ),
-                    fontWeight = if (isSelected && isPlaying) FontWeight.Bold else FontWeight.SemiBold,
+                    fontWeight = if (activeState == StationPlaybackState.PLAYING) FontWeight.Bold else FontWeight.SemiBold,
                     color = contentColor,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun StationGridItemStatesPreview() {
+    val sample = RadioStation(
+        id = 1,
+        name = "Rock FM",
+        url = "https://stream.skymedia.ee/live/RockFM",
+        countryCode = "EE",
+        isFavorite = true
+    )
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            StationPlaybackState.entries.forEach { state ->
+                Box(modifier = Modifier.weight(1f)) {
+                    StationGridItem(
+                        station = sample,
+                        isSelected = state != StationPlaybackState.IDLE,
+                        playbackState = state,
+                        onClick = {},
+                        onLongClick = {},
+                        showFavoriteIcon = true,
+                        showFlag = true
+                    )
+                }
             }
         }
     }

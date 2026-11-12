@@ -63,6 +63,9 @@ class AlarmTriggerCoordinatorTest {
         override suspend fun deleteAllAlarms() {
             alarms.clear()
         }
+
+        override suspend fun findAlarmsForStation(stationName: String, stationUrl: String): List<Alarm> =
+            alarms.values.filter { it.stationName == stationName || it.stationUrl == stationUrl }
     }
 
     private class FakePlaybackLauncher(

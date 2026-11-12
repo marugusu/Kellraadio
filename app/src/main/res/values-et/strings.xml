@@ -82,8 +82,8 @@
     <string name="settings_group_radio">Raadio ja Kanalid</string>
     <string name="settings_refresh">Värskenda jaamu</string>
     <string name="settings_refresh_desc">Lae serverist uusim kanalite nimekiri</string>
-    <string name="settings_hide_remote">Peida serveri kanalid</string>
-    <string name="settings_hide_remote_desc">Kuva ainult käsitsi lisatud jaamu</string>
+    <string name="settings_hide_remote">Peida kureeritud jaamad</string>
+    <string name="settings_hide_remote_desc">Kuva ainult minu jaamu</string>
     <string name="settings_reset_order">Taasta lemmikkanalite järjekord</string>
     <string name="settings_reset_order_desc">Pane lemmikkanalid tagasi algsesse järjekorda</string>
     <string name="reset_order_confirm_title">Taasta järjekord?</string>
@@ -208,4 +208,19 @@
     <string name="update_already_latest">Rakendus on ajakohane (%1$s)</string>
     <string name="update_permission_required">Äppide paigaldamiseks on vaja luba. Palun luba see seadetes.</string>
     <string name="update_open_settings">Ava seaded</string>
+
+    <!-- Station Organization & Empty States -->
+    <string name="station_subgroup">Alamgrupp</string>
+    <string name="unknown_station_name">Tundmatu</string>
+    <string name="add_station">Lisa jaam</string>
+    <string name="empty_stations_title">Jaamu ei leitud</string>
+    <string name="empty_stations_desc">Lisa oma esimene jaam või laadi kureeritud nimekiri uuesti.</string>
+    <string name="empty_stations_hidden_desc">Kureeritud jaamad on peidetud ja sul pole veel ühtegi oma jaama.</string>
+    <string name="empty_favorites">Lemmikuid veel pole.\nHoia jaama all, et see lemmikuks märkida.</string>
+    <string name="empty_my_stations">Sul pole veel ühtegi oma jaama.</string>
+    <string name="action_show_curated">Näita kureeritud jaamu</string>
+    <string name="cd_move_top">Liiguta esimeseks</string>
+    <string name="cd_move_up">Liiguta üles</string>
+    <string name="cd_move_down">Liiguta alla</string>
+    <string name="cd_move_bottom">Liiguta viimaseks</string>
 </resources>

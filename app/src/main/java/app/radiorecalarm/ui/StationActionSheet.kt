@@ -4,7 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -27,7 +27,8 @@ import app.radiorecalarm.RadioStation
 @Composable
 fun StationActionSheet(
     station: RadioStation,
-    favoritePosition: Int, // UUS: Järjekorranumber lemmikute seas
+    favoritePosition: Int,
+    totalFavorites: Int,
     onDismiss: () -> Unit,
     onToggleFavorite: () -> Unit,
     onSetAlarm: () -> Unit,
@@ -108,36 +109,62 @@ fun StationActionSheet(
 
                     // PAREM POOL: SORTEERIMISE NUPUD (Ainult lemmikute puhul)
                     if (station.isFavorite) {
+                        val canMoveUp = favoritePosition > 1
+                        val canMoveDown = favoritePosition in 1 until totalFavorites
                         VerticalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
-                        
+
                         Column(
                             modifier = Modifier
-                                .width(72.dp)
-                                .fillMaxHeight(),
+                                .width(76.dp)
+                                .fillMaxHeight()
+                                .padding(vertical = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            SortButton(icon = Icons.Default.KeyboardDoubleArrowUp, onClick = onMoveToTop)
-                            SortButton(icon = Icons.Default.KeyboardArrowUp, onClick = onMoveUp)
-                            
-                            // JÄRJEKORRA NUMBER (Badge stiilis)
+                            SortButton(
+                                icon = Icons.Default.KeyboardDoubleArrowUp,
+                                contentDescription = stringResource(R.string.cd_move_top),
+                                enabled = canMoveUp,
+                                onClick = onMoveToTop
+                            )
+                            SortButton(
+                                icon = Icons.Default.KeyboardArrowUp,
+                                contentDescription = stringResource(R.string.cd_move_up),
+                                enabled = canMoveUp,
+                                onClick = onMoveUp
+                            )
+
+                            // JÄRJEKORRA NUMBER (X/N badge)
                             Surface(
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = CircleShape,
-                                modifier = Modifier.size(32.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 36.dp, minHeight = 28.dp)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
                                     Text(
-                                        text = favoritePosition.toString(),
-                                        style = MaterialTheme.typography.labelLarge,
+                                        text = if (totalFavorites > 0) "$favoritePosition/$totalFavorites" else favoritePosition.toString(),
+                                        style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
                             }
-                            
-                            SortButton(icon = Icons.Default.KeyboardArrowDown, onClick = onMoveDown)
-                            SortButton(icon = Icons.Default.KeyboardDoubleArrowDown, onClick = onMoveToBottom)
+
+                            SortButton(
+                                icon = Icons.Default.KeyboardArrowDown,
+                                contentDescription = stringResource(R.string.cd_move_down),
+                                enabled = canMoveDown,
+                                onClick = onMoveDown
+                            )
+                            SortButton(
+                                icon = Icons.Default.KeyboardDoubleArrowDown,
+                                contentDescription = stringResource(R.string.cd_move_bottom),
+                                enabled = canMoveDown,
+                                onClick = onMoveToBottom
+                            )
                         }
                     }
                 }
@@ -164,15 +191,21 @@ fun StationActionSheet(
 }
 
 @Composable
-fun SortButton(icon: ImageVector, onClick: () -> Unit) {
+fun SortButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
     IconButton(
-        onClick = onClick, 
+        onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.size(48.dp)
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            contentDescription = contentDescription,
+            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
             modifier = Modifier.size(32.dp)
         )
     }
@@ -205,6 +238,34 @@ fun ActionItem(
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
             color = textColor
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun StationActionSheetPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        StationActionSheet(
+            station = RadioStation(
+                id = 1,
+                name = "Rock FM",
+                url = "https://stream.skymedia.ee/live/RockFM",
+                countryCode = "EE",
+                isFavorite = true,
+                isUserStation = true
+            ),
+            favoritePosition = 1,
+            totalFavorites = 6,
+            onDismiss = {},
+            onToggleFavorite = {},
+            onSetAlarm = {},
+            onEdit = {},
+            onDelete = {},
+            onMoveUp = {},
+            onMoveDown = {},
+            onMoveToTop = {},
+            onMoveToBottom = {}
         )
     }
 }

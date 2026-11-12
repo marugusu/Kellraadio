@@ -77,8 +77,8 @@
     <string name="settings_group_radio">라디오 및 채널</string>
     <string name="settings_refresh">방송국 목록 갱신</string>
     <string name="settings_refresh_desc">서버에서 최신 목록 다운로드</string>
-    <string name="settings_hide_remote">서버 채널 숨기기</string>
-    <string name="settings_hide_remote_desc">수동으로 추가한 방송국만 표시</string>
+    <string name="settings_hide_remote">추천 방송국 숨기기</string>
+    <string name="settings_hide_remote_desc">직접 추가한 방송국만 표시</string>
     <string name="settings_reset_order">즐겨찾는 채널 순서 초기화</string>
     <string name="settings_reset_order_desc">즐겨찾는 채널을 기본 정렬 순서로 되돌립니다</string>
     <string name="reset_order_confirm_title">순서 초기화하시겠습니까?</string>
@@ -193,4 +193,19 @@
     <string name="backup_failed">내보내기 실패: %1$s</string>
     <string name="restore_success">데이터 복원 성공!</string>
     <string name="restore_failed">복원 실패: %1$s</string>
+
+    <!-- Station Organization & Empty States -->
+    <string name="station_subgroup">하위 그룹</string>
+    <string name="unknown_station_name">알 수 없음</string>
+    <string name="add_station">방송국 추가</string>
+    <string name="empty_stations_title">방송국이 없습니다</string>
+    <string name="empty_stations_desc">첫 방송국을 추가하거나 목록을 새로고침하세요.</string>
+    <string name="empty_stations_hidden_desc">추천 방송국이 숨겨져 있으며 아직 추가한 방송국이 없습니다.</string>
+    <string name="empty_favorites">아직 즐겨찾기가 없습니다.\n방송국을 길게 눌러 즐겨찾기에 추가하세요.</string>
+    <string name="empty_my_stations">아직 추가한 방송국이 없습니다.</string>
+    <string name="action_show_curated">추천 방송국 표시</string>
+    <string name="cd_move_top">맨 위로 이동</string>
+    <string name="cd_move_up">위로 이동</string>
+    <string name="cd_move_down">아래로 이동</string>
+    <string name="cd_move_bottom">맨 아래로 이동</string>
 </resources>

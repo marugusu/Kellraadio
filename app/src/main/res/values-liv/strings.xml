@@ -63,8 +63,8 @@
 <string name="settings_group_radio">"Rādij ja kanālõd"</string>
 <string name="settings_refresh">"Uddistõ stacijid"</string>
 <string name="settings_refresh_desc">"Lēdõ uddistõd nimkīerõ"</string>
-<string name="settings_hide_remote">"Pēt server kanālõd"</string>
-<string name="settings_hide_remote_desc">"Näytõ agā iž līstõd kanālõd"</string>
+<string name="settings_hide_remote">"Pēt kureeritõd stacijõd"</string>
+<string name="settings_hide_remote_desc">"Näytõ agā minņõn stacijõd"</string>
 <string name="settings_reset_order">"Tagāž tūmiz armstõdõd jierdõ"</string>
 <string name="settings_reset_order_desc">"Tagāž tūmiz armstõdõd algõlīžõn jierdõ" </string>
 <string name="reset_order_confirm_title">"Tagāž tūmiz armstõdõd jierdõ?"</string>
@@ -165,4 +165,19 @@
     <string name="backup_failed">"Eksport äb õņnistud: %1$s"</string>
     <string name="restore_success">"Andmõd õņnistud taastõd!"</string>
     <string name="restore_failed">"Taastõks äb õņnistud: %1$s"</string>
+
+    <!-- Station Organization & Empty States -->
+    <string name="station_subgroup">"Alamgrup"</string>
+    <string name="unknown_station_name">"Tundmatu"</string>
+    <string name="add_station">"Līsa stacij"</string>
+    <string name="empty_stations_title">"Stacijõd äb ūo"</string>
+    <string name="empty_stations_desc">"Līsa ežmi stacij või laadi kureeritõd nimkiri ūstiz."</string>
+    <string name="empty_stations_hidden_desc">"Kureeritõd stacijõd um pētõd ja sinnõn äb ūo veel ühtigi minņõn stacijõd."</string>
+    <string name="empty_favorites">"Lemmigidi vēl äb ūo.\nPidā stacij all, až tīed sīe lemmigõks."</string>
+    <string name="empty_my_stations">"Sinnõn vēl äb ūo minņõn stacijõd."</string>
+    <string name="action_show_curated">"Näytõ kureeritõd stacijõd"</string>
+    <string name="cd_move_top">"Līgut ežmiks"</string>
+    <string name="cd_move_up">"Līgut ülõz"</string>
+    <string name="cd_move_down">"Līgut allõ"</string>
+    <string name="cd_move_bottom">"Līgut viimõzõks"</string>
 </resources>

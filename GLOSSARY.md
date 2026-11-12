@@ -1,13 +1,33 @@
-# Kellraadio Domeenisõnastik
+# Kellraadio
 
-Kellraadio on Androidi raadiorakendus ja raadio-äratuskell, mis võimaldab kuulata reaalajas raadiovooge, hallata jaamu ning ärgata kasutaja valitud helitugevusel mängiva lemmikraadiojaama saatel.
+Raadiokuulamise ja raadioäratuse rakenduse domeenisõnastik. Määratleb ühtse keele jaamade, allikate, rühmitamise ja äratuste kirjeldamiseks.
 
-## Äratuskell (Alarm)
+## Language
 
-**Äratus (Alarm)**:
-Süsteemse `AlarmManager`i poolt määratud ajal käivitatav raadioesitus, mis alustab taustateenuses (`RadioService`) valitud raadiojaama mängimist kasutaja poolt varem määratud meediahelitugevusel.
-_Avoid_: Timer, meeldetuletus, piipar, helin
+**Jaam (Station)**:
+Üks konkreetne raadiojaam koos oma nime ja striimiaadressiga, mida saab kuulata või äratuseks määrata.
+_Avoid_: Kanal, raadiokanal, voog
 
-**Äratuse taastamine (Alarm Rescheduling)**:
-Protsess, kus pärast seadme alglaadimist, ajavööndi muutust või eelmise äratuse käivitumist arvutatakse andmebaasi põhjal välja järgmine aktiivne äratus ning registreeritakse see Androidi süsteemses `AlarmManager`is.
-_Avoid_: Äratuse taaslaadimine, äratuse sünkroonimine
+**Allikas (Source)**:
+Jaama päritolu, mis määrab, kas tegu on rakenduse kureeritud nimekirjast pärit jaamaga või kasutaja enda lisatud jaamaga.
+_Avoid_: Kategooria "My" kui päritolu
+
+**Minu jaamad (User Stations)**:
+Kasutaja enda käsitsi või otsingu kaudu lisatud jaamade kogu, mida kasutaja saab ise muuta ja kustutada.
+_Avoid_: Oma kanalid
+
+**Kureeritud jaamad (Curated Stations)**:
+Keskse jaamade nimekirja kaudu pakutavad jaamad, mida uuendatakse serverist.
+_Avoid_: Serveri kanalid, kaugjaamad
+
+**Riik (Country)**:
+Jaama päritoluriik ISO kahetähelise koodina, mille alusel jaamad peagruppidesse koonduvad.
+_Avoid_: Riigitunnus, lokaat
+
+**Alamgrupp (Subgroup)**:
+Jaama täpsustav rühm riigi sees — Eesti jaamadel meediaettevõte või pakkuja (nt ERR, Duo, Sky, TV3), välisjaamadel teema või žanr.
+_Avoid_: Kategooria, alamfilter kui omadus
+
+**Lemmik (Favorite)**:
+Kasutaja poolt esiletõstetud jaam, mis kuulub püsiva järjekorraga kiirvaliku vaatesse.
+_Avoid_: Lemmikkanal
