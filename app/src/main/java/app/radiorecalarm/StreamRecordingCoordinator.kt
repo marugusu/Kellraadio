@@ -121,6 +121,22 @@ class StreamRecordingCoordinator(
         }
     }
 
+    fun checkStorageSafeguard(): Boolean {
+        synchronized(lock) {
+            val baseDir = baseDirProvider()
+            val availableBytes = storageSpaceChecker.getAvailableBytes(baseDir)
+            if (availableBytes < AppConfig.Recording.MIN_FREE_STORAGE_BYTES) {
+                if (isRecording) {
+                    isRecording = false
+                    closeCurrentTrack()
+                }
+                onLowStorage?.invoke()
+                return false
+            }
+            return true
+        }
+    }
+
     fun startRecording(
         stationName: String,
         streamUrl: String,
@@ -129,13 +145,7 @@ class StreamRecordingCoordinator(
     ) {
         synchronized(lock) {
             if (isRecording) return
-
-            val baseDir = baseDirProvider()
-            val availableBytes = storageSpaceChecker.getAvailableBytes(baseDir)
-            if (availableBytes < AppConfig.Recording.MIN_FREE_STORAGE_BYTES) {
-                onLowStorage?.invoke()
-                return
-            }
+            if (!checkStorageSafeguard()) return
 
             currentStationName = stationName
             currentStreamUrl = streamUrl
@@ -179,14 +189,7 @@ class StreamRecordingCoordinator(
                 return
             }
 
-            val baseDir = baseDirProvider()
-            val availableBytes = storageSpaceChecker.getAvailableBytes(baseDir)
-            if (availableBytes < AppConfig.Recording.MIN_FREE_STORAGE_BYTES) {
-                isRecording = false
-                closeCurrentTrack()
-                onLowStorage?.invoke()
-                return
-            }
+            if (!checkStorageSafeguard()) return
 
             closeCurrentTrack()
             isPartialTrack = false // Subsequent tracks started at the track transition boundary

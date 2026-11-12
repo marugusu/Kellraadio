@@ -25,6 +25,7 @@ class RadioNotificationManager(private val context: Context) {
         const val CHANNEL_ID_ALARM = "ALARM_ALERT_CHANNEL_v21"
         const val NOTIFICATION_ID = 1
         const val ALARM_NOTIFICATION_ID = 100
+        const val NOTIFICATION_ID_LOW_STORAGE = 1003
     }
 
     init {
@@ -150,5 +151,23 @@ class RadioNotificationManager(private val context: Context) {
 
     fun cancel(id: Int) {
         notificationManager.cancel(id)
+    }
+
+    fun showLowStorageNotification() {
+        val openAppIntent = PendingIntent.getActivity(
+            context,
+            1003,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID_RADIO)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle(context.getString(R.string.recording_low_storage_warning))
+            .setContentText(context.getString(R.string.settings_storage_safeguard_desc))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(openAppIntent)
+            .build()
+        notificationManager.notify(NOTIFICATION_ID_LOW_STORAGE, notification)
     }
 }

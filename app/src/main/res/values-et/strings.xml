@@ -195,6 +195,8 @@
     <string name="settings_continuous_recording_desc">Salvesta helivoogu automaatselt iga kord, kui mistahes jaam mängib</string>
     <string name="settings_storage_safeguard">Kettamahu kaitse</string>
     <string name="settings_storage_safeguard_desc">Peatab salvestamise automaatselt, kui seadme vaba maht langeb alla 500 MB</string>
+    <string name="settings_recording_folder">Salvestiste asukoht</string>
+    <string name="storage_500mb">500 MB</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Varundus ja kolimine</string>

@@ -123,6 +123,7 @@ class RadioService : Service() {
             },
             onLowStorage = {
                 serviceScope.launch(Dispatchers.Main) {
+                    notificationManager.showLowStorageNotification()
                     Toast.makeText(applicationContext, getString(R.string.recording_low_storage_warning), Toast.LENGTH_LONG).show()
                     sendRecordingStatus()
                     updateNotification()
@@ -212,6 +213,7 @@ class RadioService : Service() {
         const val ACTION_PLAYBACK_PROGRESS = "app.radiorecalarm.ACTION_PLAYBACK_PROGRESS"
         const val ACTION_SEEK = "app.radiorecalarm.ACTION_SEEK"
         const val EXTRA_SEEK_POSITION = "SEEK_POSITION"
+        const val EXTRA_RECORD = "app.radiorecalarm.EXTRA_RECORD"
 
     }
 
@@ -791,7 +793,6 @@ class RadioService : Service() {
                 currentStationName
             }
 
-            recordingStartMillis = android.os.SystemClock.elapsedRealtime()
             recordingCoordinator.startRecording(
                 stationName = currentStationName,
                 streamUrl = currentStreamUrl,
@@ -799,15 +800,31 @@ class RadioService : Service() {
                 bitrate = lastBitrateInfo
             )
 
+            if (!isRecording) {
+                Log.w(TAG, "startRecording: Salvestamist ei alustatud (nt vaba kettamahu puudumise tõttu).")
+                sendRecordingStatus()
+                updateNotification()
+                return
+            }
+
+            recordingStartMillis = android.os.SystemClock.elapsedRealtime()
             Log.i(TAG, "Alustati salvestamist: jaam=$currentStationName")
             sendRecordingStatus()
             updateNotification()
 
             recordingTimerJob?.cancel()
             recordingTimerJob = serviceScope.launch(Dispatchers.Main) {
+                var lastSafeguardCheck = android.os.SystemClock.elapsedRealtime()
                 while (isRecording) {
                     delay(1000)
                     sendRecordingStatus()
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (now - lastSafeguardCheck >= 30000L) {
+                        lastSafeguardCheck = now
+                        withContext(Dispatchers.IO) {
+                            recordingCoordinator.checkStorageSafeguard()
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -1101,7 +1118,7 @@ class RadioService : Service() {
             val stationName = intent.getStringExtra("STATION_NAME")
             val triggeredBy = intent.getStringExtra("TRIGGERED_BY")
             val category = intent.getStringExtra("CATEGORY_NAME")
-            val extraRecord = intent.getBooleanExtra("EXTRA_RECORD", false)
+            val extraRecord = intent.getBooleanExtra(EXTRA_RECORD, false)
             if (category != null) {
                 currentCategory = category
                 prefs.edit().putString("last_category", category).apply()

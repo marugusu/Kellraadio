@@ -195,6 +195,8 @@
     <string name="settings_continuous_recording_desc">Automatically record audio whenever any station is playing</string>
     <string name="settings_storage_safeguard">Storage safeguard</string>
     <string name="settings_storage_safeguard_desc">Automatically stops recording if free storage drops below 500 MB</string>
+    <string name="settings_recording_folder">Storage location</string>
+    <string name="storage_500mb">500 MB</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Backup and Migration</string>

@@ -21,13 +21,14 @@ abstract class AppDatabase : RoomDatabase() {
         private var INSTANCE: AppDatabase? = null
 
         // MIGRATSIOON: Lisame favoriteOrder tulba
-        val MIGRATION_8_9 = object : Migration(8, 9) {
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE stations ADD COLUMN favoriteOrder INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         // MIGRATSIOON: Lisame recordAudio tulba äratustele (ADR-0005)
+        @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE alarms ADD COLUMN recordAudio INTEGER NOT NULL DEFAULT 0")

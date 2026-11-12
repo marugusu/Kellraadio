@@ -167,6 +167,8 @@
     <string name="settings_continuous_recording_desc">"Salbõst helīvoogõ automātlizt ku stacij mäņgõb"</string>
     <string name="settings_storage_safeguard">"Pīela kaitzõmin"</string>
     <string name="settings_storage_safeguard_desc">"Kistūtab salbõstamist ku vaba pīela lǟb allõl 500 MB"</string>
+    <string name="settings_recording_folder">"Tāļtõmizt kūož"</string>
+    <string name="storage_500mb">"500 MB"</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">"Tāļtõks ja koltšimi"</string>

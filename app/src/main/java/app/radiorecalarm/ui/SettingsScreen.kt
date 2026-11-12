@@ -312,12 +312,21 @@ fun SettingsScreen(
                     icon = Icons.Default.SdStorage,
                     trailingContent = {
                         Text(
-                            text = "500 MB",
+                            text = stringResource(R.string.storage_500mb),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                     }
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    headline = stringResource(R.string.settings_recording_folder),
+                    supporting = "Android/data/app.radiorecalarm/files/Music",
+                    icon = Icons.Default.Folder,
+                    onClick = null
                 )
             }
 

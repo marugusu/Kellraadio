@@ -17,7 +17,7 @@ class AndroidAlarmPlaybackLauncher(private val context: Context) : AlarmPlayback
             putExtra("STREAM_URL", streamUrl)
             putExtra("STATION_NAME", stationName)
             putExtra("TRIGGERED_BY", "ALARM")
-            putExtra("EXTRA_RECORD", recordAudio)
+            putExtra(RadioService.EXTRA_RECORD, recordAudio)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
