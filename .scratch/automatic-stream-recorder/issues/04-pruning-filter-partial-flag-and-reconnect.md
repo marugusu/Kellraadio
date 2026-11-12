@@ -5,10 +5,10 @@ Salvestuse puhastamine lühikestest jaamakõllidest ning vigastest segmentidest,
 
 **Blocked by:** 03: JSON kõrvafailide genereerimine, kaanepildi laadimine ja API päringud
 
-**Status:** ready-for-agent
+**Status:** done (feature/automatic-stream-recorder)
 
-- [ ] Loo või saate sulgemisel kontrollitakse selle tegelikku kestust: kui `durationSeconds < 30`, kustutatakse helifail ja kõrvafail viivitamatult kettalt.
-- [ ] Kui salvestamine käivitatakse jaamas juba mängiva laulu ajal, saab kõrvafaili väli `partial` väärtuseks `true` (täispika pala puhul `false`).
-- [ ] Kui võrguühendus taastub lühiajaliselt ja jaama metainfo vastab parajasti kirjutatavale palale, jätkatakse sama faili täitmist ilma uut salvestust avamata.
-- [ ] JVM üksustestid verifitseerivad alla 30-sekundiliste klippide kustutamise, pikemate säilitamise, `"partial": true` määramise ja võrgukatkestuse järgse faili terviklikkuse.
+- [x] Loo või saate sulgemisel kontrollitakse selle tegelikku kestust: kui `durationSeconds < 30`, kustutatakse helifail ja kõrvafail viivitamatult kettalt.
+- [x] Kui salvestamine käivitatakse jaamas juba mängiva laulu ajal, saab kõrvafaili väli `partial` väärtuseks `true` (täispika pala puhul `false`).
+- [x] Kui võrguühendus taastub lühiajaliselt ja jaama metainfo vastab parajasti kirjutatavale palale, jätkatakse sama faili täitmist ilma uut salvestust avamata.
+- [x] JVM üksustestid verifitseerivad alla 30-sekundiliste klippide kustutamise, pikemate säilitamise, `"partial": true` määramise ja võrgukatkestuse järgse faili terviklikkuse.
 

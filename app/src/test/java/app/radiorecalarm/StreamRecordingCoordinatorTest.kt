@@ -22,7 +22,8 @@ class StreamRecordingCoordinatorTest {
         baseDir = tempFolder.newFolder("recordings")
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
-            clock = { 1000000L }
+            clock = { 1000000L },
+            minDurationSeconds = 0L
         )
     }
 
@@ -224,7 +225,8 @@ class StreamRecordingCoordinatorTest {
             baseDirProvider = { baseDir },
             clock = { 1000000L },
             metadataFetcher = fakeFetcher,
-            coverArtDownloader = fakeDownloader
+            coverArtDownloader = fakeDownloader,
+            minDurationSeconds = 0L
         )
 
         coordinator.startRecording(
@@ -265,7 +267,8 @@ class StreamRecordingCoordinatorTest {
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
             clock = { 1000000L },
-            metadataFetcher = { _, _ -> null }
+            metadataFetcher = { _, _ -> null },
+            minDurationSeconds = 0L
         )
 
         coordinator.startRecording(
@@ -284,6 +287,120 @@ class StreamRecordingCoordinatorTest {
         assertTrue(jsonContent.contains("\"album\": null"))
         assertTrue(jsonContent.contains("\"year\": null"))
         assertTrue(jsonContent.contains("\"coverArtFile\": null"))
+    }
+
+    @Test
+    fun `prunes and deletes tracks lasting less than 30 seconds`() {
+        var currentTime = 1000000L
+        coordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime }
+        )
+
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Station - Jingle"
+        )
+        coordinator.onStreamBytes("ShortJingleBytes".toByteArray(), 0, 16)
+
+        // Advance time by only 10 seconds (10s < 30s)
+        currentTime += 10000L
+
+        coordinator.stopRecording()
+
+        val files = baseDir.walkTopDown().filter { it.isFile }.toList()
+        assertEquals(0, files.size)
+    }
+
+    @Test
+    fun `preserves tracks lasting 30 seconds or longer`() {
+        var currentTime = 1000000L
+        coordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime }
+        )
+
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        coordinator.onStreamBytes("AudioBytes".toByteArray(), 0, 10)
+
+        // Advance time by 35 seconds (35s >= 30s)
+        currentTime += 35000L
+
+        coordinator.stopRecording()
+
+        val audioFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
+        assertEquals(1, audioFiles.size)
+        val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.toList()
+        assertEquals(1, jsonFiles.size)
+        assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 35"))
+    }
+
+    @Test
+    fun `flags mid-stream started track as partial and subsequent track as non-partial`() {
+        var currentTime = 1000000L
+        coordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime }
+        )
+
+        // Mid-stream start
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Artist 1 - Track 1"
+        )
+        coordinator.onStreamBytes("Audio1".toByteArray(), 0, 6)
+        currentTime += 40000L // 40s duration
+
+        // Transition to next track at boundary
+        coordinator.onMetadataChanged("Artist 2 - Track 2")
+        coordinator.onStreamBytes("Audio2".toByteArray(), 0, 6)
+        currentTime += 50000L // 50s duration
+
+        coordinator.stopRecording()
+
+        val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.sortedBy { it.name }.toList()
+        assertEquals(2, jsonFiles.size)
+
+        val json1 = jsonFiles[0].readText()
+        assertTrue(json1.contains("\"partial\": true"))
+
+        val json2 = jsonFiles[1].readText()
+        assertTrue(json2.contains("\"partial\": false"))
+    }
+
+    @Test
+    fun `continues recording to same file across reconnect without metadata change`() {
+        var currentTime = 1000000L
+        coordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime }
+        )
+
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        coordinator.onStreamBytes("Part1".toByteArray(), 0, 5)
+
+        // Reconnect notification with same metadata
+        currentTime += 2000L
+        coordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
+
+        coordinator.onStreamBytes("Part2".toByteArray(), 0, 5)
+        currentTime += 35000L
+
+        coordinator.stopRecording()
+
+        val audioFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
+        assertEquals(1, audioFiles.size)
+        assertEquals("Part1Part2", audioFiles.first().readText())
     }
 }
 

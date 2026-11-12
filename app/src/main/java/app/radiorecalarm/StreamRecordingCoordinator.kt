@@ -54,10 +54,14 @@ class StreamRecordingCoordinator(
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val metadataHelper: RadioMetadataHelper = RadioMetadataHelper(),
     private val metadataFetcher: MetadataFetcher = MetadataFetcher { _, _ -> null },
-    private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false }
+    private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false },
+    private val minDurationSeconds: Long = 30L
 ) {
     @Volatile
     var isRecording: Boolean = false
+        private set
+
+    var completedTrackCount: Int = 0
         private set
 
     var currentStationName: String = ""
@@ -98,6 +102,7 @@ class StreamRecordingCoordinator(
             currentStationName = stationName
             currentStreamUrl = streamUrl
             isRecording = true
+            completedTrackCount = 0
             isPartialTrack = true // First track started mid-stream
 
             openNewTrack(initialRawMetadata)
@@ -260,6 +265,18 @@ class StreamRecordingCoordinator(
         val rootDir = baseDirProvider()
         val ext = if (currentStreamUrl.contains("aac", ignoreCase = true)) "aac" else "mp3"
         val durationSec = Math.max(0L, (clock() - trackStartTimeMs) / 1000L)
+
+        // Pruning filter: clips under minDurationSeconds (ads, jingles, glitches) are deleted
+        if (durationSec < minDurationSeconds) {
+            fileToFinalize.delete()
+            val oldParent = fileToFinalize.parentFile
+            if (oldParent != null && oldParent.listFiles().isNullOrEmpty()) {
+                oldParent.delete()
+            }
+            return
+        }
+
+        completedTrackCount++
         val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date(trackStartTimeMs))
