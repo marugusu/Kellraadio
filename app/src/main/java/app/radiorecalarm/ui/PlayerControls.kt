@@ -137,10 +137,11 @@ fun PlayerControls(
                 val stationPrefix = if (activeStationName.isNotEmpty()) "$activeStationName • " else ""
                 var statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
                 if (isRecording) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
                     val recMin = (recordingDuration / 1000) / 60
                     val recSec = (recordingDuration / 1000) % 60
                     val recTimeStr = String.format("%02d:%02d", recMin, recSec)
-                    val countSuffix = if (recordingCount > 0) " ($recordingCount salvestatud)" else ""
+                    val countSuffix = if (recordingCount > 0) " " + context.getString(R.string.recording_saved_count, recordingCount) else ""
                     statusText += " • REC $recTimeStr$countSuffix"
                 }
 

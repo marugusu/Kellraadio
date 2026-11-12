@@ -182,6 +182,9 @@
     <string name="recording_empty">Salvestisi pole.</string>
     <string name="recording_playing">Mängib salvestist</string>
     <string name="recording_failed">Salvestamine ebaõnnestus!</string>
+    <string name="notification_recording_title">🔴 Salvestan: %1$s</string>
+    <string name="recording_saved_count">(%1$d salvestatud)</string>
+    <string name="recording_tracks_saved">%1$d pala</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Varundus ja kolimine</string>

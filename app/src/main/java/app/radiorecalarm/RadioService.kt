@@ -102,11 +102,24 @@ class RadioService : Service() {
     private val recordingCoordinator by lazy {
         StreamRecordingCoordinator(
             baseDirProvider = {
-                java.io.File(getExternalFilesDir(null), "Music").apply { if (!exists()) mkdirs() }
+                java.io.File(getExternalFilesDir(null), AppConfig.Recording.DEFAULT_AUDIO_DIR).apply { if (!exists()) mkdirs() }
             },
             metadataHelper = metadataHelper,
             metadataFetcher = { artist, title ->
                 MusicInfoRepository.fetchInfo(artist, title).lastOrNull()
+            },
+            coverArtDownloader = { urlStr, targetFile ->
+                try {
+                    val url = java.net.URL(urlStr)
+                    url.openStream().use { input ->
+                        java.io.FileOutputStream(targetFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    true
+                } catch (e: Exception) {
+                    false
+                }
             }
         )
     }
@@ -302,13 +315,17 @@ class RadioService : Service() {
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
         if (recordingCoordinator.isRecording) {
-            recordingCoordinator.onMetadataChanged(trackTitleFromStream ?: "")
+            val raw = trackTitleFromStream ?: ""
+            serviceScope.launch(Dispatchers.IO) {
+                recordingCoordinator.onMetadataChanged(raw)
+            }
         }
         updateNotification()
         updateWidget()
     }
 
     private fun sendBitrateUpdate() {
+        recordingCoordinator.setBitrate(lastBitrateInfo)
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ACTION_BITRATE_UPDATED).apply { putExtra("BITRATE_INFO", lastBitrateInfo) })
     }
 
@@ -763,7 +780,8 @@ class RadioService : Service() {
             recordingCoordinator.startRecording(
                 stationName = currentStationName,
                 streamUrl = currentStreamUrl,
-                initialRawMetadata = rawMeta
+                initialRawMetadata = rawMeta,
+                bitrate = lastBitrateInfo
             )
 
             Log.i(TAG, "Alustati salvestamist: jaam=$currentStationName")
@@ -798,8 +816,9 @@ class RadioService : Service() {
         updateNotification()
 
         if (!failed && countAfter > 0) {
+            val tracksStr = getString(R.string.recording_tracks_saved, countAfter)
             serviceScope.launch(Dispatchers.Main) {
-                Toast.makeText(applicationContext, getString(R.string.recording_toast_saved, "$countAfter pala"), Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext, getString(R.string.recording_toast_saved, tracksStr), Toast.LENGTH_LONG).show()
             }
         }
     }

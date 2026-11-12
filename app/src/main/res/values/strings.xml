@@ -182,6 +182,9 @@
     <string name="recording_empty">No recordings yet</string>
     <string name="recording_playing">Playing recording</string>
     <string name="recording_failed">Recording failed!</string>
+    <string name="notification_recording_title">🔴 Recording: %1$s</string>
+    <string name="recording_saved_count">(%1$d saved)</string>
+    <string name="recording_tracks_saved">%1$d tracks</string>
 
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Backup and Migration</string>

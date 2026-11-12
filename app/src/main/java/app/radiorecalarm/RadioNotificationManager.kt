@@ -97,7 +97,7 @@ class RadioNotificationManager(private val context: Context) {
         val baseTitle = if (isAlarmMode) context.getString(R.string.notification_alarm)
         else (if (trackTitle.isNotBlank()) trackTitle else stationName)
 
-        val title = if (isRecording) "🔴 Salvestan: $baseTitle" else baseTitle
+        val title = if (isRecording) context.getString(R.string.notification_recording_title, baseTitle) else baseTitle
 
         val text = if (isAlarmMode) context.getString(R.string.notification_playing, stationName)
         else (if (trackArtist.isNotBlank()) trackArtist else stationName)

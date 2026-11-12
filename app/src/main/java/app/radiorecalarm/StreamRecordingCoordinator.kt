@@ -55,7 +55,7 @@ class StreamRecordingCoordinator(
     private val metadataHelper: RadioMetadataHelper = RadioMetadataHelper(),
     private val metadataFetcher: MetadataFetcher = MetadataFetcher { _, _ -> null },
     private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false },
-    private val minDurationSeconds: Long = 30L
+    private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS
 ) {
     @Volatile
     var isRecording: Boolean = false
@@ -74,6 +74,8 @@ class StreamRecordingCoordinator(
         private set
     var currentTitle: String = ""
         private set
+    var currentBitrate: String? = null
+        private set
     var isCurrentShow: Boolean = false
         private set
 
@@ -91,16 +93,24 @@ class StreamRecordingCoordinator(
     private val lock = Any()
     private val json = Json { prettyPrint = true; encodeDefaults = true }
 
+    fun setBitrate(bitrate: String?) {
+        synchronized(lock) {
+            currentBitrate = bitrate
+        }
+    }
+
     fun startRecording(
         stationName: String,
         streamUrl: String,
-        initialRawMetadata: String = ""
+        initialRawMetadata: String = "",
+        bitrate: String? = null
     ) {
         synchronized(lock) {
             if (isRecording) return
 
             currentStationName = stationName
             currentStreamUrl = streamUrl
+            currentBitrate = bitrate
             isRecording = true
             completedTrackCount = 0
             isPartialTrack = true // First track started mid-stream
@@ -179,7 +189,7 @@ class StreamRecordingCoordinator(
         val file: File
         if (isCurrentShow) {
             val safeStation = sanitize(currentStationName.ifBlank { "Radio" })
-            val targetDir = File(File(rootDir, "Saated"), safeStation)
+            val targetDir = File(File(rootDir, AppConfig.Recording.DIR_SHOWS), safeStation)
             if (!targetDir.exists()) targetDir.mkdirs()
 
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(clock()))
@@ -192,10 +202,10 @@ class StreamRecordingCoordinator(
             file = candidate
         } else {
             val safeArtist = sanitize(currentArtist)
-            val safeAlbum = "Teadmata album"
+            val safeAlbum = AppConfig.Recording.DIR_UNKNOWN_ALBUM
             val safeTitle = sanitize(currentTitle)
 
-            val targetDir = File(File(File(rootDir, "Muusika"), safeArtist), safeAlbum)
+            val targetDir = File(File(File(rootDir, AppConfig.Recording.DIR_MUSIC), safeArtist), safeAlbum)
             if (!targetDir.exists()) targetDir.mkdirs()
 
             val existingNumbers = targetDir.listFiles()?.mapNotNull { f ->
@@ -256,7 +266,7 @@ class StreamRecordingCoordinator(
 
         // Await background enrichment with short timeout
         runBlocking {
-            withTimeoutOrNull(2000L) {
+            withTimeoutOrNull(AppConfig.Recording.ENRICHMENT_TIMEOUT_MS) {
                 enrichmentJob?.join()
             }
         }
@@ -297,7 +307,7 @@ class StreamRecordingCoordinator(
                 durationSeconds = durationSec,
                 fileSize = fileToFinalize.length(),
                 codec = ext,
-                bitrate = null,
+                bitrate = currentBitrate,
                 audioFile = fileToFinalize.name,
                 coverArtFile = null,
                 partial = isPartialTrack
@@ -312,15 +322,29 @@ class StreamRecordingCoordinator(
             var targetAudioFile = fileToFinalize
             var targetDir = fileToFinalize.parentFile ?: rootDir
 
-            // If an album was discovered, move file to the correct album directory
-            if (discoveredAlbum != null && targetDir.name == "Teadmata album") {
+            // If an album was discovered, move file to the correct album directory and recalculate track number
+            if (discoveredAlbum != null && targetDir.name == AppConfig.Recording.DIR_UNKNOWN_ALBUM) {
                 val safeAlbum = sanitize(discoveredAlbum)
-                val newAlbumDir = File(File(File(rootDir, "Muusika"), safeArtist), safeAlbum)
+                val newAlbumDir = File(File(File(rootDir, AppConfig.Recording.DIR_MUSIC), safeArtist), safeAlbum)
                 if (!newAlbumDir.exists()) newAlbumDir.mkdirs()
 
-                val newAudioFile = File(newAlbumDir, fileToFinalize.name)
-                if (fileToFinalize.renameTo(newAudioFile)) {
-                    targetAudioFile = newAudioFile
+                val existingInTarget = newAlbumDir.listFiles()?.mapNotNull { f ->
+                    if (f.isFile && (f.name.endsWith(".mp3") || f.name.endsWith(".aac"))) {
+                        Regex("""^(\d{2})\s*-""").find(f.name)?.groupValues?.get(1)?.toIntOrNull()
+                    } else null
+                } ?: emptyList()
+
+                val nextNumInTarget = if (existingInTarget.isEmpty()) 1 else (existingInTarget.maxOrNull() ?: 0) + 1
+                val targetTrackNumStr = "%02d".format(nextNumInTarget)
+                val targetBaseName = "$targetTrackNumStr - $safeArtist - ${sanitize(currentTitle)}"
+                var targetCandidate = File(newAlbumDir, "$targetBaseName.$ext")
+                var dup = 1
+                while (targetCandidate.exists()) {
+                    targetCandidate = File(newAlbumDir, "${targetBaseName}_%02d.$ext".format(dup++))
+                }
+
+                if (fileToFinalize.renameTo(targetCandidate)) {
+                    targetAudioFile = targetCandidate
                     val oldDir = fileToFinalize.parentFile
                     targetDir = newAlbumDir
 
@@ -359,7 +383,7 @@ class StreamRecordingCoordinator(
                 durationSeconds = durationSec,
                 fileSize = targetAudioFile.length(),
                 codec = ext,
-                bitrate = null,
+                bitrate = currentBitrate,
                 audioFile = targetAudioFile.name,
                 coverArtFile = coverArtFileName,
                 partial = isPartialTrack

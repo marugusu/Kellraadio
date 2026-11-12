@@ -113,4 +113,14 @@ object AppConfig {
         // Turvalimiit (30 sekundit), et vältida aku tühjenemist vea korral
         const val WAKELOCK_TIMEOUT_MS = 30_000L
     }
+
+    // --- 6. SALVESTAMISE SEADED ---
+    object Recording {
+        const val MIN_DURATION_SECONDS = 30L
+        const val ENRICHMENT_TIMEOUT_MS = 2000L
+        const val DIR_MUSIC = "Muusika"
+        const val DIR_SHOWS = "Saated"
+        const val DIR_UNKNOWN_ALBUM = "Teadmata album"
+        const val DEFAULT_AUDIO_DIR = "Music"
+    }
 }
