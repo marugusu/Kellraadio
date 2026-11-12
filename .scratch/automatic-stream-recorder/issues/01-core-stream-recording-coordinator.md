@@ -5,11 +5,11 @@ Salvestuse haldamise ja helifailide voosisese tükeldamise eraldamine `RadioServ
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (feature/automatic-stream-recorder)
 
-- [ ] Loodud `StreamRecordingCoordinator` moodul, mis võtab vastu tooreid striimibaite (`ByteArray, offset, length`) ning voosiseseid metainfo teavitusi.
-- [ ] Kui metainfo muutub (esitaja või pealkirja muutus), suletakse aktiivne helifail ja avatakse koheselt uus fail täpsel baidipiiril.
-- [ ] Salvestamise alustamisel (`startRecording`) ja peatamisel (`stopRecording`) hallatakse failivooge turvaliselt ja lekkevabalt ilma mälupuhvriteta.
-- [ ] Faili kirjutamine toimub otse kettale ilma helivoo retranskodeerimiseta (bit-perfect MP3 või AAC).
-- [ ] JVM üksustestid verifitseerivad, et simuleeritud baidivoo ja metainfo vahetuse korral tükeldatakse failid kaheks täpselt õigel baidil ning failid suletakse korrektselt.
+- [x] Loodud `StreamRecordingCoordinator` moodul, mis võtab vastu tooreid striimibaite (`ByteArray, offset, length`) ning voosiseseid metainfo teavitusi.
+- [x] Kui metainfo muutub (esitaja või pealkirja muutus), suletakse aktiivne helifail ja avatakse koheselt uus fail täpsel baidipiiril.
+- [x] Salvestamise alustamisel (`startRecording`) ja peatamisel (`stopRecording`) hallatakse failivooge turvaliselt ja lekkevabalt ilma mälupuhvriteta.
+- [x] Faili kirjutamine toimub otse kettale ilma helivoo retranskodeerimiseta (bit-perfect MP3 või AAC).
+- [x] JVM üksustestid verifitseerivad, et simuleeritud baidivoo ja metainfo vahetuse korral tükeldatakse failid kaheks täpselt õigel baidil ning failid suletakse korrektselt.
 
