@@ -73,6 +73,7 @@ object AppConfig {
             "heart 90s" to "90",
             "retro disco" to "DISC",
             "retro love" to "LOVE",
+            "retro fm jõulud" to "JÕUL",
             "ida" to "IDA",
             "star fm 80s" to "80",
             "star fm 90s" to "90",
