@@ -5,11 +5,11 @@ Iga salvestatud pala ja saate varustamine masinloetava `<failinimi>.json` kõrva
 
 **Blocked by:** 02: Lugude ja saadete klassifitseerimine, kaustapuu ja kahekohaline nummerdus
 
-**Status:** ready-for-agent
+**Status:** done (feature/automatic-stream-recorder)
 
-- [ ] Loo tuvastamisel käivitatakse asünkroonne päring `MusicInfoRepository` kaudu täiendavate metaandmete ja kaanepildi saamiseks.
-- [ ] Leitud kaanepilt laaditakse alla ja salvestatakse albumi kausta nimega `cover.jpg` (kui pilt juba kaustas eksisteerib, korduslaadimist ei tehta).
-- [ ] Pala või saate sulgemisel genereeritakse spetsifikatsioonile vastav `<failinimi>.json` fail väljadega: `title`, `artist`, `album`, `year`, `genre`, `trackNumber`, `lyrics`, `station`, `stationUrl`, `recordedAt`, `durationSeconds`, `fileSize`, `codec`, `bitrate`, `audioFile`, `coverArtFile`, `partial`.
-- [ ] Kui veebipäring aegub või ei leia vastet, kirjutatakse puuduvad väljad turvaliselt väärtusega `null`, katkestamata salvestamist.
-- [ ] JVM üksustestid verifitseerivad JSON-skeemi vastavust, väljade korrektsust ja asünkroonsete päringute tõrkekindlust.
+- [x] Loo tuvastamisel käivitatakse asünkroonne päring `MusicInfoRepository` kaudu täiendavate metaandmete ja kaanepildi saamiseks.
+- [x] Leitud kaanepilt laaditakse alla ja salvestatakse albumi kausta nimega `cover.jpg` (kui pilt juba kaustas eksisteerib, korduslaadimist ei tehta).
+- [x] Pala või saate sulgemisel genereeritakse spetsifikatsioonile vastav `<failinimi>.json` fail väljadega: `title`, `artist`, `album`, `year`, `genre`, `trackNumber`, `lyrics`, `station`, `stationUrl`, `recordedAt`, `durationSeconds`, `fileSize`, `codec`, `bitrate`, `audioFile`, `coverArtFile`, `partial`.
+- [x] Kui veebipäring aegub või ei leia vastet, kirjutatakse puuduvad väljad turvaliselt väärtusega `null`, katkestamata salvestamist.
+- [x] JVM üksustestid verifitseerivad JSON-skeemi vastavust, väljade korrektsust ja asünkroonsete päringute tõrkekindlust.
 

@@ -44,7 +44,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.stopRecording()
         assertFalse(coordinator.isRecording)
 
-        val files = baseDir.walkTopDown().filter { it.isFile }.toList()
+        val files = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
         assertEquals(1, files.size)
         val file = files.first()
         assertTrue(file.name.endsWith(".mp3"))
@@ -108,7 +108,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.onStreamBytes(chunk, 0, chunk.size)
         coordinator.stopRecording()
 
-        val files = baseDir.walkTopDown().filter { it.isFile }.toList()
+        val files = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".aac") }.toList()
         assertEquals(1, files.size)
         assertTrue(files.first().name.endsWith(".aac"))
     }
@@ -202,6 +202,88 @@ class StreamRecordingCoordinatorTest {
         assertEquals(2, files.size)
         assertEquals("01 - Queen - Bohemian Rhapsody.mp3", files[0].name)
         assertEquals("01 - Queen - Bohemian Rhapsody_01.mp3", files[1].name)
+    }
+
+    @Test
+    fun `generates JSON sidecar with enriched metadata and downloads cover art`() {
+        val fakeFetcher = MetadataFetcher { artist, title ->
+            SongAdditionalInfo(
+                album = "A Night at the Opera",
+                year = "1975",
+                genre = "Classic Rock",
+                lyrics = "Is this the real life?",
+                coverArtUrl = "https://example.com/cover.jpg"
+            )
+        }
+        val fakeDownloader = CoverArtDownloader { url, targetFile ->
+            targetFile.writeText("fake-jpeg-bytes")
+            true
+        }
+
+        coordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { 1000000L },
+            metadataFetcher = fakeFetcher,
+            coverArtDownloader = fakeDownloader
+        )
+
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        val chunk = "QueenAudioStreamBytes".toByteArray()
+        coordinator.onStreamBytes(chunk, 0, chunk.size)
+        coordinator.stopRecording()
+
+        val albumDir = File(baseDir, "Muusika/Queen/A Night at the Opera")
+        assertTrue(albumDir.exists())
+
+        val audioFile = File(albumDir, "01 - Queen - Bohemian Rhapsody.mp3")
+        assertTrue(audioFile.exists())
+        assertEquals("QueenAudioStreamBytes", audioFile.readText())
+
+        val jsonFile = File(albumDir, "01 - Queen - Bohemian Rhapsody.json")
+        assertTrue(jsonFile.exists())
+        val jsonContent = jsonFile.readText()
+        assertTrue(jsonContent.contains("\"title\": \"Bohemian Rhapsody\""))
+        assertTrue(jsonContent.contains("\"artist\": \"Queen\""))
+        assertTrue(jsonContent.contains("\"album\": \"A Night at the Opera\""))
+        assertTrue(jsonContent.contains("\"year\": \"1975\""))
+        assertTrue(jsonContent.contains("\"genre\": \"Classic Rock\""))
+        assertTrue(jsonContent.contains("\"lyrics\": \"Is this the real life?\""))
+        assertTrue(jsonContent.contains("\"codec\": \"mp3\""))
+        assertTrue(jsonContent.contains("\"coverArtFile\": \"cover.jpg\""))
+
+        val coverFile = File(albumDir, "cover.jpg")
+        assertTrue(coverFile.exists())
+        assertEquals("fake-jpeg-bytes", coverFile.readText())
+    }
+
+    @Test
+    fun `writes null fields in JSON sidecar when metadata fetch returns null`() {
+        coordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { 1000000L },
+            metadataFetcher = { _, _ -> null }
+        )
+
+        coordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Tundmatu Esitaja - Tundmatu Lugu"
+        )
+        val chunk = "SomeBytes".toByteArray()
+        coordinator.onStreamBytes(chunk, 0, chunk.size)
+        coordinator.stopRecording()
+
+        val targetDir = File(baseDir, "Muusika/Tundmatu Esitaja/Teadmata album")
+        val jsonFile = File(targetDir, "01 - Tundmatu Esitaja - Tundmatu Lugu.json")
+        assertTrue(jsonFile.exists())
+        val jsonContent = jsonFile.readText()
+        assertTrue(jsonContent.contains("\"album\": null"))
+        assertTrue(jsonContent.contains("\"year\": null"))
+        assertTrue(jsonContent.contains("\"coverArtFile\": null"))
     }
 }
 
