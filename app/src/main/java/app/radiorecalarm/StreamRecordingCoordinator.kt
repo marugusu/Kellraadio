@@ -286,12 +286,12 @@ class StreamRecordingCoordinator(
             return
         }
 
-        completedTrackCount++
         val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date(trackStartTimeMs))
 
         if (isCurrentShow) {
+            completedTrackCount++
             val safeStation = sanitize(currentStationName.ifBlank { "Radio" })
             val sidecar = SidecarMetadata(
                 title = currentTitle.ifBlank { "Otseeeter" },
@@ -317,39 +317,94 @@ class StreamRecordingCoordinator(
         } else {
             val enriched = currentEnrichedInfo
             val discoveredAlbum = enriched?.album?.trim()?.ifBlank { null }
+            val officialTrackNum = enriched?.trackNumber?.takeIf { it > 0 }
             val safeArtist = sanitize(currentArtist)
+            val safeTitle = sanitize(currentTitle)
 
-            var targetAudioFile = fileToFinalize
-            var targetDir = fileToFinalize.parentFile ?: rootDir
+            val targetAlbumName = discoveredAlbum ?: AppConfig.Recording.DIR_UNKNOWN_ALBUM
+            val targetDir = File(File(File(rootDir, AppConfig.Recording.DIR_MUSIC), safeArtist), sanitize(targetAlbumName))
+            if (!targetDir.exists()) targetDir.mkdirs()
 
-            // If an album was discovered, move file to the correct album directory and recalculate track number
-            if (discoveredAlbum != null && targetDir.name == AppConfig.Recording.DIR_UNKNOWN_ALBUM) {
-                val safeAlbum = sanitize(discoveredAlbum)
-                val newAlbumDir = File(File(File(rootDir, AppConfig.Recording.DIR_MUSIC), safeArtist), safeAlbum)
-                if (!newAlbumDir.exists()) newAlbumDir.mkdirs()
+            // Duplicate detection: check if this track already exists in target album
+            val existingSongFile = targetDir.listFiles()?.firstOrNull { f ->
+                f.isFile && (f.name.endsWith(".mp3") || f.name.endsWith(".aac")) &&
+                    f.canonicalPath != fileToFinalize.canonicalPath &&
+                    f.name.contains(" - $safeArtist - $safeTitle")
+            }
 
-                val existingInTarget = newAlbumDir.listFiles()?.mapNotNull { f ->
-                    if (f.isFile && (f.name.endsWith(".mp3") || f.name.endsWith(".aac"))) {
+            if (existingSongFile != null) {
+                val existingJsonFile = File(targetDir, "${existingSongFile.nameWithoutExtension}.json")
+                val existingIsPartial = if (existingJsonFile.exists()) {
+                    try {
+                        json.decodeFromString<SidecarMetadata>(existingJsonFile.readText()).partial
+                    } catch (e: Exception) {
+                        false
+                    }
+                } else {
+                    false
+                }
+
+                if (!existingIsPartial && isPartialTrack) {
+                    // Existing track is complete, current recording is partial -> discard current duplicate
+                    fileToFinalize.delete()
+                    val oldDir = fileToFinalize.parentFile
+                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
+                        oldDir.delete()
+                    }
+                    return
+                } else if (!existingIsPartial && !isPartialTrack) {
+                    // Both tracks are complete -> discard duplicate to avoid cluttering storage
+                    fileToFinalize.delete()
+                    val oldDir = fileToFinalize.parentFile
+                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
+                        oldDir.delete()
+                    }
+                    return
+                } else if (existingIsPartial && !isPartialTrack) {
+                    // Existing was partial, but current recording is complete! Replace old partial track.
+                    existingSongFile.delete()
+                    if (existingJsonFile.exists()) existingJsonFile.delete()
+                } else {
+                    // Both are partial -> keep existing, discard current
+                    fileToFinalize.delete()
+                    val oldDir = fileToFinalize.parentFile
+                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
+                        oldDir.delete()
+                    }
+                    return
+                }
+            }
+
+            completedTrackCount++
+
+            // Calculate track number: prioritize official trackNumber, fallback to sequential
+            val trackNumStr = if (officialTrackNum != null) {
+                "%02d".format(officialTrackNum)
+            } else {
+                val existingNumbers = targetDir.listFiles()?.mapNotNull { f ->
+                    if (f.isFile && f.canonicalPath != fileToFinalize.canonicalPath &&
+                        (f.name.endsWith(".mp3") || f.name.endsWith(".aac"))
+                    ) {
                         Regex("""^(\d{2})\s*-""").find(f.name)?.groupValues?.get(1)?.toIntOrNull()
                     } else null
                 } ?: emptyList()
+                val nextNum = if (existingNumbers.isEmpty()) 1 else (existingNumbers.maxOrNull() ?: 0) + 1
+                "%02d".format(nextNum)
+            }
 
-                val nextNumInTarget = if (existingInTarget.isEmpty()) 1 else (existingInTarget.maxOrNull() ?: 0) + 1
-                val targetTrackNumStr = "%02d".format(nextNumInTarget)
-                val targetBaseName = "$targetTrackNumStr - $safeArtist - ${sanitize(currentTitle)}"
-                var targetCandidate = File(newAlbumDir, "$targetBaseName.$ext")
-                var dup = 1
-                while (targetCandidate.exists()) {
-                    targetCandidate = File(newAlbumDir, "${targetBaseName}_%02d.$ext".format(dup++))
-                }
+            val targetBaseName = "$trackNumStr - $safeArtist - $safeTitle"
+            var targetCandidate = File(targetDir, "$targetBaseName.$ext")
+            var dup = 1
+            while (targetCandidate.exists() && targetCandidate.canonicalPath != fileToFinalize.canonicalPath) {
+                targetCandidate = File(targetDir, "${targetBaseName}_%02d.$ext".format(dup++))
+            }
 
+            var targetAudioFile = fileToFinalize
+            if (fileToFinalize.canonicalPath != targetCandidate.canonicalPath) {
                 if (fileToFinalize.renameTo(targetCandidate)) {
-                    targetAudioFile = targetCandidate
                     val oldDir = fileToFinalize.parentFile
-                    targetDir = newAlbumDir
-
-                    // Clean up empty Teadmata album folder if empty
-                    if (oldDir != null && oldDir.listFiles().isNullOrEmpty()) {
+                    targetAudioFile = targetCandidate
+                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
                         oldDir.delete()
                     }
                 }
@@ -375,7 +430,7 @@ class StreamRecordingCoordinator(
                 album = discoveredAlbum,
                 year = enriched?.year,
                 genre = enriched?.genre,
-                trackNumber = Regex("""^(\d{2})\s*-""").find(targetAudioFile.name)?.groupValues?.get(1)?.toIntOrNull(),
+                trackNumber = officialTrackNum ?: Regex("""^(\d{2})\s*-""").find(targetAudioFile.name)?.groupValues?.get(1)?.toIntOrNull(),
                 lyrics = enriched?.lyrics,
                 station = currentStationName,
                 stationUrl = currentStreamUrl,

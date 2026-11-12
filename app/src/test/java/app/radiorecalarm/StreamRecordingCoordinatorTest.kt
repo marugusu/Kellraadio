@@ -179,19 +179,24 @@ class StreamRecordingCoordinatorTest {
     }
 
     @Test
-    fun `appends duplicate index when identical track is recorded again`() {
+    fun `skips and discards duplicate track when identical complete track is recorded again`() {
+        // Start mid-song with Metallica so that subsequent tracks are complete
         coordinator.startRecording(
             stationName = "Rock FM",
             streamUrl = "https://icecast.err.ee/raadio2.mp3",
-            initialRawMetadata = "Queen - Bohemian Rhapsody"
+            initialRawMetadata = "Metallica - Enter Sandman"
         )
+        coordinator.onStreamBytes("MetChunk".toByteArray(), 0, 8)
+
+        // Queen begins cleanly at boundary (complete track)
+        coordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
         coordinator.onStreamBytes("Audio1".toByteArray(), 0, 6)
 
-        // Another song played
-        coordinator.onMetadataChanged("Metallica - Enter Sandman")
+        // Transition to next song (finalizes Queen as complete)
+        coordinator.onMetadataChanged("ACDC - Back in Black")
         coordinator.onStreamBytes("Audio2".toByteArray(), 0, 6)
 
-        // Bohemian Rhapsody played again
+        // Queen played again at boundary (complete duplicate)
         coordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
         coordinator.onStreamBytes("Audio3".toByteArray(), 0, 6)
 
@@ -200,9 +205,87 @@ class StreamRecordingCoordinatorTest {
         val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
         val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
 
-        assertEquals(2, files.size)
+        // Smart duplicate protection should discard the second copy
+        assertEquals(1, files.size)
         assertEquals("01 - Queen - Bohemian Rhapsody.mp3", files[0].name)
-        assertEquals("01 - Queen - Bohemian Rhapsody_01.mp3", files[1].name)
+    }
+
+    @Test
+    fun `replaces partial track when complete track of the same song is recorded later`() {
+        // Start mid-song with Queen (partial track)
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        coordinator.onStreamBytes("PartialAudio".toByteArray(), 0, 12)
+
+        // Transition to next song (Queen partial track is finalized with partial=true)
+        coordinator.onMetadataChanged("Metallica - Enter Sandman")
+        coordinator.onStreamBytes("MetAudio".toByteArray(), 0, 8)
+
+        val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
+        val jsonBefore = File(albumDir, "01 - Queen - Bohemian Rhapsody.json")
+        assertTrue(jsonBefore.exists())
+        assertTrue(jsonBefore.readText().contains("\"partial\": true"))
+
+        // Queen plays again at boundary (complete track)
+        coordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
+        coordinator.onStreamBytes("CompleteAudio".toByteArray(), 0, 13)
+
+        coordinator.stopRecording()
+
+        val audioFiles = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") } ?: emptyList()
+        assertEquals(1, audioFiles.size)
+        assertEquals("01 - Queen - Bohemian Rhapsody.mp3", audioFiles[0].name)
+        assertEquals("CompleteAudio", audioFiles[0].readText())
+
+        val jsonAfter = File(albumDir, "01 - Queen - Bohemian Rhapsody.json")
+        assertTrue(jsonAfter.exists())
+        assertTrue(jsonAfter.readText().contains("\"partial\": false"))
+    }
+
+    @Test
+    fun `uses official trackNumber from metadata fetcher when available`() {
+        val fakeFetcher = MetadataFetcher { artist, title ->
+            SongAdditionalInfo(
+                album = "A Night at the Opera",
+                year = "1975",
+                genre = "Classic Rock",
+                trackNumber = 11,
+                coverArtUrl = "https://example.com/cover.jpg"
+            )
+        }
+        val fakeDownloader = CoverArtDownloader { _, targetFile ->
+            targetFile.writeText("fake-jpeg")
+            true
+        }
+
+        coordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { 1000000L },
+            metadataFetcher = fakeFetcher,
+            coverArtDownloader = fakeDownloader,
+            minDurationSeconds = 0L
+        )
+
+        coordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+        coordinator.onStreamBytes("TrackBytes".toByteArray(), 0, 10)
+        coordinator.stopRecording()
+
+        val albumDir = File(baseDir, "Muusika/Queen/A Night at the Opera")
+        assertTrue(albumDir.exists())
+
+        val audioFile = File(albumDir, "11 - Queen - Bohemian Rhapsody.mp3")
+        assertTrue("Expected 11 - Queen - Bohemian Rhapsody.mp3 to exist", audioFile.exists())
+
+        val jsonFile = File(albumDir, "11 - Queen - Bohemian Rhapsody.json")
+        assertTrue(jsonFile.exists())
+        assertTrue(jsonFile.readText().contains("\"trackNumber\": 11"))
     }
 
     @Test

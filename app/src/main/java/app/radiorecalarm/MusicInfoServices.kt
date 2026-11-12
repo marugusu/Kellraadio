@@ -28,7 +28,8 @@ data class SongAdditionalInfo(
     val coverArtUrl: String? = null,
     val album: String? = null,
     val year: String? = null,
-    val genre: String? = null
+    val genre: String? = null,
+    val trackNumber: Int? = null
 )
 
 // --- 2. API VASTUSTE MUDELID ---
@@ -48,7 +49,8 @@ data class ItunesResult(
     @SerialName("artworkUrl100") val artworkUrl100: String? = null,
     val collectionName: String? = null,
     val releaseDate: String? = null,
-    val primaryGenreName: String? = null
+    val primaryGenreName: String? = null,
+    val trackNumber: Int? = null
 )
 
 @Serializable
@@ -67,7 +69,20 @@ data class MbRelease(
     val id: String,
     val title: String,
     val date: String? = null,
-    val status: String? = null
+    val status: String? = null,
+    val media: List<MbMedia> = emptyList()
+)
+
+@Serializable
+data class MbMedia(
+    val position: Int? = null,
+    val track: List<MbTrack> = emptyList()
+)
+
+@Serializable
+data class MbTrack(
+    val number: String? = null,
+    val position: Int? = null
 )
 
 // --- 3. API LIIDESED ---
@@ -177,6 +192,7 @@ object MusicInfoRepository {
         var foundAlbum: String? = null
         var foundYear: String? = null
         var foundGenre: String? = null
+        var foundTrackNumber: Int? = null
 
         // --- 1. METAANDMED ---
         try {
@@ -188,7 +204,8 @@ object MusicInfoRepository {
                 foundAlbum = item.collectionName
                 foundGenre = item.primaryGenreName
                 foundYear = item.releaseDate?.take(4)
-                Log.d(TAG, "✅ iTunes: OK")
+                foundTrackNumber = item.trackNumber
+                Log.d(TAG, "✅ iTunes: OK (album=$foundAlbum, track=$foundTrackNumber)")
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -199,7 +216,7 @@ object MusicInfoRepository {
             }
         }
 
-        if (foundCover == null) {
+        if (foundCover == null || foundAlbum == null || foundTrackNumber == null) {
             try {
                 Log.d(TAG, "--> 2. Küsin MusicBrainz...")
                 val query = "artist:\"$artist\" AND recording:\"$title\""
@@ -208,10 +225,20 @@ object MusicInfoRepository {
                     val recording = mbResponse.recordings[0]
                     val bestRelease = recording.releases.firstOrNull { it.status == "Official" } ?: recording.releases.firstOrNull()
                     if (bestRelease != null) {
-                        foundCover = "https://coverartarchive.org/release/${bestRelease.id}/front"
-                        foundAlbum = bestRelease.title
-                        foundYear = bestRelease.date?.take(4)
-                        Log.d(TAG, "✅ MusicBrainz: OK")
+                        if (foundCover == null) {
+                            foundCover = "https://coverartarchive.org/release/${bestRelease.id}/front"
+                        }
+                        if (foundAlbum == null) {
+                            foundAlbum = bestRelease.title
+                        }
+                        if (foundYear == null) {
+                            foundYear = bestRelease.date?.take(4)
+                        }
+                        if (foundTrackNumber == null) {
+                            val mbTrack = bestRelease.media.firstOrNull()?.track?.firstOrNull()
+                            foundTrackNumber = mbTrack?.number?.toIntOrNull() ?: mbTrack?.position
+                        }
+                        Log.d(TAG, "✅ MusicBrainz: OK (album=$foundAlbum, track=$foundTrackNumber)")
                     }
                 }
             } catch (e: Exception) {
@@ -229,7 +256,8 @@ object MusicInfoRepository {
             coverArtUrl = foundCover,
             album = foundAlbum,
             year = foundYear,
-            genre = foundGenre
+            genre = foundGenre,
+            trackNumber = foundTrackNumber
         )
         
         // Saada kätteolev info (pilt/album) kohe välja
