@@ -237,7 +237,7 @@
     "category": "Sky",
     "priority": 1300,
     "countrycode": "EE",
-    "fallback_url": "https://edge02.cdn.bitflip.ee:8888/rck"
+    "fallback_url": "https://stream.skymedia.ee/live/rck"
   },
   "retro_fm": {
     "id": 10,
@@ -245,7 +245,7 @@
     "category": "Sky",
     "priority": 1310,
     "countrycode": "EE",
-    "fallback_url": "https://edge02.cdn.bitflip.ee:8888/RETRO?_i=258f436b"
+    "fallback_url": "https://stream.skymedia.ee/live/RETRO"
   },
   "retro_fm_eesti": {
     "id": 11,
@@ -301,7 +301,7 @@
     "category": "Sky",
     "priority": 1380,
     "countrycode": "EE",
-    "fallback_url": "https://edge03.cdn.bitflip.ee:8888/RetroJ6ulud?_i=c2964188"
+    "fallback_url": "https://stream.skymedia.ee/live/RetroJ6ulud"
   },
   "retro_disco": {
     "id": 77,
