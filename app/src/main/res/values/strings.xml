@@ -44,6 +44,8 @@
     <string name="alarm_add_new">Add alarm</string>
     <string name="alarm_set_title">Set Alarm</string>
     <string name="alarm_edit_title">Edit Alarm</string>
+    <string name="alarm_record_audio_title">Record broadcast</string>
+    <string name="alarm_record_audio_desc">Automatically record station when alarm starts</string>
     <string name="alarm_toast_saved">Alarm saved!</string>
     <string name="alarm_toast_deleted">Alarm deleted!</string>
     <string name="timer_dialog_title">Sleep Timer</string>

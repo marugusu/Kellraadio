@@ -550,7 +550,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun closeEditStationDialog() { _uiState.update { it.copy(stationToEdit = null) } }
 
-    fun saveAlarm(hour: Int, minute: Int, days: Set<Int>) {
+    fun saveAlarm(hour: Int, minute: Int, days: Set<Int>, recordAudio: Boolean = false) {
         val alarmToEdit = _uiState.value.alarmToEdit
         val station = if (alarmToEdit != null) {
             _uiState.value.stations.find { it.name == alarmToEdit.stationName }
@@ -560,10 +560,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val alarm = alarmToEdit?.copy(
             hour = hour, minute = minute, days = days,
-            stationName = station.name, stationUrl = station.url, isEnabled = true
+            stationName = station.name, stationUrl = station.url, isEnabled = true,
+            recordAudio = recordAudio
         ) ?: Alarm(
             hour = hour, minute = minute, days = days,
-            stationName = station.name, stationUrl = station.url
+            stationName = station.name, stationUrl = station.url,
+            recordAudio = recordAudio
         )
 
         AlarmUtils.saveOrUpdateAlarm(context, alarm)

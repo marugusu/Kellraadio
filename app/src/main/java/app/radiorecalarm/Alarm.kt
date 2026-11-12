@@ -28,7 +28,10 @@ data class Alarm(
     val stationUrl: String,
 
     // See lipp võimaldab äratuse sisse/välja lülitada ilma seda kustutamata.
-    val isEnabled: Boolean = true
+    val isEnabled: Boolean = true,
+
+    // See lipp määrab, kas äratuse käivitumisel alustatakse ka jaama salvestamist.
+    val recordAudio: Boolean = false
 )
 
 /**

@@ -51,3 +51,11 @@ _Avoid_: Info fail, txt fail, nfo
 **Automaatne tükeldus (Auto-splitting)**:
 Salvestusvoo poolitamine uude faili reaalajas jaama metainfo muutumise hetkel.
 _Avoid_: Segmentimine, lõikamine
+
+**Äratuse salvestus (Alarm Recording)**:
+Salvestuse automaatne käivitamine koos äratuskella käivitumisega vastavalt konkreetse äratuse seadistusele.
+_Avoid_: Äratusripp, automaatsalvesti äratusel
+
+**Pidev salvestus (Continuous Recording)**:
+Rakenduse üldseadistus, mille sisselülitamisel salvestatakse helivoogu automaatselt kogu jaama esitamise vältel.
+_Avoid_: Taustaripp, lausripp

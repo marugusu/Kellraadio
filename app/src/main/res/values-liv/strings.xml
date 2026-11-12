@@ -31,6 +31,8 @@
 <string name="alarm_add_new">"Līsa āratõmiz"</string>
 <string name="alarm_set_title">"Sāddõ āratõmiz"</string>
 <string name="alarm_edit_title">"Mūot āratõmiz"</string>
+<string name="alarm_record_audio_title">"Salbõst ärātõst"</string>
+<string name="alarm_record_audio_desc">"Algā automātlizt salbõstamist ku ärātõz līb"</string>
 <string name="alarm_toast_saved">"Āratõmiz tāļtõd!"</string>
 <string name="alarm_toast_deleted">"Āratõmiz kistūtõd!"</string>
 <string name="timer_dialog_title">"Magāntaimer"</string>

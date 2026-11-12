@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -124,12 +125,24 @@ fun AlarmItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = String.format("%02d:%02d", alarm.hour, alarm.minute),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = String.format("%02d:%02d", alarm.hour, alarm.minute),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+
+                    if (alarm.recordAudio) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.FiberManualRecord,
+                            contentDescription = stringResource(R.string.alarm_record_audio_title),
+                            tint = if (alarm.isEnabled) MaterialTheme.colorScheme.error else Color.Gray,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(2.dp))
 

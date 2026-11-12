@@ -44,6 +44,8 @@
     <string name="alarm_add_new">Lisa äratus</string>
     <string name="alarm_set_title">Sea äratus</string>
     <string name="alarm_edit_title">Muuda äratust</string>
+    <string name="alarm_record_audio_title">Salvesta äratus</string>
+    <string name="alarm_record_audio_desc">Alusta äratuse helisedes automaatselt jaama salvestamist</string>
     <string name="alarm_toast_saved">Äratus salvestatud!</string>
     <string name="alarm_toast_deleted">Äratus kustutatud!</string>
     <string name="timer_dialog_title">Unetaimer</string>

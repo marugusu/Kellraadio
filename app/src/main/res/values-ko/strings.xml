@@ -39,6 +39,8 @@
     <string name="alarm_add_new">알람 추가</string>
     <string name="alarm_set_title">알람 설정</string>
     <string name="alarm_edit_title">알람 편집</string>
+    <string name="alarm_record_audio_title">방송 녹음</string>
+    <string name="alarm_record_audio_desc">알람이 울릴 때 자동으로 방송 녹음 시작</string>
     <string name="alarm_toast_saved">알람 저장됨!</string>
     <string name="alarm_toast_deleted">알람 삭제됨!</string>
     <string name="timer_dialog_title">취침 타이머</string>

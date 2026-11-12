@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [RadioStation::class, HistoryItem::class, Alarm::class], version = 9, exportSchema = false)
+@Database(entities = [RadioStation::class, HistoryItem::class, Alarm::class], version = 10, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -21,9 +21,16 @@ abstract class AppDatabase : RoomDatabase() {
         private var INSTANCE: AppDatabase? = null
 
         // MIGRATSIOON: Lisame favoriteOrder tulba
-        private val MIGRATION_8_9 = object : Migration(8, 9) {
+        val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE stations ADD COLUMN favoriteOrder INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        // MIGRATSIOON: Lisame recordAudio tulba äratustele (ADR-0005)
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE alarms ADD COLUMN recordAudio INTEGER NOT NULL DEFAULT 0")
             }
         }
 
@@ -34,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "raadio_database"
                 )
-                    .addMigrations(MIGRATION_8_9)
+                    .addMigrations(MIGRATION_8_9, MIGRATION_9_10)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
