@@ -169,6 +169,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.onStreamBytes("Audio2".toByteArray(), 0, 6)
 
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
         val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
@@ -201,6 +202,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.onStreamBytes("Audio3".toByteArray(), 0, 6)
 
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
         val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
@@ -223,6 +225,7 @@ class StreamRecordingCoordinatorTest {
         // Transition to next song (Queen partial track is finalized with partial=true)
         coordinator.onMetadataChanged("Metallica - Enter Sandman")
         coordinator.onStreamBytes("MetAudio".toByteArray(), 0, 8)
+        coordinator.awaitPendingFinalizations()
 
         val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
         val jsonBefore = File(albumDir, "01 - Queen - Bohemian Rhapsody.json")
@@ -234,6 +237,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.onStreamBytes("CompleteAudio".toByteArray(), 0, 13)
 
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val audioFiles = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") } ?: emptyList()
         assertEquals(1, audioFiles.size)
@@ -276,6 +280,7 @@ class StreamRecordingCoordinatorTest {
         )
         coordinator.onStreamBytes("TrackBytes".toByteArray(), 0, 10)
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val albumDir = File(baseDir, "Muusika/Queen/A Night at the Opera")
         assertTrue(albumDir.exists())
@@ -320,6 +325,7 @@ class StreamRecordingCoordinatorTest {
         val chunk = "QueenAudioStreamBytes".toByteArray()
         coordinator.onStreamBytes(chunk, 0, chunk.size)
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val albumDir = File(baseDir, "Muusika/Queen/A Night at the Opera")
         assertTrue(albumDir.exists())
@@ -362,6 +368,7 @@ class StreamRecordingCoordinatorTest {
         val chunk = "SomeBytes".toByteArray()
         coordinator.onStreamBytes(chunk, 0, chunk.size)
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val targetDir = File(baseDir, "Muusika/Tundmatu Esitaja/Teadmata album")
         val jsonFile = File(targetDir, "01 - Tundmatu Esitaja - Tundmatu Lugu.json")
@@ -391,6 +398,7 @@ class StreamRecordingCoordinatorTest {
         currentTime += 10000L
 
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val files = baseDir.walkTopDown().filter { it.isFile }.toList()
         assertEquals(0, files.size)
@@ -415,6 +423,7 @@ class StreamRecordingCoordinatorTest {
         currentTime += 35000L
 
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val audioFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
         assertEquals(1, audioFiles.size)
@@ -446,6 +455,7 @@ class StreamRecordingCoordinatorTest {
         currentTime += 50000L // 50s duration
 
         coordinator.stopRecording()
+        coordinator.awaitPendingFinalizations()
 
         val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.sortedBy { it.name }.toList()
         assertEquals(2, jsonFiles.size)
@@ -537,6 +547,138 @@ class StreamRecordingCoordinatorTest {
 
         assertFalse("Recording should halt when storage drops below 500 MB", dynamicSpaceCoordinator.isRecording)
         assertTrue("onLowStorage callback should be invoked on track transition", lowStorageTriggered)
+    }
+
+    @Test
+    fun `onMetadataChanged and stopRecording return immediately without blocking on slow metadata enrichment`() {
+        val slowFetcher = MetadataFetcher { _, _ ->
+            kotlinx.coroutines.delay(1500)
+            SongAdditionalInfo(album = "Slow Album")
+        }
+        var currentTime = 1000000L
+        val asyncCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            metadataFetcher = slowFetcher,
+            minDurationSeconds = 0L
+        )
+
+        asyncCoordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Radio Ga Ga"
+        )
+        asyncCoordinator.onStreamBytes("Bytes1".toByteArray(), 0, 6)
+        currentTime += 35000L
+
+        val transitionStart = System.nanoTime()
+        asyncCoordinator.onMetadataChanged("Queen - Killer Queen")
+        val transitionElapsedMs = (System.nanoTime() - transitionStart) / 1_000_000L
+        assertTrue("onMetadataChanged should not block (took ${transitionElapsedMs}ms)", transitionElapsedMs < 500L)
+
+        asyncCoordinator.onStreamBytes("Bytes2".toByteArray(), 0, 6)
+        currentTime += 35000L
+
+        var finalizedCount = -1
+        val latch = java.util.concurrent.CountDownLatch(1)
+        val stopStart = System.nanoTime()
+        asyncCoordinator.stopRecording { count ->
+            finalizedCount = count
+            latch.countDown()
+        }
+        val stopElapsedMs = (System.nanoTime() - stopStart) / 1_000_000L
+        assertTrue("stopRecording should not block (took ${stopElapsedMs}ms)", stopElapsedMs < 500L)
+
+        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals(2, finalizedCount)
+        assertEquals(2, asyncCoordinator.completedTrackCount)
+    }
+
+    @Test
+    fun `uses audio frame duration instead of wall clock so burst-buffered tracks over 30s are preserved`() {
+        var currentTime = 1000000L
+        val frameCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime } // default minDurationSeconds = 30s
+        )
+
+        frameCoordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Bohemian Rhapsody"
+        )
+
+        // Write 1200 valid MP3 frames (~31.3s of audio) while wall clock only advances by 2s (initial buffer burst)
+        val frame = AudioFrameAnalyzerTest.buildMp3Frame()
+        repeat(1200) {
+            frameCoordinator.onStreamBytes(frame, 0, frame.size)
+        }
+        currentTime += 2000L
+
+        frameCoordinator.stopRecording()
+        frameCoordinator.awaitPendingFinalizations()
+
+        val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.toList()
+        assertEquals(1, jsonFiles.size)
+        assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 31"))
+    }
+
+    @Test
+    fun `prunes short audio frames even when wall clock stalled beyond 30 seconds`() {
+        var currentTime = 1000000L
+        val frameCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime } // default minDurationSeconds = 30s
+        )
+
+        frameCoordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Station - Short Jingle"
+        )
+
+        // Write only ~5s of valid MP3 frames (200 frames) while wall clock advances 40s (network stall)
+        val frame = AudioFrameAnalyzerTest.buildMp3Frame()
+        repeat(200) {
+            frameCoordinator.onStreamBytes(frame, 0, frame.size)
+        }
+        currentTime += 40000L
+
+        frameCoordinator.stopRecording()
+        frameCoordinator.awaitPendingFinalizations()
+
+        val remainingFiles = baseDir.walkTopDown().filter { it.isFile }.toList()
+        assertEquals(0, remainingFiles.size)
+    }
+
+    @Test
+    fun `falls back to bitrate-based duration when valid frame headers are absent`() {
+        var currentTime = 1000000L
+        val bitrateCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime } // default minDurationSeconds = 30s
+        )
+
+        bitrateCoordinator.startRecording(
+            stationName = "Rock FM",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - We Will Rock You",
+            bitrate = "128 kbps"
+        )
+
+        // 128 kbps = 16,000 bytes/sec -> 512,000 bytes = 32s, even if wall clock only advances 1s
+        val rawPayload = ByteArray(16_000) { 0x11 }
+        repeat(32) {
+            bitrateCoordinator.onStreamBytes(rawPayload, 0, rawPayload.size)
+        }
+        currentTime += 1000L
+
+        bitrateCoordinator.stopRecording()
+        bitrateCoordinator.awaitPendingFinalizations()
+
+        val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.toList()
+        assertEquals(1, jsonFiles.size)
+        assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 32"))
     }
 }
 
