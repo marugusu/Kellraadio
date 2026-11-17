@@ -134,8 +134,13 @@ class RadioService : Service() {
     private val isRecording: Boolean get() = recordingCoordinator.isRecording
     private var recordingStartMillis = 0L
     private var recordingTimerJob: kotlinx.coroutines.Job? = null
-    private var pendingAutoRecord: Boolean = false
-    private var userManuallyStoppedRecordingForCurrentStation: Boolean = false
+    @Volatile private var pendingAutoRecord: Boolean = false
+    @Volatile private var userManuallyStoppedRecordingForCurrentStation: Boolean = false
+    @Volatile private var autoRecordArmedForStreamUrl: String? = null
+    @Volatile private var latestWireStreamTitle: String? = null
+    @Volatile private var latestWireIsAac: Boolean = false
+    @Volatile private var latestWireMetaInt: Int = -1
+    private val recordingControlLock = Any()
     private fun isContinuousRecordingEnabled(): Boolean = prefs.getBoolean(AppConfig.Recording.PREF_CONTINUOUS_RECORDING, false)
     private var progressJob: kotlinx.coroutines.Job? = null
 
@@ -326,7 +331,8 @@ class RadioService : Service() {
         
         updateExternalDevices(currentTitle, currentArtist)
         sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
-        if (recordingCoordinator.isRecording) {
+        // Kui striim ei kasuta ICY-metaint päist (metaInt <= 0), kasutame varuteena Player.Listener sündmust.
+        if (recordingCoordinator.isRecording && latestWireMetaInt <= 0) {
             val raw = trackTitleFromStream ?: ""
             serviceScope.launch(Dispatchers.IO) {
                 recordingCoordinator.onMetadataChanged(raw)
@@ -536,6 +542,7 @@ class RadioService : Service() {
                     val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
                     val action = if (isLocal) ACTION_PLAYER_PAUSED else ACTION_PLAYER_STOPPED
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(action))
+                    autoRecordArmedForStreamUrl = null
                     stopRecording()
                     pendingAutoRecord = false
                 }
@@ -781,34 +788,70 @@ class RadioService : Service() {
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
     }
 
-    private fun startRecording() {
-        if (isRecording || !::player.isInitialized || !player.isPlaying || currentStreamUrl.isEmpty() || currentStreamUrl.startsWith("file:")) {
+    private fun maybeStartAutoRecordingFromStream(openedUrl: String) {
+        if (isRecording) return
+        if (autoRecordArmedForStreamUrl != openedUrl) return
+        if (userManuallyStoppedRecordingForCurrentStation) return
+        if (!pendingAutoRecord && !isContinuousRecordingEnabled()) return
+
+        startRecording(fromStreamThread = true, streamUrlOverride = openedUrl)
+    }
+
+    private fun startRecording(fromStreamThread: Boolean = false, streamUrlOverride: String? = null) {
+        val targetUrl = streamUrlOverride ?: currentStreamUrl
+        if (targetUrl.isEmpty() || targetUrl.startsWith("file:")) {
+            return
+        }
+        if (!fromStreamThread && (!::player.isInitialized || !player.isPlaying)) {
             return
         }
 
-        try {
-            val rawMeta = if (currentArtist.isNotEmpty() && currentTitle.isNotEmpty()) {
-                "$currentArtist - $currentTitle"
-            } else {
-                currentStationName
+        val started = synchronized(recordingControlLock) {
+            if (isRecording) return@synchronized false
+
+            try {
+                val fallbackMeta = if (currentArtist.isNotEmpty() && currentTitle.isNotEmpty()) {
+                    "$currentArtist - $currentTitle"
+                } else {
+                    currentStationName
+                }
+                val initialMeta = latestWireStreamTitle ?: fallbackMeta
+                val isAacHint = latestWireIsAac || targetUrl.contains("aac", ignoreCase = true)
+
+                recordingCoordinator.startRecording(
+                    stationName = currentStationName,
+                    streamUrl = targetUrl,
+                    initialRawMetadata = initialMeta,
+                    bitrate = lastBitrateInfo.ifBlank { null },
+                    isAacHint = isAacHint
+                )
+
+                if (!isRecording) {
+                    Log.w(TAG, "startRecording: Salvestamist ei alustatud (nt vaba kettamahu puudumise tõttu).")
+                    sessionScope.launch {
+                        sendRecordingStatus()
+                        updateNotification()
+                    }
+                    return@synchronized false
+                }
+
+                recordingStartMillis = android.os.SystemClock.elapsedRealtime()
+                Log.i(TAG, "Alustati salvestamist: jaam=$currentStationName (fromStreamThread=$fromStreamThread)")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Salvestamise alustamise viga: ${e.message}", e)
+                sessionScope.launch {
+                    Toast.makeText(applicationContext, getString(R.string.recording_failed), Toast.LENGTH_SHORT).show()
+                }
+                stopRecording(failed = true)
+                false
             }
+        }
 
-            recordingCoordinator.startRecording(
-                stationName = currentStationName,
-                streamUrl = currentStreamUrl,
-                initialRawMetadata = rawMeta,
-                bitrate = lastBitrateInfo
-            )
+        if (!started) return
 
-            if (!isRecording) {
-                Log.w(TAG, "startRecording: Salvestamist ei alustatud (nt vaba kettamahu puudumise tõttu).")
-                sendRecordingStatus()
-                updateNotification()
-                return
-            }
-
-            recordingStartMillis = android.os.SystemClock.elapsedRealtime()
-            Log.i(TAG, "Alustati salvestamist: jaam=$currentStationName")
+        sessionScope.launch {
+            if (!isRecording) return@launch
             sendRecordingStatus()
             updateNotification()
 
@@ -827,31 +870,36 @@ class RadioService : Service() {
                     }
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Salvestamise alustamise viga: ${e.message}", e)
-            Toast.makeText(applicationContext, getString(R.string.recording_failed), Toast.LENGTH_SHORT).show()
-            stopRecording(failed = true)
         }
     }
 
     private fun stopRecording(failed: Boolean = false) {
-        if (!isRecording) return
+        synchronized(recordingControlLock) {
+            if (!isRecording) return
 
-        recordingTimerJob?.cancel()
-        recordingTimerJob = null
+            recordingTimerJob?.cancel()
+            recordingTimerJob = null
 
-        recordingCoordinator.stopRecording()
-        val countAfter = recordingCoordinator.completedTrackCount
-
-        Log.i(TAG, "Salvestamine peatatud. Kokku salvestatud $countAfter pala.")
-        sendRecordingStatus()
-        updateNotification()
-
-        if (!failed && countAfter > 0) {
-            val tracksStr = getString(R.string.recording_tracks_saved, countAfter)
-            serviceScope.launch(Dispatchers.Main) {
-                Toast.makeText(applicationContext, getString(R.string.recording_toast_saved, tracksStr), Toast.LENGTH_LONG).show()
+            recordingCoordinator.stopRecording { finalCount ->
+                Log.i(TAG, "Salvestamine peatatud. Kokku salvestatud $finalCount pala.")
+                sessionScope.launch {
+                    sendRecordingStatus()
+                    if (!failed && finalCount > 0) {
+                        val tracksStr = getString(R.string.recording_tracks_saved, finalCount)
+                        Toast.makeText(applicationContext, getString(R.string.recording_toast_saved, tracksStr), Toast.LENGTH_LONG).show()
+                    }
+                }
             }
+        }
+
+        val refreshStoppedUi = {
+            sendRecordingStatus()
+            updateNotification()
+        }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            refreshStoppedUi()
+        } else {
+            sessionScope.launch { refreshStoppedUi() }
         }
     }
 
@@ -896,18 +944,38 @@ class RadioService : Service() {
         }
 
         val customDataSourceFactory = DataSource.Factory {
-            val ds = RetryingHttpDataSource(dataSourceFactory.createDataSource()) { buffer, offset, length ->
-                if (isRecording) {
-                    try {
-                        recordingCoordinator.onStreamBytes(buffer, offset, length)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Kirjutamise viga salvestamisel: ${e.message}")
-                        serviceScope.launch(Dispatchers.Main) {
-                            stopRecording(failed = true)
+            val ds = RetryingHttpDataSource(
+                delegate = dataSourceFactory.createDataSource(),
+                initialTitleProvider = { latestWireStreamTitle },
+                shouldAlignToFrame = { isRecording },
+                onStreamOpened = { metaInt, isAac, icyBr ->
+                    latestWireMetaInt = metaInt
+                    latestWireIsAac = isAac
+                    if (!icyBr.isNullOrBlank()) {
+                        lastBitrateInfo = "$icyBr kbps"
+                        recordingCoordinator.setBitrate(lastBitrateInfo)
+                    }
+                },
+                onMetadataBoundary = { title ->
+                    latestWireStreamTitle = title
+                    if (isRecording) {
+                        recordingCoordinator.onMetadataChanged(title)
+                    }
+                },
+                onBytesRead = { openedUrl, buffer, offset, length ->
+                    maybeStartAutoRecordingFromStream(openedUrl)
+                    if (isRecording) {
+                        try {
+                            recordingCoordinator.onStreamBytes(buffer, offset, length)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Kirjutamise viga salvestamisel: ${e.message}")
+                            serviceScope.launch(Dispatchers.Main) {
+                                stopRecording(failed = true)
+                            }
                         }
                     }
                 }
-            }
+            )
             activeDataSource = ds
             ds
         }
@@ -1023,10 +1091,12 @@ class RadioService : Service() {
             ACTION_STOP_RECORDING -> {
                 userManuallyStoppedRecordingForCurrentStation = true
                 pendingAutoRecord = false
+                autoRecordArmedForStreamUrl = null
                 stopRecording()
                 return START_STICKY
             }
             ACTION_PAUSE -> {
+                autoRecordArmedForStreamUrl = null
                 player.pause()
                 if (wakeLock?.isHeld == true) wakeLock?.release()
                 metadataPushJob?.cancel()
@@ -1145,6 +1215,11 @@ class RadioService : Service() {
         metadataPushJob?.cancel()
         metadataPushJob = null
 
+        autoRecordArmedForStreamUrl = null
+        latestWireStreamTitle = null
+        latestWireMetaInt = -1
+        latestWireIsAac = false
+
         val wasRecordingBeforeSwitch = isRecording
         stopRecording()
         userManuallyStoppedRecordingForCurrentStation = false
@@ -1230,6 +1305,9 @@ class RadioService : Service() {
         player.updateTrackMetadata(initialMeta)
         player.streamStartTime = SystemClock.elapsedRealtime()
 
+        if (pendingAutoRecord || isContinuousRecordingEnabled()) {
+            autoRecordArmedForStreamUrl = streamUrl
+        }
         player.prepare()
         player.play()
         updateExternalDevices(currentTitle, currentArtist)
@@ -1261,6 +1339,7 @@ class RadioService : Service() {
         wasNoisyDuringCall = false
         stopSleepTimer()
         pendingAutoRecord = false
+        autoRecordArmedForStreamUrl = null
         stopRecording()
         stopProgressTracker()
         metadataPushJob?.cancel()
@@ -1378,12 +1457,15 @@ class RadioService : Service() {
 @androidx.annotation.OptIn(UnstableApi::class)
 private class RetryingHttpDataSource(
     private val delegate: HttpDataSource,
-    private val onBytesRead: (ByteArray, Int, Int) -> Unit
+    private val initialTitleProvider: () -> String?,
+    private val shouldAlignToFrame: () -> Boolean,
+    private val onStreamOpened: (metaInt: Int, isAac: Boolean, icyBr: String?) -> Unit,
+    private val onMetadataBoundary: (String) -> Unit,
+    private val onBytesRead: (String, ByteArray, Int, Int) -> Unit
 ) : HttpDataSource by delegate {
 
-    private var metaInt: Int = -1
-    private var bytesUntilMeta = -1
-    private var metaLengthBytesRemaining = 0
+    private var streamProcessor: IcyStreamProcessor? = null
+    private var openedUrl: String = ""
 
     fun invalidateConnection() {
         Log.w("RetryingDataSource", "Tühistan aktiivse ühenduse sokli sulgemisega...")
@@ -1396,57 +1478,53 @@ private class RetryingHttpDataSource(
 
     override fun open(dataSpec: DataSpec): Long {
         val result = delegate.open(dataSpec)
+        openedUrl = dataSpec.uri.toString()
         val headers = delegate.responseHeaders
+
         var metaIntStr: String? = null
+        var contentType: String? = null
+        var icyBr: String? = null
         for ((key, value) in headers) {
-            if (key.equals("icy-metaint", ignoreCase = true)) {
-                metaIntStr = value.firstOrNull()
-                break
+            when {
+                key.equals("icy-metaint", ignoreCase = true) -> metaIntStr = value.firstOrNull()
+                key.equals("content-type", ignoreCase = true) -> contentType = value.firstOrNull()
+                key.equals("icy-br", ignoreCase = true) -> icyBr = value.firstOrNull()
             }
         }
-        metaInt = metaIntStr?.toIntOrNull() ?: -1
-        bytesUntilMeta = metaInt
-        metaLengthBytesRemaining = 0
-        Log.i("RetryingDataSource", "Ühendus avatud. icy-metaint: $metaInt")
+
+        val metaInt = metaIntStr?.toIntOrNull() ?: -1
+        val isAac = openedUrl.contains("aac", ignoreCase = true) ||
+            (contentType?.contains("aac", ignoreCase = true) == true) ||
+            (contentType?.contains("mp4", ignoreCase = true) == true)
+
+        streamProcessor = IcyStreamProcessor(
+            metaInt = metaInt,
+            preferAac = isAac,
+            initialTitle = initialTitleProvider(),
+            shouldAlignToFrame = shouldAlignToFrame,
+            onAudioBytes = { buf, off, len -> onBytesRead(openedUrl, buf, off, len) },
+            onMetadataBoundary = onMetadataBoundary
+        )
+
+        onStreamOpened(metaInt, isAac, icyBr)
+        Log.i("RetryingDataSource", "Ühendus avatud. icy-metaint: $metaInt, isAac: $isAac")
         return result
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
         val result = delegate.read(buffer, offset, length)
         if (result > 0) {
-            feedStrippedBytes(buffer, offset, result)
+            streamProcessor?.process(buffer, offset, result)
         }
         return result
     }
 
-    private fun feedStrippedBytes(buffer: ByteArray, offset: Int, length: Int) {
-        if (metaInt <= 0) {
-            onBytesRead(buffer, offset, length)
-            return
-        }
-
-        var curr = offset
-        val end = offset + length
-
-        while (curr < end) {
-            if (metaLengthBytesRemaining > 0) {
-                val chunk = Math.min(end - curr, metaLengthBytesRemaining)
-                curr += chunk
-                metaLengthBytesRemaining -= chunk
-            } else if (bytesUntilMeta == 0) {
-                val lengthByte = buffer[curr].toInt() and 0xFF
-                curr++
-                val metaLength = lengthByte * 16
-                if (metaLength > 0) {
-                    metaLengthBytesRemaining = metaLength
-                }
-                bytesUntilMeta = metaInt
-            } else {
-                val chunk = Math.min(end - curr, bytesUntilMeta)
-                onBytesRead(buffer, curr, chunk)
-                curr += chunk
-                bytesUntilMeta -= chunk
-            }
+    override fun close() {
+        try {
+            streamProcessor?.flush()
+        } finally {
+            streamProcessor = null
+            delegate.close()
         }
     }
 }

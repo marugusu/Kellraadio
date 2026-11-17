@@ -1,10 +1,11 @@
 package app.radiorecalarm
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.lastOrNull
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -14,11 +15,11 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.atomic.AtomicInteger
 
 fun interface MetadataFetcher {
     suspend fun fetch(artist: String, title: String): SongAdditionalInfo?
@@ -79,12 +80,32 @@ class StreamRecordingCoordinator(
     private val storageSpaceChecker: StorageSpaceChecker = AndroidStorageSpaceChecker(),
     private val onLowStorage: (() -> Unit)? = null
 ) {
+    private class RecordingSession(val completedCount: AtomicInteger = AtomicInteger(0))
+
+    private data class PendingTrackSnapshot(
+        val session: RecordingSession,
+        val fileToFinalize: File,
+        val enrichmentDeferred: Deferred<SongAdditionalInfo?>?,
+        val stationName: String,
+        val streamUrl: String,
+        val artist: String,
+        val title: String,
+        val bitrate: String?,
+        val ext: String,
+        val isShow: Boolean,
+        val isPartial: Boolean,
+        val trackStartTimeMs: Long,
+        val closedAtMs: Long,
+        val bytesWritten: Long,
+        val durationTracker: AudioDurationTracker?
+    )
+
     @Volatile
     var isRecording: Boolean = false
         private set
 
-    var completedTrackCount: Int = 0
-        private set
+    val completedTrackCount: Int
+        get() = (activeSession ?: lastSession)?.completedCount?.get() ?: 0
 
     var currentStationName: String = ""
         private set
@@ -101,15 +122,20 @@ class StreamRecordingCoordinator(
     var isCurrentShow: Boolean = false
         private set
 
+    private var isCurrentStreamAac: Boolean = false
     private var currentOutputStream: OutputStream? = null
     var currentFile: File? = null
         private set
 
     private var trackStartTimeMs: Long = 0L
     private var isPartialTrack: Boolean = false
+    private var currentBytesWritten: Long = 0L
+    private var currentDurationTracker: AudioDurationTracker? = null
+    private var currentEnrichmentDeferred: Deferred<SongAdditionalInfo?>? = null
 
-    private var enrichmentJob: Job? = null
-    private var currentEnrichedInfo: SongAdditionalInfo? = null
+    private var activeSession: RecordingSession? = null
+    private var lastSession: RecordingSession? = null
+    private var lastFinalizationJob: Job? = null
 
     private val coordinatorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
@@ -128,7 +154,8 @@ class StreamRecordingCoordinator(
             if (availableBytes < AppConfig.Recording.MIN_FREE_STORAGE_BYTES) {
                 if (isRecording) {
                     isRecording = false
-                    closeCurrentTrack()
+                    closeCurrentTrackLocked()
+                    activeSession = null
                 }
                 onLowStorage?.invoke()
                 return false
@@ -141,29 +168,55 @@ class StreamRecordingCoordinator(
         stationName: String,
         streamUrl: String,
         initialRawMetadata: String = "",
-        bitrate: String? = null
+        bitrate: String? = null,
+        isAacHint: Boolean? = null
     ) {
         synchronized(lock) {
             if (isRecording) return
             if (!checkStorageSafeguard()) return
 
+            val session = RecordingSession()
+            activeSession = session
+            lastSession = session
+
             currentStationName = stationName
             currentStreamUrl = streamUrl
             currentBitrate = bitrate
+            isCurrentStreamAac = isAacHint ?: streamUrl.contains("aac", ignoreCase = true)
             isRecording = true
-            completedTrackCount = 0
             isPartialTrack = true // First track started mid-stream
 
-            openNewTrack(initialRawMetadata)
+            openNewTrackLocked(initialRawMetadata)
         }
     }
 
-    fun stopRecording() {
+    fun stopRecording(onAllFinalized: ((Int) -> Unit)? = null) {
         synchronized(lock) {
-            if (!isRecording) return
+            if (!isRecording) {
+                if (onAllFinalized != null) {
+                    val session = lastSession
+                    val prevJob = lastFinalizationJob
+                    val job = coordinatorScope.launch {
+                        prevJob?.join()
+                        onAllFinalized(session?.completedCount?.get() ?: 0)
+                    }
+                    lastFinalizationJob = job
+                }
+                return
+            }
             isRecording = false
+            closeCurrentTrackLocked(onSessionFinalized = onAllFinalized)
+            activeSession = null
+        }
+    }
 
-            closeCurrentTrack()
+    /**
+     * Blocks until all queued track finalizations have completed. Intended for deterministic tests.
+     */
+    fun awaitPendingFinalizations() {
+        val job = synchronized(lock) { lastFinalizationJob }
+        if (job != null) {
+            runBlocking { job.join() }
         }
     }
 
@@ -174,7 +227,9 @@ class StreamRecordingCoordinator(
             if (!isRecording) return
             try {
                 currentOutputStream?.write(buffer, offset, length)
-            } catch (e: Exception) {
+                currentDurationTracker?.consume(buffer, offset, length)
+                currentBytesWritten += length.toLong()
+            } catch (_: Exception) {
                 // Ignore or handle write error
             }
         }
@@ -191,9 +246,9 @@ class StreamRecordingCoordinator(
 
             if (!checkStorageSafeguard()) return
 
-            closeCurrentTrack()
+            closeCurrentTrackLocked()
             isPartialTrack = false // Subsequent tracks started at the track transition boundary
-            openNewTrack(rawMetadata)
+            openNewTrackLocked(rawMetadata)
         }
     }
 
@@ -212,7 +267,7 @@ class StreamRecordingCoordinator(
         return false
     }
 
-    private fun openNewTrack(rawMetadata: String) {
+    private fun openNewTrackLocked(rawMetadata: String) {
         val cleaned = metadataHelper.sanitizeRawInput(rawMetadata)
         currentRawMetadata = cleaned
 
@@ -220,12 +275,14 @@ class StreamRecordingCoordinator(
         currentArtist = parsed.artist
         currentTitle = parsed.title
         trackStartTimeMs = clock()
-        currentEnrichedInfo = null
+        currentBytesWritten = 0L
+        currentDurationTracker = AudioDurationTracker(preferAac = isCurrentStreamAac)
+        currentEnrichmentDeferred = null
 
         isCurrentShow = isShow(currentArtist, currentTitle, currentStationName)
 
         val rootDir = baseDirProvider()
-        val ext = if (currentStreamUrl.contains("aac", ignoreCase = true)) "aac" else "mp3"
+        val ext = if (isCurrentStreamAac) "aac" else "mp3"
 
         val file: File
         if (isCurrentShow) {
@@ -233,7 +290,7 @@ class StreamRecordingCoordinator(
             val targetDir = File(File(rootDir, AppConfig.Recording.DIR_SHOWS), safeStation)
             if (!targetDir.exists()) targetDir.mkdirs()
 
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(clock()))
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(trackStartTimeMs))
             val baseName = "${safeStation}_$timestamp"
             var candidate = File(targetDir, "$baseName.$ext")
             var counter = 1
@@ -274,15 +331,13 @@ class StreamRecordingCoordinator(
             }
             file = candidate
 
-            // Launch background metadata query
             val artistForQuery = currentArtist
             val titleForQuery = currentTitle
-            enrichmentJob = coordinatorScope.launch {
+            currentEnrichmentDeferred = coordinatorScope.async {
                 try {
-                    val info = metadataFetcher.fetch(artistForQuery, titleForQuery)
-                    currentEnrichedInfo = info
-                } catch (e: Exception) {
-                    currentEnrichedInfo = null
+                    metadataFetcher.fetch(artistForQuery, titleForQuery)
+                } catch (_: Exception) {
+                    null
                 }
             }
         }
@@ -291,31 +346,104 @@ class StreamRecordingCoordinator(
         currentOutputStream = FileOutputStream(file)
     }
 
-    private fun closeCurrentTrack() {
+    private fun closeCurrentTrackLocked(onSessionFinalized: ((Int) -> Unit)? = null) {
         val fileToFinalize = currentFile
+        val enrichmentDeferred = currentEnrichmentDeferred
+        val durationTracker = currentDurationTracker
+        val bytesWritten = currentBytesWritten
+        val session = activeSession ?: lastSession
+
         try {
             currentOutputStream?.flush()
             currentOutputStream?.close()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Ignore close error
         } finally {
             currentOutputStream = null
             currentFile = null
+            currentEnrichmentDeferred = null
+            currentDurationTracker = null
+            currentBytesWritten = 0L
         }
 
-        if (fileToFinalize == null || !fileToFinalize.exists()) return
+        val snapshot = if (fileToFinalize != null && fileToFinalize.exists() && session != null) {
+            PendingTrackSnapshot(
+                session = session,
+                fileToFinalize = fileToFinalize,
+                enrichmentDeferred = enrichmentDeferred,
+                stationName = currentStationName,
+                streamUrl = currentStreamUrl,
+                artist = currentArtist,
+                title = currentTitle,
+                bitrate = currentBitrate,
+                ext = if (isCurrentStreamAac) "aac" else "mp3",
+                isShow = isCurrentShow,
+                isPartial = isPartialTrack,
+                trackStartTimeMs = trackStartTimeMs,
+                closedAtMs = clock(),
+                bytesWritten = bytesWritten,
+                durationTracker = durationTracker
+            )
+        } else {
+            null
+        }
 
-        // Await background enrichment with short timeout
-        runBlocking {
-            withTimeoutOrNull(AppConfig.Recording.ENRICHMENT_TIMEOUT_MS) {
-                enrichmentJob?.join()
+        if (snapshot == null && onSessionFinalized == null) return
+
+        val previousJob = lastFinalizationJob
+        val job = coordinatorScope.launch {
+            previousJob?.join()
+            if (snapshot != null) {
+                finalizeTrack(snapshot)
+            }
+            if (onSessionFinalized != null) {
+                onSessionFinalized(session?.completedCount?.get() ?: 0)
             }
         }
-        enrichmentJob = null
+        lastFinalizationJob = job
+    }
+
+    private fun nextSequentialTrackNumStr(targetDir: File, excludeFile: File): String {
+        val existingNumbers = targetDir.listFiles()?.mapNotNull { f ->
+            if (f.isFile && f.canonicalPath != excludeFile.canonicalPath &&
+                (f.name.endsWith(".mp3") || f.name.endsWith(".aac"))
+            ) {
+                Regex("""^(\d{2})\s*-""").find(f.name)?.groupValues?.get(1)?.toIntOrNull()
+            } else null
+        } ?: emptyList()
+        val nextNum = if (existingNumbers.isEmpty()) 1 else (existingNumbers.maxOrNull() ?: 0) + 1
+        return "%02d".format(nextNum)
+    }
+
+    private fun parseBitrateBps(bitrate: String?): Long {
+        if (bitrate.isNullOrBlank()) return 0L
+        val kbps = Regex("""(\d+)""").find(bitrate)?.groupValues?.get(1)?.toLongOrNull() ?: return 0L
+        return if (kbps > 0L) kbps * 1000L else 0L
+    }
+
+    private fun computeDurationSeconds(snapshot: PendingTrackSnapshot): Long {
+        val tracker = snapshot.durationTracker
+        if (tracker != null && tracker.validFrameCount >= 2L) {
+            return (tracker.totalDurationMicros / 1_000_000L).coerceAtLeast(0L)
+        }
+        val bitrateBps = parseBitrateBps(snapshot.bitrate)
+        if (bitrateBps > 0L && snapshot.bytesWritten > 0L) {
+            return ((snapshot.bytesWritten * 8L) / bitrateBps).coerceAtLeast(0L)
+        }
+        return ((snapshot.closedAtMs - snapshot.trackStartTimeMs) / 1000L).coerceAtLeast(0L)
+    }
+
+    private suspend fun finalizeTrack(snapshot: PendingTrackSnapshot) {
+        val fileToFinalize = snapshot.fileToFinalize
+        if (!fileToFinalize.exists()) return
+
+        val enriched = withTimeoutOrNull(AppConfig.Recording.ENRICHMENT_TIMEOUT_MS) {
+            snapshot.enrichmentDeferred?.await()
+        }
 
         val rootDir = baseDirProvider()
-        val ext = if (currentStreamUrl.contains("aac", ignoreCase = true)) "aac" else "mp3"
-        val durationSec = Math.max(0L, (clock() - trackStartTimeMs) / 1000L)
+        val ext = snapshot.ext
+        val durationSec = computeDurationSeconds(snapshot)
 
         // Pruning filter: clips under minDurationSeconds (ads, jingles, glitches) are deleted
         if (durationSec < minDurationSeconds) {
@@ -329,38 +457,37 @@ class StreamRecordingCoordinator(
 
         val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
-        }.format(Date(trackStartTimeMs))
+        }.format(Date(snapshot.trackStartTimeMs))
 
-        if (isCurrentShow) {
-            completedTrackCount++
-            val safeStation = sanitize(currentStationName.ifBlank { "Radio" })
+        if (snapshot.isShow) {
+            snapshot.session.completedCount.incrementAndGet()
+            val safeStation = sanitize(snapshot.stationName.ifBlank { "Radio" })
             val sidecar = SidecarMetadata(
-                title = currentTitle.ifBlank { "Otseeeter" },
-                artist = currentArtist.ifBlank { safeStation },
+                title = snapshot.title.ifBlank { "Otseeeter" },
+                artist = snapshot.artist.ifBlank { safeStation },
                 album = null,
                 year = null,
                 genre = null,
                 trackNumber = null,
                 lyrics = null,
-                station = currentStationName,
-                stationUrl = currentStreamUrl,
+                station = snapshot.stationName,
+                stationUrl = snapshot.streamUrl,
                 recordedAt = isoTimestamp,
                 durationSeconds = durationSec,
                 fileSize = fileToFinalize.length(),
                 codec = ext,
-                bitrate = currentBitrate,
+                bitrate = snapshot.bitrate,
                 audioFile = fileToFinalize.name,
                 coverArtFile = null,
-                partial = isPartialTrack
+                partial = snapshot.isPartial
             )
             val jsonFile = File(fileToFinalize.parentFile, "${fileToFinalize.nameWithoutExtension}.json")
             jsonFile.writeText(json.encodeToString(sidecar))
         } else {
-            val enriched = currentEnrichedInfo
             val discoveredAlbum = enriched?.album?.trim()?.ifBlank { null }
             val officialTrackNum = enriched?.trackNumber?.takeIf { it > 0 }
-            val safeArtist = sanitize(currentArtist)
-            val safeTitle = sanitize(currentTitle)
+            val safeArtist = sanitize(snapshot.artist)
+            val safeTitle = sanitize(snapshot.title)
 
             val targetAlbumName = discoveredAlbum ?: AppConfig.Recording.DIR_UNKNOWN_ALBUM
             val targetDir = File(File(File(rootDir, AppConfig.Recording.DIR_MUSIC), safeArtist), sanitize(targetAlbumName))
@@ -378,35 +505,31 @@ class StreamRecordingCoordinator(
                 val existingIsPartial = if (existingJsonFile.exists()) {
                     try {
                         json.decodeFromString<SidecarMetadata>(existingJsonFile.readText()).partial
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         false
                     }
                 } else {
                     false
                 }
 
-                if (!existingIsPartial && isPartialTrack) {
-                    // Existing track is complete, current recording is partial -> discard current duplicate
+                if (!existingIsPartial && snapshot.isPartial) {
                     fileToFinalize.delete()
                     val oldDir = fileToFinalize.parentFile
                     if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
                         oldDir.delete()
                     }
                     return
-                } else if (!existingIsPartial && !isPartialTrack) {
-                    // Both tracks are complete -> discard duplicate to avoid cluttering storage
+                } else if (!existingIsPartial && !snapshot.isPartial) {
                     fileToFinalize.delete()
                     val oldDir = fileToFinalize.parentFile
                     if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
                         oldDir.delete()
                     }
                     return
-                } else if (existingIsPartial && !isPartialTrack) {
-                    // Existing was partial, but current recording is complete! Replace old partial track.
+                } else if (existingIsPartial && !snapshot.isPartial) {
                     existingSongFile.delete()
                     if (existingJsonFile.exists()) existingJsonFile.delete()
                 } else {
-                    // Both are partial -> keep existing, discard current
                     fileToFinalize.delete()
                     val oldDir = fileToFinalize.parentFile
                     if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
@@ -416,21 +539,16 @@ class StreamRecordingCoordinator(
                 }
             }
 
-            completedTrackCount++
+            snapshot.session.completedCount.incrementAndGet()
 
-            // Calculate track number: prioritize official trackNumber, fallback to sequential
+            val alreadyInTargetDir = fileToFinalize.parentFile?.canonicalPath == targetDir.canonicalPath
             val trackNumStr = if (officialTrackNum != null) {
                 "%02d".format(officialTrackNum)
+            } else if (alreadyInTargetDir) {
+                Regex("""^(\d{2})\s*-""").find(fileToFinalize.name)?.groupValues?.get(1)
+                    ?: nextSequentialTrackNumStr(targetDir, fileToFinalize)
             } else {
-                val existingNumbers = targetDir.listFiles()?.mapNotNull { f ->
-                    if (f.isFile && f.canonicalPath != fileToFinalize.canonicalPath &&
-                        (f.name.endsWith(".mp3") || f.name.endsWith(".aac"))
-                    ) {
-                        Regex("""^(\d{2})\s*-""").find(f.name)?.groupValues?.get(1)?.toIntOrNull()
-                    } else null
-                } ?: emptyList()
-                val nextNum = if (existingNumbers.isEmpty()) 1 else (existingNumbers.maxOrNull() ?: 0) + 1
-                "%02d".format(nextNum)
+                nextSequentialTrackNumStr(targetDir, fileToFinalize)
             }
 
             val targetBaseName = "$trackNumStr - $safeArtist - $safeTitle"
@@ -451,14 +569,11 @@ class StreamRecordingCoordinator(
                 }
             }
 
-            // Download cover art if present and not yet downloaded
             var coverArtFileName: String? = null
             if (!enriched?.coverArtUrl.isNullOrBlank()) {
                 val coverFile = File(targetDir, "cover.jpg")
                 if (!coverFile.exists()) {
-                    runBlocking {
-                        coverArtDownloader.download(enriched!!.coverArtUrl!!, coverFile)
-                    }
+                    coverArtDownloader.download(enriched!!.coverArtUrl!!, coverFile)
                 }
                 if (coverFile.exists()) {
                     coverArtFileName = "cover.jpg"
@@ -466,23 +581,23 @@ class StreamRecordingCoordinator(
             }
 
             val sidecar = SidecarMetadata(
-                title = currentTitle,
-                artist = currentArtist,
+                title = snapshot.title,
+                artist = snapshot.artist,
                 album = discoveredAlbum,
                 year = enriched?.year,
                 genre = enriched?.genre,
                 trackNumber = officialTrackNum ?: Regex("""^(\d{2})\s*-""").find(targetAudioFile.name)?.groupValues?.get(1)?.toIntOrNull(),
                 lyrics = enriched?.lyrics,
-                station = currentStationName,
-                stationUrl = currentStreamUrl,
+                station = snapshot.stationName,
+                stationUrl = snapshot.streamUrl,
                 recordedAt = isoTimestamp,
                 durationSeconds = durationSec,
                 fileSize = targetAudioFile.length(),
                 codec = ext,
-                bitrate = currentBitrate,
+                bitrate = snapshot.bitrate,
                 audioFile = targetAudioFile.name,
                 coverArtFile = coverArtFileName,
-                partial = isPartialTrack
+                partial = snapshot.isPartial
             )
 
             val jsonFile = File(targetDir, "${targetAudioFile.nameWithoutExtension}.json")
