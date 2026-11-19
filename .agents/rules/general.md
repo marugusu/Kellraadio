@@ -43,6 +43,7 @@ Rules and guardrails for developing the Kellraadio Android app. Every agent modi
 *   **Repository & Secrets**: The repository `marugusu/Kellraadio` is public. Never commit API tokens, passwords, private keys, or personal credentials. Releases and downloadable APKs are hosted directly under this repository (`marugusu/Kellraadio/releases`).
 *   **Feature Branching**: Always create a new feature branch (e.g., `feature/<name>`) for new features and tasks. Never commit or merge directly into `master` without explicit user review and permission.
 *   **Unstaged Work Protection**: The user frequently has uncommitted visual/UX experiments (notably in `MainActivity.kt` and `ui/SongInfoSheet.kt`). **NEVER** overwrite, discard (`git checkout --`, `git restore`), or blindly stage (`git add .`) these unstaged modifications. Always inspect `git diff` before staging.
+*   **Physical Device & App Data Protection**: **NEVER** run `./gradlew connected*AndroidTest`, `adb uninstall`, `adb shell pm clear`, or `adb install` on a physical connected device without explicit user permission. `connected*AndroidTest` automatically uninstalls `app.radiorecalarm` upon completion, permanently wiping the user's Room database (history, alarms, custom stations) and `Android/data/app.radiorecalarm` recordings. Use JVM unit tests (`./gradlew test`) or an emulator instead.
 *   **Release Automation**: Releases are published using `tools/publish_release.py`. Never perform manual browser release uploads.
 
 ## Versioning Guardrails

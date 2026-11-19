@@ -42,6 +42,11 @@ Need reeglid on absoluutsed. Nende rikkumine ei ole lubatud üheski olukorras.
 * Repositoorium `marugusu/Kellraadio` on **avalik**.
 * Mitte kunagi ei tohi koodi ega git-ajalukku lisada API võtmeid, paroole, privaatseid sertifikaate ega isiklikke autentimistokeneid.
 
+### 0.6. Füüsilise telefoni ja kasutajaandmete kaitse (CRITICAL)
+* **KEEGI EI TOHI KUNAGI** käivitada füüsilisel ühendatud telefonil käske `./gradlew connectedAndroidTest`, `./gradlew connectedDebugAndroidTest` ega teisi `connected*` Gradle-käske ilma kasutaja selgesõnalise loata. Android Gradle Plugin eemaldab (`uninstall`) pärast instrumentatsioonitesti lõppu seadmest nii testipaketi kui ka äpi `app.radiorecalarm`, mis kustutab jäädavalt kasutaja Roomi andmebaasi (kuulamisajaloo, äratused, kohandatud jaamad) ja `Android/data/app.radiorecalarm` salvestised.
+* **KEEGI EI TOHI KUNAGI** käivitada füüsilisel telefonil ilma kasutaja selgesõnalise loata käske `adb uninstall`, `adb shell pm clear`, `adb install` / `adb install -r` ega muid seadmesisest olekut või faile muutvaid/kustutavaid ADB-käske.
+* Automatiseeritud testimiseks kasuta alati ainult JVM-i üksusteste (`./gradlew test`) või lokaalset kompileerimist (`./gradlew assembleDebug`). Kui on vaja instrumentatsioonitesti, kasuta eraldi emulaatorit või küsi enne kasutajalt selge kinnitus koos andmete varundamisega.
+
 ---
 
 ## 📱 1. TEHNILINE ARHITEKTUUR JA STÄKK
