@@ -78,6 +78,8 @@ class StreamRecordingCoordinator(
     private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false },
     private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
     private val maxTrackDurationSeconds: Long = AppConfig.Recording.MAX_TRACK_DURATION_SECONDS,
+    private val lookbackDurationSeconds: Long = AppConfig.Recording.LOOKBACK_BUFFER_SECONDS,
+    private val audioBoundaryDetector: AudioBoundaryDetector = AudioBoundaryDetector { frames, _ -> frames.size },
     private val storageSpaceChecker: StorageSpaceChecker = AndroidStorageSpaceChecker(),
     private val onLowStorage: (() -> Unit)? = null
 ) {
@@ -137,6 +139,8 @@ class StreamRecordingCoordinator(
     private var currentBytesWritten: Long = 0L
     private var currentDurationTracker: AudioDurationTracker? = null
     private var currentEnrichmentDeferred: Deferred<SongAdditionalInfo?>? = null
+    private var frameAccumulator: AudioFrameAccumulator? = null
+    private var lookbackBuffer: LookbackFrameBuffer? = null
 
     private var activeSession: RecordingSession? = null
     private var lastSession: RecordingSession? = null
@@ -159,6 +163,7 @@ class StreamRecordingCoordinator(
             if (availableBytes < AppConfig.Recording.MIN_FREE_STORAGE_BYTES) {
                 if (isRecording) {
                     isRecording = false
+                    drainLookbackToCurrentTrackLocked(clearPipeline = true)
                     closeCurrentTrackLocked()
                     activeSession = null
                 }
@@ -193,6 +198,14 @@ class StreamRecordingCoordinator(
             isRecording = true
             isPartialTrack = true // First track started mid-stream
 
+            if (!isUnsplitShowMode && lookbackDurationSeconds > 0L) {
+                frameAccumulator = AudioFrameAccumulator(preferAac = isCurrentStreamAac)
+                lookbackBuffer = LookbackFrameBuffer(maxDurationMicros = lookbackDurationSeconds * 1_000_000L)
+            } else {
+                frameAccumulator = null
+                lookbackBuffer = null
+            }
+
             openNewTrackLocked(initialRawMetadata)
         }
     }
@@ -214,6 +227,7 @@ class StreamRecordingCoordinator(
             }
             isRecording = false
             isUnsplitShowMode = false
+            drainLookbackToCurrentTrackLocked(clearPipeline = true)
             closeCurrentTrackLocked(onSessionFinalized = onAllFinalized)
             activeSession = null
         }
@@ -234,12 +248,24 @@ class StreamRecordingCoordinator(
 
         synchronized(lock) {
             if (!isRecording) return
-            try {
-                currentOutputStream?.write(buffer, offset, length)
-                currentDurationTracker?.consume(buffer, offset, length)
-                currentBytesWritten += length.toLong()
-            } catch (_: Exception) {
-                // Ignore or handle write error
+            val acc = frameAccumulator
+            val lb = lookbackBuffer
+            if (acc != null && lb != null && !isUnsplitShowMode) {
+                acc.push(
+                    input = buffer,
+                    offset = offset,
+                    length = length,
+                    onFrame = { frame ->
+                        lb.push(frame) { overflow ->
+                            writeFrameToCurrentTrackLocked(overflow)
+                        }
+                    },
+                    onRawFallback = { rawBuf, rawOff, rawLen ->
+                        writeBytesToCurrentTrackLocked(rawBuf, rawOff, rawLen)
+                    }
+                )
+            } else {
+                writeBytesToCurrentTrackLocked(buffer, offset, length)
             }
         }
     }
@@ -255,9 +281,57 @@ class StreamRecordingCoordinator(
 
             if (!checkStorageSafeguard()) return
 
+            frameAccumulator?.drainUnparsed { rawBuf, rawOff, rawLen ->
+                writeBytesToCurrentTrackLocked(rawBuf, rawOff, rawLen)
+            }
+            val lb = lookbackBuffer
+            if (lb != null && !lb.isEmpty()) {
+                val buffered = lb.snapshotFrames()
+                val hasFlushedPrefix = currentBytesWritten > 0L
+                val splitIdx = audioBoundaryDetector.findSplitFrameIndex(buffered, hasFlushedPrefix)
+                    .coerceIn(0, buffered.size)
+                lb.popPrefix(splitIdx) { frame ->
+                    writeFrameToCurrentTrackLocked(frame)
+                }
+            }
+
             closeCurrentTrackLocked()
             isPartialTrack = false // Subsequent tracks started at the track transition boundary
             openNewTrackLocked(rawMetadata)
+        }
+    }
+
+    private fun writeBytesToCurrentTrackLocked(buffer: ByteArray, offset: Int, length: Int) {
+        if (length <= 0) return
+        try {
+            currentOutputStream?.write(buffer, offset, length)
+            currentDurationTracker?.consume(buffer, offset, length)
+            currentBytesWritten += length.toLong()
+        } catch (_: Exception) {
+            // Ignore or handle write error
+        }
+    }
+
+    private fun writeFrameToCurrentTrackLocked(frame: AudioFrame) {
+        try {
+            currentOutputStream?.write(frame.bytes)
+            currentDurationTracker?.consume(frame.bytes, 0, frame.bytes.size)
+            currentBytesWritten += frame.bytes.size.toLong()
+        } catch (_: Exception) {
+            // Ignore or handle write error
+        }
+    }
+
+    private fun drainLookbackToCurrentTrackLocked(clearPipeline: Boolean) {
+        frameAccumulator?.drainUnparsed { rawBuf, rawOff, rawLen ->
+            writeBytesToCurrentTrackLocked(rawBuf, rawOff, rawLen)
+        }
+        lookbackBuffer?.drainAll { frame ->
+            writeFrameToCurrentTrackLocked(frame)
+        }
+        if (clearPipeline) {
+            frameAccumulator = null
+            lookbackBuffer = null
         }
     }
 
@@ -326,7 +400,8 @@ class StreamRecordingCoordinator(
         val parsed = metadataHelper.parse(rawMetadata, currentStationName)
         currentArtist = parsed.artist
         currentTitle = parsed.title
-        trackStartTimeMs = clock()
+        val retainedMicros = lookbackBuffer?.totalDurationMicros ?: 0L
+        trackStartTimeMs = clock() - (retainedMicros / 1000L)
         currentBytesWritten = 0L
         currentDurationTracker = AudioDurationTracker(preferAac = isCurrentStreamAac)
         currentEnrichmentDeferred = null
