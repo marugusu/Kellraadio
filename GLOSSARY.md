@@ -59,3 +59,11 @@ _Avoid_: Äratusripp, automaatsalvesti äratusel
 **Pidev salvestus (Continuous Recording)**:
 Rakenduse üldseadistus, mille sisselülitamisel käivitub salvestus automaatselt iga jaama mängimisel; see juhib automaatset käivitust ega tähenda iseseisvalt väljundseadme kadumise eiramist (häiringukindlus kehtib igale aktiivsele salvestusele).
 _Avoid_: Taustaripp, lausripp
+
+**Viivepuhver (Lookback Buffer)**:
+Salvestamise ajal enne faili lõplikku sulgemist mälus hoitav viimaste sekundite heliaken, mis võimaldab jaama metainfo hilinemise korral nihutada lõikepunkti ajas tagasi.
+_Avoid_: Eelpuhvri fail, ajanihe kui objekt
+
+**Akustiline lõikepunkt (Acoustic Split Point)**:
+Helisignaali energialanguse või pausi põhjal tuvastatud tegelik üleminekuhetk kahe segmendi vahel, mille järgi eraldatakse **Pala** ja vahepealne kõll või reklaam.
+_Avoid_: Vaikusefilter, dekodeeritud lõige

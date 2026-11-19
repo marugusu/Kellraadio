@@ -113,6 +113,7 @@ class RadioService : Service() {
                 java.io.File(getExternalFilesDir(null), AppConfig.Recording.DEFAULT_AUDIO_DIR).apply { if (!exists()) mkdirs() }
             },
             metadataHelper = metadataHelper,
+            audioBoundaryDetector = MediaCodecAudioBoundaryDetector(),
             metadataFetcher = { artist, title ->
                 MusicInfoRepository.fetchInfo(artist, title).lastOrNull()
             },

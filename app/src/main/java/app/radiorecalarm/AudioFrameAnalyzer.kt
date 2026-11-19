@@ -6,6 +6,17 @@ package app.radiorecalarm
 data class AudioFrameHeader(
     val frameSize: Int,
     val durationMicros: Long,
+    val isAac: Boolean,
+    val sampleRate: Int = 44100,
+    val channelCount: Int = 2
+)
+
+/**
+ * Complete compressed MP3 or AAC ADTS frame with its parsed duration.
+ */
+class AudioFrame(
+    val bytes: ByteArray,
+    val durationMicros: Long,
     val isAac: Boolean
 )
 
@@ -46,7 +57,10 @@ object AudioFrameParser {
         val b0 = buffer[offset].toInt() and 0xFF
         val b1 = buffer[offset + 1].toInt() and 0xFF
         val b2 = buffer[offset + 2].toInt() and 0xFF
-        return parseMp3Header(b0, b1, b2)
+        val b3 = buffer[offset + 3].toInt() and 0xFF
+        val channelMode = (b3 ushr 6) and 0x03
+        val header = parseMp3Header(b0, b1, b2) ?: return null
+        return if (channelMode == 0x03) header.copy(channelCount = 1) else header
     }
 
     fun parseMp3Header(b0: Int, b1: Int, b2: Int): AudioFrameHeader? {
@@ -101,7 +115,13 @@ object AudioFrameParser {
         if (frameSize < MP3_HEADER_SIZE) return null
 
         val durationMicros = (samplesPerFrame.toLong() * 1_000_000L) / sampleRate
-        return AudioFrameHeader(frameSize = frameSize, durationMicros = durationMicros, isAac = false)
+        return AudioFrameHeader(
+            frameSize = frameSize,
+            durationMicros = durationMicros,
+            isAac = false,
+            sampleRate = sampleRate,
+            channelCount = 2
+        )
     }
 
     fun parseAdtsAt(buffer: ByteArray, offset: Int, available: Int): AudioFrameHeader? {
@@ -135,10 +155,35 @@ object AudioFrameParser {
         if (frameLength < ADTS_HEADER_SIZE || frameLength > MAX_ADTS_FRAME_SIZE) return null
 
         val sampleRate = ADTS_SAMPLE_RATES[sampleRateIndex]
+        val channelConfig = ((b2 and 0x01) shl 2) or ((b3 ushr 6) and 0x03)
+        val channelCount = if (channelConfig in 1..6) channelConfig else 2
         val numRawDataBlocks = b6 and 0x03
         val samplesPerFrame = (numRawDataBlocks + 1) * 1024L
         val durationMicros = (samplesPerFrame * 1_000_000L) / sampleRate
-        return AudioFrameHeader(frameSize = frameLength, durationMicros = durationMicros, isAac = true)
+        return AudioFrameHeader(
+            frameSize = frameLength,
+            durationMicros = durationMicros,
+            isAac = true,
+            sampleRate = sampleRate,
+            channelCount = channelCount
+        )
+    }
+
+    /**
+     * Derives the 2-byte AudioSpecificConfig (`csd-0`) from a 7-byte ADTS frame header.
+     */
+    fun buildAacCsd0FromAdts(adtsFrame: ByteArray): ByteArray? {
+        if (adtsFrame.size < ADTS_HEADER_SIZE) return null
+        val b2 = adtsFrame[2].toInt() and 0xFF
+        val b3 = adtsFrame[3].toInt() and 0xFF
+        val profile = (b2 ushr 6) and 0x03
+        val aot = profile + 1
+        val sampleRateIndex = (b2 ushr 2) and 0x0F
+        if (sampleRateIndex >= ADTS_SAMPLE_RATES.size) return null
+        val channelConfig = ((b2 and 0x01) shl 2) or ((b3 ushr 6) and 0x03)
+        val byte0 = ((aot shl 3) or (sampleRateIndex ushr 1)).toByte()
+        val byte1 = (((sampleRateIndex and 0x01) shl 7) or (channelConfig shl 3)).toByte()
+        return byteArrayOf(byte0, byte1)
     }
 
     /**
@@ -360,5 +405,126 @@ class AudioDurationTracker(private val preferAac: Boolean) {
         } else {
             headerLen = 0
         }
+    }
+}
+
+/**
+ * Splits a continuous byte stream into discrete complete MP3 or AAC ADTS [AudioFrame]s.
+ * If incoming bytes are not valid MP3/ADTS frames (e.g. unsupported codec or synthetic test data),
+ * falls back to emitting raw chunks safely without data loss.
+ */
+class AudioFrameAccumulator(private val preferAac: Boolean) {
+
+    companion object {
+        private const val INITIAL_CAPACITY = 16 * 1024
+        private const val MAX_UNSYNCED_BYTES = 16 * 1024
+    }
+
+    private var buf = ByteArray(INITIAL_CAPACITY)
+    private var len = 0
+    private var locked = false
+
+    fun push(
+        input: ByteArray,
+        offset: Int,
+        length: Int,
+        onFrame: (AudioFrame) -> Unit,
+        onRawFallback: (ByteArray, Int, Int) -> Unit
+    ) {
+        if (length <= 0) return
+
+        val required = len + length
+        if (required > buf.size) {
+            buf = buf.copyOf(maxOf(buf.size * 2, required))
+        }
+        System.arraycopy(input, offset, buf, len, length)
+        len += length
+
+        var consumed = 0
+        var scanPos = 0
+
+        while (scanPos < len) {
+            if (!locked) {
+                while (scanPos < len && (buf[scanPos].toInt() and 0xFF) != 0xFF) {
+                    scanPos++
+                }
+                val minHeader = if (preferAac) AudioFrameParser.ADTS_HEADER_SIZE else AudioFrameParser.MP3_HEADER_SIZE
+                if (len - scanPos < minHeader) break
+
+                val header = AudioFrameParser.parseHeaderAt(buf, scanPos, len - scanPos, preferAac)
+                if (header == null) {
+                    scanPos++
+                    continue
+                }
+
+                val nextOffset = scanPos + header.frameSize
+                val nextMinHeader = if (header.isAac) AudioFrameParser.ADTS_HEADER_SIZE else AudioFrameParser.MP3_HEADER_SIZE
+                if (nextOffset + nextMinHeader > len) break
+
+                val nextHeader = if (header.isAac) {
+                    AudioFrameParser.parseAdtsAt(buf, nextOffset, len - nextOffset)
+                } else {
+                    AudioFrameParser.parseMp3At(buf, nextOffset, len - nextOffset)
+                }
+                if (nextHeader != null) {
+                    locked = true
+                    onFrame(AudioFrame(buf.copyOfRange(scanPos, nextOffset), header.durationMicros, header.isAac))
+                    consumed = nextOffset
+                    scanPos = nextOffset
+                } else {
+                    scanPos++
+                }
+            } else {
+                if ((buf[scanPos].toInt() and 0xFF) != 0xFF) {
+                    locked = false
+                    consumed = scanPos
+                    continue
+                }
+                val minHeader = if (preferAac) AudioFrameParser.ADTS_HEADER_SIZE else AudioFrameParser.MP3_HEADER_SIZE
+                if (len - scanPos < minHeader) break
+
+                val header = AudioFrameParser.parseHeaderAt(buf, scanPos, len - scanPos, preferAac)
+                if (header == null) {
+                    locked = false
+                    consumed = scanPos
+                    scanPos++
+                    continue
+                }
+                if (scanPos + header.frameSize > len) break
+
+                val nextOffset = scanPos + header.frameSize
+                onFrame(AudioFrame(buf.copyOfRange(scanPos, nextOffset), header.durationMicros, header.isAac))
+                consumed = nextOffset
+                scanPos = nextOffset
+            }
+        }
+
+        if (consumed > 0) {
+            val remaining = len - consumed
+            if (remaining > 0) {
+                System.arraycopy(buf, consumed, buf, 0, remaining)
+            }
+            len = remaining
+        }
+
+        if (!locked && len >= MAX_UNSYNCED_BYTES) {
+            onRawFallback(buf, 0, len)
+            len = 0
+        }
+    }
+
+    fun drainUnparsed(onRawFallback: (ByteArray, Int, Int) -> Unit) {
+        if (!locked && len > 0) {
+            onRawFallback(buf, 0, len)
+            len = 0
+        } else if (locked) {
+            // Drop at most one incomplete trailing frame on stream close/split
+            len = 0
+        }
+    }
+
+    fun reset() {
+        len = 0
+        locked = false
     }
 }
