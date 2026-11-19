@@ -71,7 +71,7 @@ Need reeglid on absoluutsed. Nende rikkumine ei ole lubatud üheski olukorras.
 * Toetatud peavad olema nii püstpaigutus (Portrait) kui rõhtpaigutus (Landscape).
 * Laiadel ekraanidel (laius $\ge$ `AppConfig.UI.Layout.WIDTH_THRESHOLD_WIDE_SCREEN_DP`) kasutatakse jagatud veerupaigutust.
 * Igal Compose komponendil peab olema `@Preview` funktsioon visuaalseks eelvaateks.
-* Kasutajale nähtavad tekstid peavad asuma failides `res/values/strings.xml` ja `res/values-et/strings.xml` (eesti keel on peamine lokaat).
+* Kasutajale nähtavad tekstid peavad asuma **kõigis** keelefailides (`res/values/strings.xml`, `res/values-et/strings.xml`, `res/values-ko/strings.xml`, `res/values-liv/strings.xml` — ehk igas `res/values*/strings.xml` failis; eesti keel on peamine lokaat, inglise keel varulokaat). Uue stringi lisamisel tuleb alati kontrollida kõiki olemasolevaid `values*/strings.xml` faile.
 
 ### 2.3. Andmebaasi migratsioonid (Room DB)
 * Kui muudad mistahes Room entity't:

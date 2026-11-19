@@ -141,6 +141,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 RadioService.ACTION_PLAYER_STOPPED -> {
                     _uiState.update { it.copy(
                         isPlaying = false,
+                        isMutedRecording = false,
                         playerStatus = getString(R.string.status_stopped),
                         bitrate = "",
                         activeStreamUrl = "",
@@ -151,6 +152,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 RadioService.ACTION_PLAYER_PAUSED -> {
                     _uiState.update { it.copy(
                         isPlaying = false,
+                        isMutedRecording = false,
                         playerStatus = getString(R.string.status_stopped)
                     )}
                 }
@@ -169,17 +171,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 "app.radiorecalarm.RECORDING_STATUS" -> {
                     val isRec = intent.getBooleanExtra("IS_RECORDING", false)
+                    val isMutedRec = intent.getBooleanExtra("IS_MUTED_RECORDING", false)
                     val dur = intent.getLongExtra("RECORDING_DURATION", 0L)
                     val station = intent.getStringExtra("RECORDING_STATION") ?: ""
                     val track = intent.getStringExtra("RECORDING_TRACK") ?: ""
                     val count = intent.getIntExtra("RECORDING_COUNT", 0)
-                    _uiState.update { it.copy(
-                        isRecording = isRec,
-                        recordingDuration = dur,
-                        recordingStation = station,
-                        recordingTrack = track,
-                        recordingCount = count
-                    )}
+                    _uiState.update { current ->
+                        val wasMutedRec = current.isMutedRecording
+                        val nextIsPlaying = when {
+                            isMutedRec -> false
+                            wasMutedRec && !isMutedRec && current.activeStreamUrl.isNotEmpty() -> true
+                            else -> current.isPlaying
+                        }
+                        val nextStatus = when {
+                            isMutedRec -> getString(R.string.status_recording_muted_background)
+                            wasMutedRec && !isMutedRec && nextIsPlaying -> getString(R.string.status_playing)
+                            else -> current.playerStatus
+                        }
+                        current.copy(
+                            isRecording = isRec,
+                            isMutedRecording = isMutedRec,
+                            isPlaying = nextIsPlaying,
+                            playerStatus = nextStatus,
+                            recordingDuration = dur,
+                            recordingStation = station,
+                            recordingTrack = track,
+                            recordingCount = count
+                        )
+                    }
                 }
             }
         }
@@ -373,6 +392,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onPlayPauseClicked() {
         if (_uiState.value.isPlaying) {
             val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
+            context.startService(i)
+        } else if (_uiState.value.isMutedRecording) {
+            _uiState.update { it.copy(isPlaying = true, isMutedRecording = false, playerStatus = getString(R.string.status_playing)) }
+            val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }
             context.startService(i)
         } else {
             val isLocal = _uiState.value.activeStreamUrl.startsWith("file://") || _uiState.value.activeStreamUrl.startsWith("file:/")

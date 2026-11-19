@@ -22,7 +22,7 @@ Rules and guardrails for developing the Kellraadio Android app. Every agent modi
     *   Wide screens (width >= `AppConfig.UI.Layout.WIDTH_THRESHOLD_WIDE_SCREEN_DP`) must use split/navigation rail layout.
     *   Landscape heights above threshold must show full detail panel rather than bottom teaser panels.
 *   **Previews**: Every Composable view/component must have a `@Preview` function to preview UI changes inside the IDE without running the app.
-*   **Localization**: Never hardcode user-facing strings. Put them in `res/values/strings.xml` and `res/values-et/strings.xml` (Estonian is the primary locale; English is fallback). Access via `stringResource(id = R.string.my_string)`.
+*   **Localization**: Never hardcode user-facing strings. Put them in **all** locale `strings.xml` files (`res/values/strings.xml`, `res/values-et/strings.xml`, `res/values-ko/strings.xml`, `res/values-liv/strings.xml` — every `res/values*/strings.xml` in the project; Estonian is the primary locale; English is fallback). Whenever adding or renaming string keys, always inspect and update all `res/values*/strings.xml` files. Access via `stringResource(id = R.string.my_string)`.
 *   **Lifecycle & Permissions**: When navigating to Android Settings (e.g., unknown app install permission), use `rememberLauncherForActivityResult` combined with `LifecycleEventObserver(ON_RESUME)` so the UI state updates immediately upon returning.
 
 ## Concurrency (Coroutines & Flows)

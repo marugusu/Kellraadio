@@ -117,6 +117,7 @@ object AppConfig {
     // --- 6. SALVESTAMISE SEADED ---
     object Recording {
         const val MIN_DURATION_SECONDS = 30L
+        const val MAX_TRACK_DURATION_SECONDS = 600L // Üle 10 min kestev salvestis liigitatakse saateks (ADR-0006)
         const val ENRICHMENT_TIMEOUT_MS = 2000L
         const val DIR_MUSIC = "Muusika"
         const val DIR_SHOWS = "Saated"

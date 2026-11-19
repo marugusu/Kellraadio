@@ -8,11 +8,18 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes as PlatformAudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.core.content.ContextCompat
+import app.radiorecalarm.RecordingInterruptionPolicy.InterruptionAction
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import app.radiorecalarm.widget.HomeWidget
@@ -95,9 +102,10 @@ class RadioService : Service() {
     private var lastErrorTime = 0L
     private var hasSuccessfullyStartedPlaying = false
 
-    private var wasSuppressedByTransientLoss: Boolean = false
     private var lastFocusGainTime: Long = 0L
-    private var wasNoisyDuringCall: Boolean = false
+    private val interruptionPolicy = RecordingInterruptionPolicy()
+    private lateinit var audioManager: AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     private val recordingCoordinator by lazy {
         StreamRecordingCoordinator(
@@ -123,6 +131,7 @@ class RadioService : Service() {
             },
             onLowStorage = {
                 serviceScope.launch(Dispatchers.Main) {
+                    applyInterruptionAction(interruptionPolicy.onRecordingStopped())
                     notificationManager.showLowStorageNotification()
                     Toast.makeText(applicationContext, getString(R.string.recording_low_storage_warning), Toast.LENGTH_LONG).show()
                     sendRecordingStatus()
@@ -135,6 +144,7 @@ class RadioService : Service() {
     private var recordingStartMillis = 0L
     private var recordingTimerJob: kotlinx.coroutines.Job? = null
     @Volatile private var pendingAutoRecord: Boolean = false
+    @Volatile private var unsplitShowModeForCurrentRecording: Boolean = false
     @Volatile private var userManuallyStoppedRecordingForCurrentStation: Boolean = false
     @Volatile private var autoRecordArmedForStreamUrl: String? = null
     @Volatile private var latestWireStreamTitle: String? = null
@@ -244,7 +254,13 @@ class RadioService : Service() {
                         Log.i(TAG, "Ignoreerime auto automaatset PLAY_PAUSE käsku vahetult pärast kõne lõppu (race condition kaitse).")
                         return SessionResult.RESULT_INFO_SKIPPED
                     }
+                    if (unmuteFromUserAction()) {
+                        return SessionResult.RESULT_INFO_SKIPPED
+                    }
                     if (player.isPlaying) {
+                        interruptionPolicy.onUserPauseOrStop()
+                        player.volume = 1.0f
+                        abandonAudioFocus()
                         player.pause()
                     } else {
                         if (currentStreamUrl.isNotEmpty()) {
@@ -510,7 +526,7 @@ class RadioService : Service() {
 
             if (isPlaying) {
                 if ((pendingAutoRecord || isContinuousRecordingEnabled()) && !userManuallyStoppedRecordingForCurrentStation && !isRecording) {
-                    startRecording()
+                    startRecording(forceUnsplitShow = unsplitShowModeForCurrentRecording)
                 }
                 isChangingStation = false
                 saveToHistory(currentArtist, currentTitle)
@@ -538,11 +554,12 @@ class RadioService : Service() {
 
                 startProgressTracker()
             } else {
-                if (!player.playWhenReady && !isChangingStation) {
+                if (!player.playWhenReady && !isChangingStation && !interruptionPolicy.wasSuppressedByTransientLoss) {
                     val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
                     val action = if (isLocal) ACTION_PLAYER_PAUSED else ACTION_PLAYER_STOPPED
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(action))
                     autoRecordArmedForStreamUrl = null
+                    unsplitShowModeForCurrentRecording = false
                     stopRecording()
                     pendingAutoRecord = false
                 }
@@ -553,58 +570,20 @@ class RadioService : Service() {
             }
         }
 
-        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
-            Log.d(TAG, "onPlaybackSuppressionReasonChanged: reason=$playbackSuppressionReason")
-            when (playbackSuppressionReason) {
-                Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS -> {
-                    Log.i(TAG, "Audiofookus ajutiselt kaotatud (telefonikõne vms). Valmistume ooteks...")
-                    wasSuppressedByTransientLoss = true
-                    wasNoisyDuringCall = false
-
-                    // Katkestame aktiivse sokliühenduse, et server ei jääks tühja ootama ega tekiks timeouti
-                    activeDataSource?.invalidateConnection()
-
-                    // Tühistame puhverdamise valvuri kõne ajaks
-                    bufferingWatchdogJob?.cancel()
-                    bufferingWatchdogJob = null
-                    cancelIdleTimeout()
-
-                    updateNotification()
-                }
-                Player.PLAYBACK_SUPPRESSION_REASON_NONE -> {
-                    if (wasSuppressedByTransientLoss) {
-                        wasSuppressedByTransientLoss = false
-                        cancelIdleTimeout()
-                        Log.i(TAG, "Audiofookus taastus pärast kõnet/katkestust! Taastame reaalajas striimi...")
-                        lastFocusGainTime = SystemClock.elapsedRealtime()
-
-                        // Kui auto profiilivahetus lülitas vahepeal ekslikult playWhenReady välja, taastame selle
-                        if (wasNoisyDuringCall) {
-                            Log.i(TAG, "Taastame playWhenReady=true, mis lülitus kõne ajal Bluetooth profiilivahetusel välja.")
-                            wasNoisyDuringCall = false
-                            player.playWhenReady = true
-                        }
-
-                        // Taastame vealoenduri
-                        consecutiveErrorCount = 0
-
-                        serviceScope.launch(Dispatchers.Main) {
-                            // 300ms lühiviivitus auto Bluetooth A2DP profiili stabiliseerumiseks enne helivoo avamist
-                            delay(300)
-                            if (::player.isInitialized && player.playWhenReady && currentStreamUrl.isNotEmpty()) {
-                                retryPlaybackWithoutMetadataWipe("CALL_ENDED_FOCUS_RESTORED")
-                                updateExternalDevices(currentTitle, currentArtist)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
                 cancelIdleTimeout()
-                val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying, isRecording = isRecording)
+                val notification = notificationManager.buildNotification(
+                    mediaSession = mediaSession!!,
+                    stationName = currentStationName,
+                    trackTitle = currentTitle,
+                    trackArtist = currentArtist,
+                    bitmap = currentStationBitmap,
+                    isAlarmMode = isAlarmMode,
+                    isPlaying = player.isPlaying,
+                    isRecording = isRecording,
+                    isMutedRecording = interruptionPolicy.isMutedRecording
+                )
                 if (Build.VERSION.SDK_INT >= 34) {
                     startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
                 } else {
@@ -612,20 +591,8 @@ class RadioService : Service() {
                 }
             } else {
                 if (wakeLock?.isHeld == true) wakeLock?.release()
-                if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
-                    Log.w(TAG, "onPlayWhenReadyChanged: AUDIO_BECOMING_NOISY tuvastatud!")
-                    if (wasSuppressedByTransientLoss) {
-                        Log.i(TAG, "AUDIO_BECOMING_NOISY saabus kõne ajal (Bluetooth profiilivahetus). Salvestame taastamisvajaduse.")
-                        wasNoisyDuringCall = true
-                    } else {
-                        // Klapid eemaldati väljaspool kõnet: katkestame aktiivse sokliühenduse kohe,
-                        // et vältida andmesidet ja koodeki korruptsiooni võrgu vahetudes (nt Wi-Fi -> 4G)
-                        activeDataSource?.invalidateConnection()
-                        if (wakeLock?.isHeld == true) wakeLock?.release()
-                    }
-                }
                 updateNotification()
-                if (!wasSuppressedByTransientLoss) {
+                if (!interruptionPolicy.wasSuppressedByTransientLoss) {
                     startIdleTimeout()
                 }
             }
@@ -653,7 +620,7 @@ class RadioService : Service() {
             isChangingStation = false
 
             // Kui viga tekkis kõne / ajutise fookusekaotuse ajal, ei kasvatata vealoendurit ega peata raadiot
-            if (wasSuppressedByTransientLoss) {
+            if (interruptionPolicy.wasSuppressedByTransientLoss) {
                 Log.w(TAG, "Viga tekkis kõne / fookusekaotuse ajal. Ootame kõne lõppu ja taastumist.")
                 return
             }
@@ -748,9 +715,114 @@ class RadioService : Service() {
         }
     }
 
+    private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        val action = interruptionPolicy.onAudioFocusChange(focusChange, isRecording)
+        applyInterruptionAction(action)
+    }
+
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                Log.w(TAG, "AUDIO_BECOMING_NOISY tuvastatud (isRecording=$isRecording)")
+                val action = interruptionPolicy.onAudioBecomingNoisy(isRecording)
+                applyInterruptionAction(action)
+            }
+        }
+    }
+
+    private fun requestAudioFocus() {
+        if (!::audioManager.isInitialized) return
+        val req = audioFocusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(
+                PlatformAudioAttributes.Builder()
+                    .setUsage(PlatformAudioAttributes.USAGE_MEDIA)
+                    .setContentType(PlatformAudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+            .setOnAudioFocusChangeListener(audioFocusListener, Handler(Looper.getMainLooper()))
+            .build()
+            .also { audioFocusRequest = it }
+        audioManager.requestAudioFocus(req)
+    }
+
+    private fun abandonAudioFocus() {
+        if (!::audioManager.isInitialized) return
+        audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+    }
+
+    private fun applyInterruptionAction(action: InterruptionAction) {
+        if (!::player.isInitialized) return
+        when (action) {
+            InterruptionAction.None -> Unit
+            is InterruptionAction.SetVolume -> {
+                player.volume = action.volume
+                sendRecordingStatus()
+                updateNotification()
+            }
+            is InterruptionAction.PausePlayback -> {
+                if (action.invalidateSocket) {
+                    activeDataSource?.invalidateConnection()
+                }
+                player.volume = 1.0f
+                player.pause()
+                if (wakeLock?.isHeld == true) wakeLock?.release()
+                sendRecordingStatus()
+                updateNotification()
+            }
+            InterruptionAction.SuppressForCall -> {
+                activeDataSource?.invalidateConnection()
+                bufferingWatchdogJob?.cancel()
+                bufferingWatchdogJob = null
+                cancelIdleTimeout()
+                player.playWhenReady = false
+                updateNotification()
+            }
+            is InterruptionAction.ResumeAfterCall -> {
+                cancelIdleTimeout()
+                lastFocusGainTime = SystemClock.elapsedRealtime()
+                consecutiveErrorCount = 0
+                serviceScope.launch(Dispatchers.Main) {
+                    delay(300)
+                    if (::player.isInitialized && currentStreamUrl.isNotEmpty() && !interruptionPolicy.wasSuppressedByTransientLoss) {
+                        if (action.restorePlayWhenReady || !player.playWhenReady) {
+                            player.playWhenReady = true
+                        }
+                        requestAudioFocus()
+                        retryPlaybackWithoutMetadataWipe("CALL_ENDED_FOCUS_RESTORED")
+                        updateExternalDevices(currentTitle, currentArtist)
+                    }
+                }
+            }
+            InterruptionAction.UnmuteAfterCall -> {
+                lastFocusGainTime = SystemClock.elapsedRealtime()
+                serviceScope.launch(Dispatchers.Main) {
+                    delay(300)
+                    if (::player.isInitialized && !interruptionPolicy.isMutedRecording) {
+                        player.volume = 1.0f
+                        requestAudioFocus()
+                        sendRecordingStatus()
+                        updateNotification()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun unmuteFromUserAction(): Boolean {
+        if (!interruptionPolicy.isMutedRecording) return false
+        applyInterruptionAction(interruptionPolicy.onUserUnmuteOrResume())
+        requestAudioFocus()
+        if (!player.playWhenReady && currentStreamUrl.isNotEmpty()) {
+            player.playWhenReady = true
+            player.play()
+        }
+        return true
+    }
+
     private fun sendRecordingStatus() {
         val intent = Intent(ACTION_RECORDING_STATUS).apply {
             putExtra("IS_RECORDING", isRecording)
+            putExtra("IS_MUTED_RECORDING", isRecording && interruptionPolicy.isMutedRecording)
             putExtra("RECORDING_DURATION", if (isRecording) android.os.SystemClock.elapsedRealtime() - recordingStartMillis else 0L)
             putExtra("RECORDING_STATION", currentStationName)
             putExtra("RECORDING_TRACK", recordingCoordinator.currentTitle)
@@ -794,10 +866,18 @@ class RadioService : Service() {
         if (userManuallyStoppedRecordingForCurrentStation) return
         if (!pendingAutoRecord && !isContinuousRecordingEnabled()) return
 
-        startRecording(fromStreamThread = true, streamUrlOverride = openedUrl)
+        startRecording(
+            fromStreamThread = true,
+            streamUrlOverride = openedUrl,
+            forceUnsplitShow = unsplitShowModeForCurrentRecording
+        )
     }
 
-    private fun startRecording(fromStreamThread: Boolean = false, streamUrlOverride: String? = null) {
+    private fun startRecording(
+        fromStreamThread: Boolean = false,
+        streamUrlOverride: String? = null,
+        forceUnsplitShow: Boolean = false
+    ) {
         val targetUrl = streamUrlOverride ?: currentStreamUrl
         if (targetUrl.isEmpty() || targetUrl.startsWith("file:")) {
             return
@@ -823,7 +903,8 @@ class RadioService : Service() {
                     streamUrl = targetUrl,
                     initialRawMetadata = initialMeta,
                     bitrate = lastBitrateInfo.ifBlank { null },
-                    isAacHint = isAacHint
+                    isAacHint = isAacHint,
+                    forceUnsplitShow = forceUnsplitShow
                 )
 
                 if (!isRecording) {
@@ -892,7 +973,12 @@ class RadioService : Service() {
             }
         }
 
+        val postStopAction = interruptionPolicy.onRecordingStopped()
         val refreshStoppedUi = {
+            if (postStopAction !is InterruptionAction.None) {
+                applyInterruptionAction(postStopAction)
+                abandonAudioFocus()
+            }
             sendRecordingStatus()
             updateNotification()
         }
@@ -947,7 +1033,7 @@ class RadioService : Service() {
             val ds = RetryingHttpDataSource(
                 delegate = dataSourceFactory.createDataSource(),
                 initialTitleProvider = { latestWireStreamTitle },
-                shouldAlignToFrame = { isRecording },
+                shouldAlignToFrame = { isRecording && !recordingCoordinator.isUnsplitShowMode },
                 onStreamOpened = { metaInt, isAac, icyBr ->
                     latestWireMetaInt = metaInt
                     latestWireIsAac = isAac
@@ -989,8 +1075,16 @@ class RadioService : Service() {
             )
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
-            .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
-            .setHandleAudioBecomingNoisy(true).build()
+            .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), false)
+            .setHandleAudioBecomingNoisy(false).build()
+
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        ContextCompat.registerReceiver(
+            this,
+            noisyReceiver,
+            IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         realPlayer.addListener(playerListener)
         player = SkodaAwarePlayer(realPlayer, listeners).apply {
@@ -1097,6 +1191,10 @@ class RadioService : Service() {
             }
             ACTION_PAUSE -> {
                 autoRecordArmedForStreamUrl = null
+                unsplitShowModeForCurrentRecording = false
+                interruptionPolicy.onUserPauseOrStop()
+                player.volume = 1.0f
+                abandonAudioFocus()
                 player.pause()
                 if (wakeLock?.isHeld == true) wakeLock?.release()
                 metadataPushJob?.cancel()
@@ -1108,9 +1206,14 @@ class RadioService : Service() {
                 return START_STICKY
             }
             ACTION_RESUME -> {
+                if (unmuteFromUserAction()) {
+                    return START_STICKY
+                }
                 if (!player.isPlaying && currentStreamUrl.isNotEmpty()) {
                     val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
                     if (isLocal && player.playbackState != Player.STATE_IDLE) {
+                        requestAudioFocus()
+                        player.volume = 1.0f
                         player.play()
                     } else {
                         playStation(currentStreamUrl, currentStationName, "USER_RESUME")
@@ -1130,7 +1233,13 @@ class RadioService : Service() {
                     Log.i(TAG, "Ignoreerime ACTION_PLAY_PAUSE_TOGGLE vahetult pärast kõne lõppu.")
                     return START_STICKY
                 }
+                if (unmuteFromUserAction()) {
+                    return START_STICKY
+                }
                 if (player.isPlaying) {
+                    interruptionPolicy.onUserPauseOrStop()
+                    player.volume = 1.0f
+                    abandonAudioFocus()
                     player.pause()
                     updateNotification()
                 } else {
@@ -1221,6 +1330,8 @@ class RadioService : Service() {
         latestWireIsAac = false
 
         val wasRecordingBeforeSwitch = isRecording
+        interruptionPolicy.onUserUnmuteOrResume()
+        player.volume = 1.0f
         stopRecording()
         userManuallyStoppedRecordingForCurrentStation = false
         if (wasRecordingBeforeSwitch || shouldRecord || isContinuousRecordingEnabled()) {
@@ -1228,13 +1339,14 @@ class RadioService : Service() {
         } else {
             pendingAutoRecord = false
         }
+        isAlarmMode = triggeredBy == "ALARM"
+        unsplitShowModeForCurrentRecording = isAlarmMode && pendingAutoRecord
         hasSuccessfullyStartedPlaying = false
         consecutiveErrorCount = 0
         isChangingStation = true
         isInitialStationPlayback = true
         lastBitrateInfo = ""
         sendBitrateUpdate()
-        isAlarmMode = triggeredBy == "ALARM"
         if (isAlarmMode) {
             wakeLock?.acquire(AppConfig.Alarm.WAKELOCK_TIMEOUT_MS)
         }
@@ -1308,6 +1420,7 @@ class RadioService : Service() {
         if (pendingAutoRecord || isContinuousRecordingEnabled()) {
             autoRecordArmedForStreamUrl = streamUrl
         }
+        requestAudioFocus()
         player.prepare()
         player.play()
         updateExternalDevices(currentTitle, currentArtist)
@@ -1316,9 +1429,20 @@ class RadioService : Service() {
     private fun updateNotification() {
         if (!::player.isInitialized || mediaSession == null) return
         val isSuppressed = player.playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE
-        val shouldKeepForeground = player.isPlaying || isAlarmMode || isChangingStation || (player.playWhenReady && (isSuppressed || wasSuppressedByTransientLoss))
+        val shouldKeepForeground = player.isPlaying || isAlarmMode || isChangingStation || isRecording ||
+            (player.playWhenReady && (isSuppressed || interruptionPolicy.wasSuppressedByTransientLoss))
 
-        val notification = notificationManager.buildNotification(mediaSession!!, currentStationName, currentTitle, currentArtist, currentStationBitmap, isAlarmMode, player.isPlaying, isRecording = isRecording)
+        val notification = notificationManager.buildNotification(
+            mediaSession = mediaSession!!,
+            stationName = currentStationName,
+            trackTitle = currentTitle,
+            trackArtist = currentArtist,
+            bitmap = currentStationBitmap,
+            isAlarmMode = isAlarmMode,
+            isPlaying = player.isPlaying,
+            isRecording = isRecording,
+            isMutedRecording = isRecording && interruptionPolicy.isMutedRecording
+        )
         if (shouldKeepForeground) {
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -1335,10 +1459,12 @@ class RadioService : Service() {
         isCurrentlyPlaying = false
         cancelIdleTimeout()
         if (wakeLock?.isHeld == true) wakeLock?.release()
-        wasSuppressedByTransientLoss = false
-        wasNoisyDuringCall = false
+        interruptionPolicy.onUserPauseOrStop()
+        player.volume = 1.0f
+        abandonAudioFocus()
         stopSleepTimer()
         pendingAutoRecord = false
+        unsplitShowModeForCurrentRecording = false
         autoRecordArmedForStreamUrl = null
         stopRecording()
         stopProgressTracker()
@@ -1363,7 +1489,7 @@ class RadioService : Service() {
         Log.d(TAG, "startIdleTimeout: Alustan ootetaimerit (${AppConfig.Player.IDLE_TIMEOUT_MS / 1000}s)...")
         idleTimeoutJob = serviceScope.launch(Dispatchers.Main) {
             delay(AppConfig.Player.IDLE_TIMEOUT_MS)
-            if (::player.isInitialized && !player.isPlaying && !player.playWhenReady && !wasSuppressedByTransientLoss) {
+            if (::player.isInitialized && !player.isPlaying && !player.playWhenReady && !interruptionPolicy.wasSuppressedByTransientLoss && !isRecording) {
                 Log.i(TAG, "startIdleTimeout: Taimer (${AppConfig.Player.IDLE_TIMEOUT_MS / 1000}s) aegus. Peatame raadio ja vabastame Bluetoothi ning helikanalid.")
                 stopRadio()
             }
@@ -1389,6 +1515,9 @@ class RadioService : Service() {
                 sleepTimerRemainingMillis -= 1000
             }
             sendTimerTick(0)
+            interruptionPolicy.onUserPauseOrStop()
+            player.volume = 1.0f
+            abandonAudioFocus()
             player.pause()
             metadataPushJob?.cancel()
             updateNotification()
@@ -1447,6 +1576,8 @@ class RadioService : Service() {
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (e: Exception) {}
         LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver)
+        try { unregisterReceiver(noisyReceiver) } catch (_: Exception) {}
+        abandonAudioFocus()
         stopRecording()
         activeDataSource = null
         player.release(); mediaSession?.release(); super.onDestroy()

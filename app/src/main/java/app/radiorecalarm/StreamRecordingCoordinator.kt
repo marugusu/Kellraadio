@@ -77,6 +77,7 @@ class StreamRecordingCoordinator(
     private val metadataFetcher: MetadataFetcher = MetadataFetcher { _, _ -> null },
     private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false },
     private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
+    private val maxTrackDurationSeconds: Long = AppConfig.Recording.MAX_TRACK_DURATION_SECONDS,
     private val storageSpaceChecker: StorageSpaceChecker = AndroidStorageSpaceChecker(),
     private val onLowStorage: (() -> Unit)? = null
 ) {
@@ -102,6 +103,10 @@ class StreamRecordingCoordinator(
 
     @Volatile
     var isRecording: Boolean = false
+        private set
+
+    @Volatile
+    var isUnsplitShowMode: Boolean = false
         private set
 
     val completedTrackCount: Int
@@ -169,7 +174,8 @@ class StreamRecordingCoordinator(
         streamUrl: String,
         initialRawMetadata: String = "",
         bitrate: String? = null,
-        isAacHint: Boolean? = null
+        isAacHint: Boolean? = null,
+        forceUnsplitShow: Boolean = false
     ) {
         synchronized(lock) {
             if (isRecording) return
@@ -183,6 +189,7 @@ class StreamRecordingCoordinator(
             currentStreamUrl = streamUrl
             currentBitrate = bitrate
             isCurrentStreamAac = isAacHint ?: streamUrl.contains("aac", ignoreCase = true)
+            isUnsplitShowMode = forceUnsplitShow
             isRecording = true
             isPartialTrack = true // First track started mid-stream
 
@@ -193,6 +200,7 @@ class StreamRecordingCoordinator(
     fun stopRecording(onAllFinalized: ((Int) -> Unit)? = null) {
         synchronized(lock) {
             if (!isRecording) {
+                isUnsplitShowMode = false
                 if (onAllFinalized != null) {
                     val session = lastSession
                     val prevJob = lastFinalizationJob
@@ -205,6 +213,7 @@ class StreamRecordingCoordinator(
                 return
             }
             isRecording = false
+            isUnsplitShowMode = false
             closeCurrentTrackLocked(onSessionFinalized = onAllFinalized)
             activeSession = null
         }
@@ -237,7 +246,7 @@ class StreamRecordingCoordinator(
 
     fun onMetadataChanged(rawMetadata: String) {
         synchronized(lock) {
-            if (!isRecording) return
+            if (!isRecording || isUnsplitShowMode) return
 
             val cleaned = metadataHelper.sanitizeRawInput(rawMetadata)
             if (cleaned == currentRawMetadata) {
@@ -256,15 +265,58 @@ class StreamRecordingCoordinator(
         return input.replace("[\\\\/:*?\"<>|]".toRegex(), "_").trim().ifBlank { "Unknown" }
     }
 
-    private fun isShow(artist: String, title: String, stationName: String): Boolean {
+    private fun isShow(rawMetadata: String, artist: String, title: String, stationName: String): Boolean {
+        if (isUnsplitShowMode) return true
         val cleanArtist = artist.trim()
         val cleanTitle = title.trim()
         val safeStation = stationName.trim()
 
         if (cleanArtist.isBlank() || cleanTitle.isBlank()) return true
-        if (cleanArtist.equals("Otseeeter", ignoreCase = true) || cleanArtist.equals("Live Broadcast", ignoreCase = true)) return true
+        if (cleanArtist.equals("Otseeeter", ignoreCase = true) ||
+            cleanArtist.equals("Live Broadcast", ignoreCase = true) ||
+            cleanArtist.equals("Live Stream", ignoreCase = true)
+        ) return true
         if (cleanArtist.equals(safeStation, ignoreCase = true)) return true
+
+        val sanitizedRaw = metadataHelper.sanitizeRawInput(rawMetadata)
+        if (!sanitizedRaw.contains(" - ")) return true
+
+        if (AppConfig.Metadata.IGNORE_TERMS.any { term ->
+                cleanTitle.contains(term, ignoreCase = true) || cleanArtist.contains(term, ignoreCase = true)
+            }
+        ) return true
+
         return false
+    }
+
+    private fun createUniqueShowFile(rootDir: File, stationName: String, startTimeMs: Long, ext: String): File {
+        val safeStation = sanitize(stationName.ifBlank { "Radio" })
+        val targetDir = File(File(rootDir, AppConfig.Recording.DIR_SHOWS), safeStation)
+        if (!targetDir.exists()) targetDir.mkdirs()
+
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(startTimeMs))
+        val baseName = "${safeStation}_$timestamp"
+        var candidate = File(targetDir, "$baseName.$ext")
+        var counter = 1
+        while (candidate.exists()) {
+            candidate = File(targetDir, "${baseName}_%02d.$ext".format(counter++))
+        }
+        return candidate
+    }
+
+    private fun cleanupEmptyDirs(startDir: File?, stopAtDir: File) {
+        var dir = startDir
+        val stopCanonical = stopAtDir.canonicalPath
+        while (dir != null && dir.canonicalPath != stopCanonical) {
+            if (!dir.exists() || !dir.isDirectory || !dir.listFiles().isNullOrEmpty()) {
+                break
+            }
+            val parent = dir.parentFile
+            if (!dir.delete()) {
+                break
+            }
+            dir = parent
+        }
     }
 
     private fun openNewTrackLocked(rawMetadata: String) {
@@ -279,25 +331,14 @@ class StreamRecordingCoordinator(
         currentDurationTracker = AudioDurationTracker(preferAac = isCurrentStreamAac)
         currentEnrichmentDeferred = null
 
-        isCurrentShow = isShow(currentArtist, currentTitle, currentStationName)
+        isCurrentShow = isShow(rawMetadata, currentArtist, currentTitle, currentStationName)
 
         val rootDir = baseDirProvider()
         val ext = if (isCurrentStreamAac) "aac" else "mp3"
 
         val file: File
         if (isCurrentShow) {
-            val safeStation = sanitize(currentStationName.ifBlank { "Radio" })
-            val targetDir = File(File(rootDir, AppConfig.Recording.DIR_SHOWS), safeStation)
-            if (!targetDir.exists()) targetDir.mkdirs()
-
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(trackStartTimeMs))
-            val baseName = "${safeStation}_$timestamp"
-            var candidate = File(targetDir, "$baseName.$ext")
-            var counter = 1
-            while (candidate.exists()) {
-                candidate = File(targetDir, "${baseName}_%02d.$ext".format(counter++))
-            }
-            file = candidate
+            file = createUniqueShowFile(rootDir, currentStationName, trackStartTimeMs, ext)
         } else {
             val safeArtist = sanitize(currentArtist)
             val safeAlbum = AppConfig.Recording.DIR_UNKNOWN_ALBUM
@@ -437,29 +478,42 @@ class StreamRecordingCoordinator(
         val fileToFinalize = snapshot.fileToFinalize
         if (!fileToFinalize.exists()) return
 
-        val enriched = withTimeoutOrNull(AppConfig.Recording.ENRICHMENT_TIMEOUT_MS) {
-            snapshot.enrichmentDeferred?.await()
-        }
-
         val rootDir = baseDirProvider()
         val ext = snapshot.ext
         val durationSec = computeDurationSeconds(snapshot)
 
         // Pruning filter: clips under minDurationSeconds (ads, jingles, glitches) are deleted
         if (durationSec < minDurationSeconds) {
-            fileToFinalize.delete()
+            snapshot.enrichmentDeferred?.cancel()
             val oldParent = fileToFinalize.parentFile
-            if (oldParent != null && oldParent.listFiles().isNullOrEmpty()) {
-                oldParent.delete()
-            }
+            fileToFinalize.delete()
+            cleanupEmptyDirs(oldParent, rootDir)
             return
         }
 
+        val effectiveIsShow = snapshot.isShow || durationSec > maxTrackDurationSeconds
         val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date(snapshot.trackStartTimeMs))
 
-        if (snapshot.isShow) {
+        if (effectiveIsShow) {
+            snapshot.enrichmentDeferred?.cancel()
+            val targetShowFile = if (snapshot.isShow) {
+                fileToFinalize
+            } else {
+                val oldParent = fileToFinalize.parentFile
+                val destination = createUniqueShowFile(rootDir, snapshot.stationName, snapshot.trackStartTimeMs, ext)
+                val moved = if (fileToFinalize.renameTo(destination)) {
+                    destination
+                } else {
+                    fileToFinalize.copyTo(destination, overwrite = true)
+                    fileToFinalize.delete()
+                    destination
+                }
+                cleanupEmptyDirs(oldParent, rootDir)
+                moved
+            }
+
             snapshot.session.completedCount.incrementAndGet()
             val safeStation = sanitize(snapshot.stationName.ifBlank { "Radio" })
             val sidecar = SidecarMetadata(
@@ -474,16 +528,19 @@ class StreamRecordingCoordinator(
                 stationUrl = snapshot.streamUrl,
                 recordedAt = isoTimestamp,
                 durationSeconds = durationSec,
-                fileSize = fileToFinalize.length(),
+                fileSize = targetShowFile.length(),
                 codec = ext,
                 bitrate = snapshot.bitrate,
-                audioFile = fileToFinalize.name,
+                audioFile = targetShowFile.name,
                 coverArtFile = null,
                 partial = snapshot.isPartial
             )
-            val jsonFile = File(fileToFinalize.parentFile, "${fileToFinalize.nameWithoutExtension}.json")
+            val jsonFile = File(targetShowFile.parentFile, "${targetShowFile.nameWithoutExtension}.json")
             jsonFile.writeText(json.encodeToString(sidecar))
         } else {
+            val enriched = withTimeoutOrNull(AppConfig.Recording.ENRICHMENT_TIMEOUT_MS) {
+                snapshot.enrichmentDeferred?.await()
+            }
             val discoveredAlbum = enriched?.album?.trim()?.ifBlank { null }
             val officialTrackNum = enriched?.trackNumber?.takeIf { it > 0 }
             val safeArtist = sanitize(snapshot.artist)
@@ -493,49 +550,36 @@ class StreamRecordingCoordinator(
             val targetDir = File(File(File(rootDir, AppConfig.Recording.DIR_MUSIC), safeArtist), sanitize(targetAlbumName))
             if (!targetDir.exists()) targetDir.mkdirs()
 
-            // Duplicate detection: check if this track already exists in target album
+            // Duplicate detection: never delete an existing longer recording in favor of a shorter one
             val existingSongFile = targetDir.listFiles()?.firstOrNull { f ->
                 f.isFile && (f.name.endsWith(".mp3") || f.name.endsWith(".aac")) &&
                     f.canonicalPath != fileToFinalize.canonicalPath &&
                     f.name.contains(" - $safeArtist - $safeTitle")
             }
 
+            var replacedExisting = false
             if (existingSongFile != null) {
                 val existingJsonFile = File(targetDir, "${existingSongFile.nameWithoutExtension}.json")
-                val existingIsPartial = if (existingJsonFile.exists()) {
+                val existingMeta = if (existingJsonFile.exists()) {
                     try {
-                        json.decodeFromString<SidecarMetadata>(existingJsonFile.readText()).partial
+                        json.decodeFromString<SidecarMetadata>(existingJsonFile.readText())
                     } catch (_: Exception) {
-                        false
+                        null
                     }
                 } else {
-                    false
+                    null
                 }
+                val existingIsPartial = existingMeta?.partial ?: false
+                val existingDurationSec = existingMeta?.durationSeconds ?: 0L
+                val newReplacesPartial = existingIsPartial && !snapshot.isPartial && (
+                    durationSec > existingDurationSec ||
+                        (durationSec == existingDurationSec && fileToFinalize.length() >= existingSongFile.length())
+                    )
 
-                if (!existingIsPartial && snapshot.isPartial) {
-                    fileToFinalize.delete()
-                    val oldDir = fileToFinalize.parentFile
-                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
-                        oldDir.delete()
-                    }
-                    return
-                } else if (!existingIsPartial && !snapshot.isPartial) {
-                    fileToFinalize.delete()
-                    val oldDir = fileToFinalize.parentFile
-                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
-                        oldDir.delete()
-                    }
-                    return
-                } else if (existingIsPartial && !snapshot.isPartial) {
+                if (newReplacesPartial) {
                     existingSongFile.delete()
                     if (existingJsonFile.exists()) existingJsonFile.delete()
-                } else {
-                    fileToFinalize.delete()
-                    val oldDir = fileToFinalize.parentFile
-                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
-                        oldDir.delete()
-                    }
-                    return
+                    replacedExisting = true
                 }
             }
 
@@ -544,6 +588,9 @@ class StreamRecordingCoordinator(
             val alreadyInTargetDir = fileToFinalize.parentFile?.canonicalPath == targetDir.canonicalPath
             val trackNumStr = if (officialTrackNum != null) {
                 "%02d".format(officialTrackNum)
+            } else if (existingSongFile != null && !replacedExisting) {
+                Regex("""^(\d{2})\s*-""").find(existingSongFile.name)?.groupValues?.get(1)
+                    ?: nextSequentialTrackNumStr(targetDir, fileToFinalize)
             } else if (alreadyInTargetDir) {
                 Regex("""^(\d{2})\s*-""").find(fileToFinalize.name)?.groupValues?.get(1)
                     ?: nextSequentialTrackNumStr(targetDir, fileToFinalize)
@@ -560,11 +607,11 @@ class StreamRecordingCoordinator(
 
             var targetAudioFile = fileToFinalize
             if (fileToFinalize.canonicalPath != targetCandidate.canonicalPath) {
+                val oldDir = fileToFinalize.parentFile
                 if (fileToFinalize.renameTo(targetCandidate)) {
-                    val oldDir = fileToFinalize.parentFile
                     targetAudioFile = targetCandidate
-                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath && oldDir.listFiles().isNullOrEmpty()) {
-                        oldDir.delete()
+                    if (oldDir != null && oldDir.canonicalPath != targetDir.canonicalPath) {
+                        cleanupEmptyDirs(oldDir, rootDir)
                     }
                 }
             }
