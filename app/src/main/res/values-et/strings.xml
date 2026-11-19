@@ -124,7 +124,7 @@
     <string name="info_card_2_text">Rakendus on optimeeritud nii, et Sinu lemmikjaam hakkaks mängima täpselt määratud ajal.</string>
     <string name="info_card_3_title">Stabiilne taustaheli</string>
     <string name="info_card_3_text">Oleme pööranud erilist tähelepanu sellele, et muusika mängiks katkematult ka siis, kui kasutad teisi äppe.</string>
-    <string name="info_card_4_title">Nutikas kuulmisajalugu</string>
+    <string name="info_card_4_title">Nutikas kuulamisajalugu</string>
     <string name="info_card_4_text">Kas kuulsid raadiost head lugu, aga ei mäleta nime? Ajaloo vaatest leiad kiiresti viimati mängitud palad.</string>
     <string name="info_dev_location">Arendatud Eestis</string>
 
@@ -185,6 +185,10 @@
     <string name="recording_playing">Mängib salvestist</string>
     <string name="recording_failed">Salvestamine ebaõnnestus!</string>
     <string name="notification_recording_title">🔴 Salvestan: %1$s</string>
+    <string name="notification_recording_muted_title">🔴 Salvestab taustal (vaigistatud): %1$s</string>
+    <string name="status_recording_muted_background">Salvestab taustal (vaigistatud)</string>
+    <string name="action_unmute_audio">Lülita heli tagasi</string>
+    <string name="action_stop_recording">Peata salvestus</string>
     <string name="recording_saved_count">(%1$d salvestatud)</string>
     <string name="recording_tracks_saved">%1$d pala</string>
     <string name="recording_low_storage_warning">Salvestus peatatud: vaba kettamaht alla 500 MB</string>

@@ -180,7 +180,7 @@ class StreamRecordingCoordinatorTest {
     }
 
     @Test
-    fun `skips and discards duplicate track when identical complete track is recorded again`() {
+    fun `keeps both recordings with sequential suffix when identical complete track is recorded again`() {
         // Start mid-song with Metallica so that subsequent tracks are complete
         coordinator.startRecording(
             stationName = "Rock FM",
@@ -197,7 +197,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.onMetadataChanged("ACDC - Back in Black")
         coordinator.onStreamBytes("Audio2".toByteArray(), 0, 6)
 
-        // Queen played again at boundary (complete duplicate)
+        // Queen played again at boundary (complete repeat)
         coordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
         coordinator.onStreamBytes("Audio3".toByteArray(), 0, 6)
 
@@ -207,9 +207,10 @@ class StreamRecordingCoordinatorTest {
         val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
         val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
 
-        // Smart duplicate protection should discard the second copy
-        assertEquals(1, files.size)
+        // Non-destructive duplicate handling preserves both recordings
+        assertEquals(2, files.size)
         assertEquals("01 - Queen - Bohemian Rhapsody.mp3", files[0].name)
+        assertEquals("01 - Queen - Bohemian Rhapsody_01.mp3", files[1].name)
     }
 
     @Test
@@ -679,6 +680,156 @@ class StreamRecordingCoordinatorTest {
         val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.toList()
         assertEquals(1, jsonFiles.size)
         assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 32"))
+    }
+
+    @Test
+    fun `routes single-part metadata and ignore terms to Saated without enrichment`() {
+        var fetchCount = 0
+        val countingCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { 1000000L },
+            metadataFetcher = { _, _ ->
+                fetchCount++
+                SongAdditionalInfo(album = "ShouldNotBeFetched")
+            },
+            minDurationSeconds = 0L
+        )
+
+        countingCoordinator.startRecording(
+            stationName = "Vikerraadio",
+            streamUrl = "https://icecast.err.ee/vikerraadio.mp3",
+            initialRawMetadata = "Vikerhommik"
+        )
+        countingCoordinator.onStreamBytes("ShowPart1".toByteArray(), 0, 9)
+
+        countingCoordinator.onMetadataChanged("ERR - Uudised")
+        countingCoordinator.onStreamBytes("NewsPart2".toByteArray(), 0, 9)
+
+        countingCoordinator.stopRecording()
+        countingCoordinator.awaitPendingFinalizations()
+
+        assertEquals(0, fetchCount)
+        val showFiles = File(baseDir, "Saated/Vikerraadio").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        assertEquals(2, showFiles.size)
+        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile }.toList()
+        assertEquals(0, musicFiles.size)
+    }
+
+    @Test
+    fun `relocates track exceeding 10 minutes from Muusika to Saated on finalization`() {
+        var currentTime = 1_000_000L
+        val tenMinCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            metadataFetcher = { _, _ -> SongAdditionalInfo(album = "ShouldNotMoveHere") }
+        )
+
+        tenMinCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Saatejuht - Pikk Saade"
+        )
+        tenMinCoordinator.onStreamBytes("LongShowAudio".toByteArray(), 0, 13)
+
+        // Advance clock past 10 minutes (605s > 600s)
+        currentTime += 605_000L
+        tenMinCoordinator.stopRecording()
+        tenMinCoordinator.awaitPendingFinalizations()
+
+        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile }.toList()
+        assertEquals(0, musicFiles.size)
+        assertFalse(File(baseDir, "Muusika/Saatejuht").exists())
+
+        val showFiles = File(baseDir, "Saated/Raadio 2").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        assertEquals(1, showFiles.size)
+        assertEquals("LongShowAudio", showFiles.first().readText())
+
+        val jsonFiles = File(baseDir, "Saated/Raadio 2").listFiles()?.filter { it.name.endsWith(".json") } ?: emptyList()
+        assertEquals(1, jsonFiles.size)
+        assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 605"))
+        assertTrue(jsonFiles.first().readText().contains("\"album\": null"))
+    }
+
+    @Test
+    fun `does not overwrite longer partial recording when shorter complete recording arrives`() {
+        var currentTime = 1_000_000L
+        val safeCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime }
+        )
+
+        // First recording (45 min, partial = true)
+        safeCoordinator.startRecording(
+            stationName = "Vikerraadio",
+            streamUrl = "https://icecast.err.ee/vikerraadio.mp3",
+            initialRawMetadata = "Artist - ShowTitle"
+        )
+        safeCoordinator.onStreamBytes("Long45MinContent".toByteArray(), 0, 16)
+        currentTime += 500_000L // 500s <= 600s so it stays in Muusika to exercise duplicate check
+        safeCoordinator.stopRecording()
+        safeCoordinator.awaitPendingFinalizations()
+
+        // Second recording after restart: transition from another title makes it partial = false, but only 100s long
+        safeCoordinator.startRecording(
+            stationName = "Vikerraadio",
+            streamUrl = "https://icecast.err.ee/vikerraadio.mp3",
+            initialRawMetadata = "Jingle - Intro"
+        )
+        safeCoordinator.onStreamBytes("Intro".toByteArray(), 0, 5)
+        currentTime += 40_000L
+
+        safeCoordinator.onMetadataChanged("Artist - ShowTitle")
+        safeCoordinator.onStreamBytes("Short5MinContent".toByteArray(), 0, 16)
+        currentTime += 100_000L
+        safeCoordinator.stopRecording()
+        safeCoordinator.awaitPendingFinalizations()
+
+        val albumDir = File(baseDir, "Muusika/Artist/Teadmata album")
+        val mp3Files = albumDir.listFiles()?.filter { it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
+        assertEquals(2, mp3Files.size)
+        assertEquals("01 - Artist - ShowTitle.mp3", mp3Files[0].name)
+        assertEquals("Long45MinContent", mp3Files[0].readText())
+        assertEquals("01 - Artist - ShowTitle_01.mp3", mp3Files[1].name)
+        assertEquals("Short5MinContent", mp3Files[1].readText())
+    }
+
+    @Test
+    fun `unsplit show mode records entire session into one Saated file ignoring metadata transitions`() {
+        var currentTime = 1_000_000L
+        val alarmCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime }
+        )
+
+        alarmCoordinator.startRecording(
+            stationName = "Vikerraadio",
+            streamUrl = "https://icecast.err.ee/vikerraadio.mp3",
+            initialRawMetadata = "Vikerraadio",
+            forceUnsplitShow = true
+        )
+        assertTrue(alarmCoordinator.isUnsplitShowMode)
+        alarmCoordinator.onStreamBytes("ShowStart-".toByteArray(), 0, 10)
+        currentTime += 60_000L
+
+        // Songs & news played during the alarm broadcast must not split the file
+        alarmCoordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
+        alarmCoordinator.onStreamBytes("MiddleSong-".toByteArray(), 0, 11)
+        currentTime += 200_000L
+
+        alarmCoordinator.onMetadataChanged("ERR - Uudised")
+        alarmCoordinator.onStreamBytes("ShowEnd".toByteArray(), 0, 7)
+        currentTime += 120_000L
+
+        alarmCoordinator.stopRecording()
+        alarmCoordinator.awaitPendingFinalizations()
+        assertFalse(alarmCoordinator.isUnsplitShowMode)
+
+        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile }.toList()
+        assertEquals(0, musicFiles.size)
+
+        val showFiles = File(baseDir, "Saated/Vikerraadio").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        assertEquals(1, showFiles.size)
+        assertEquals("ShowStart-MiddleSong-ShowEnd", showFiles.first().readText())
     }
 }
 

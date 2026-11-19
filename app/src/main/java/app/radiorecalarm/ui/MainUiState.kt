@@ -16,6 +16,7 @@ data class MainUiState(
     val playbackPosition: Long = 0L,
     val playbackDuration: Long = 0L,
     val isRecording: Boolean = false,
+    val isMutedRecording: Boolean = false,
     val recordingDuration: Long = 0L,
     val recordingStation: String = "",
     val recordingTrack: String = "",

@@ -19,7 +19,7 @@
 <string name="status_playing">"Mäņgõb"</string>
 <string name="status_stopped">"Saisõb"</string>
 <string name="status_buffering">"Lēdõb..."</string>
-<string name="status_error">"Viga"</string>
+<string name="status_error">"Ītõmiz vigā"</string>
 <string name="live_broadcast">"Otšõ"</string>
 <string name="select_station">"Vaļī stacij"</string>
 <string name="notification_playing">"Mäņgõb: %1$s"</string>
@@ -66,7 +66,7 @@
 <string name="settings_refresh">"Uddistõ stacijid"</string>
 <string name="settings_refresh_desc">"Lēdõ uddistõd nimkīerõ"</string>
 <string name="settings_hide_remote">"Pēt kureeritõd stacijõd"</string>
-<string name="settings_hide_remote_desc">"Näytõ agā minņõn stacijõd"</string>
+<string name="settings_hide_remote_desc">"Näutõ agā min stacijid"</string>
 <string name="settings_reset_order">"Tagāž tūmiz armstõdõd jierdõ"</string>
 <string name="settings_reset_order_desc">"Tagāž tūmiz armstõdõd algõlīžõn jierdõ" </string>
 <string name="reset_order_confirm_title">"Tagāž tūmiz armstõdõd jierdõ?"</string>
@@ -75,14 +75,14 @@
 <string name="settings_grid_layout">"Kanāl ruodūd"</string>
 <string name="settings_portrait">"Pistõz"</string>
 <string name="settings_landscape">"Kierõz"</string>
-<string name="settings_show_flags">"Näyt mō tunnustõ (EE, LV...)"</string>
-<string name="settings_show_flags_desc">"Näyt stacij kaard pǟl mō tunnustõ"</string>
-<string name="settings_widget_transparency">"Läbipaistvūz"</string>
-<string name="settings_widget_transparency_desc">"Mūot sākumekrān taust läbipaistvūz"</string>
-<string name="settings_group_general">"Üld"</string>
+<string name="settings_show_flags">"Näut mō tunnustõ (EE, LV...)"</string>
+<string name="settings_show_flags_desc">"Näut stacij kaard pǟl mō tunnustõ"</string>
+<string name="settings_widget_transparency">"Vidin läbipaistvūz"</string>
+<string name="settings_widget_transparency_desc">"Mūot ežmi ekrān vidin taust läbipaistvūz"</string>
+<string name="settings_group_general">"Īldõz"</string>
 <string name="settings_language">"Kēļ"</string>
 <string name="settings_language_desc">"Vaļī kēļ"</string>
-<string name="settings_group_help">"Abi"</string>
+<string name="settings_group_help">"Ab"</string>
 <string name="settings_send_log">"Sōt log"</string>
 <string name="settings_send_log_desc">"Jaga tehnilist informācijõ"</string>
 <string name="settings_test_data">"Testaig"</string>
@@ -96,7 +96,7 @@
 <string name="settings_clear_history_desc">"Kistūtõ amā kūldtõd aig"</string>
 <string name="info_title">"Tiedõ"</string>
 <string name="info_card_1_title">"Sin igāpǟva rādij"</string>
-<string name="info_card_1_text">"Kierarādij um lūodud jemīņ kuolamizõks"</string>
+<string name="info_card_1_text">"Kellrādij um lūodud jemīņ kūlamizõks"</string>
 <string name="info_card_2_title">"Kimmõz āratõmiz"</string>
 <string name="info_card_2_text">"Stacij hakkõb mäņgõ täpsõlt ōigõl ājol"</string>
 <string name="info_card_3_title">"Taustā heļ"</string>
@@ -113,7 +113,7 @@
 <string name="delete_station_confirm_text">"Voi tōd kistūtõ stacij '%1$s'?"</string>
 <string name="station_toast_deleted">"Stacij kistūtõd!"</string>
 <string name="cat_favorites">"Armstõd"</string>
-<string name="cat_my_stations">"Minņõn stacijõd"</string>
+<string name="cat_my_stations">"Min stacijõd"</string>
 <string name="cat_all">"Amād"</string>
 <string name="day_mon">"Ežāmpǟva"</string>
 <string name="day_tue">"Tuoizpǟva"</string>
@@ -142,31 +142,35 @@
     <string name="share_album">Album</string>
     <string name="share_genre">Žanr</string>
     <string name="share_source">Allik</string>
-    <string name="share_listen">Kūliz</string>
+    <string name="share_listen">Kūlõ</string>
 
     <!-- Recordings -->
     <string name="history_subtab_songs">"Loulõd aig"</string>
     <string name="history_subtab_recordings">"Tāļtõmizt"</string>
     <string name="action_record">"Tāļtõ"</string>
     <string name="action_recording">"Tāļtõb"</string>
-    <string name="recording_toast_saved">"Tāļtõmiz tāļtõd: %1$s"</string>
-    <string name="recording_toast_deleted">"Tāļtõmiz kistūtõd!"</string>
-    <string name="recording_delete_confirm_title">"Kistūtõ tāļtõmiz?"</string>
-    <string name="recording_delete_confirm_text">"Voi tōd kistūtõ tāļtõmiz '%1$s'?"</string>
+    <string name="recording_toast_saved">"Tāļtõmi tāļtõd: %1$s"</string>
+    <string name="recording_toast_deleted">"Tāļtõmi kistūtõd!"</string>
+    <string name="recording_delete_confirm_title">"Kistūtõ tāļtõmi?"</string>
+    <string name="recording_delete_confirm_text">"Voi tōd kistūtõ tāļtõmi '%1$s'?"</string>
     <string name="recording_empty">"Tāļtõmizt äb ūo"</string>
-    <string name="recording_playing">"Mäņgõb tāļtõmiz"</string>
-    <string name="recording_failed">"Tāļtõmiz äb õņnistud!"</string>
+    <string name="recording_playing">"Mäņgõb tāļtõmi"</string>
+    <string name="recording_failed">"Tāļtõmi äb õņnistud!"</string>
     <string name="notification_recording_title">"🔴 Tāļtõb: %1$s"</string>
+    <string name="notification_recording_muted_title">"🔴 Tāļtõb tagāpūolõl (vāikizt): %1$s"</string>
+    <string name="status_recording_muted_background">"Tāļtõb tagāpūolõl (vāikizt)"</string>
+    <string name="action_unmute_audio">"Pannõ helī tagāž"</string>
+    <string name="action_stop_recording">"Saisõ tāļtõmi"</string>
     <string name="recording_saved_count">"(%1$d tāļtõd)"</string>
-    <string name="recording_tracks_saved">"%1$d lōltõ"</string>
-    <string name="recording_low_storage_warning">"Salbõstamin kistūtõd: vaba pīela um allõl 500 MB"</string>
+    <string name="recording_tracks_saved">"%1$d louli"</string>
+    <string name="recording_low_storage_warning">"Tāļtõmi saisātõd: vaba pīela um allõl 500 MB"</string>
 
     <!-- Recording Settings -->
-    <string name="settings_group_recording">"Salbõstamin"</string>
-    <string name="settings_continuous_recording">"Piddõz salbõstamin"</string>
-    <string name="settings_continuous_recording_desc">"Salbõst helīvoogõ automātlizt ku stacij mäņgõb"</string>
-    <string name="settings_storage_safeguard">"Pīela kaitzõmin"</string>
-    <string name="settings_storage_safeguard_desc">"Kistūtab salbõstamist ku vaba pīela lǟb allõl 500 MB"</string>
+    <string name="settings_group_recording">"Tāļtõmi"</string>
+    <string name="settings_continuous_recording">"Piddõz tāļtõmi"</string>
+    <string name="settings_continuous_recording_desc">"Tāļtõ helīvoogõ automātlizt ku stacij mäņgõb"</string>
+    <string name="settings_storage_safeguard">"Pīela kaitzõmi"</string>
+    <string name="settings_storage_safeguard_desc">"Saisātab tāļtõmist ku vaba pīela lǟb allõl 500 MB"</string>
     <string name="settings_recording_folder">"Tāļtõmizt kūož"</string>
     <string name="storage_500mb">"500 MB"</string>
 
@@ -181,16 +185,31 @@
     <string name="restore_success">"Andmõd õņnistud taastõd!"</string>
     <string name="restore_failed">"Taastõks äb õņnistud: %1$s"</string>
 
+    <!-- In-App Updates -->
+    <string name="settings_group_updates">"Uddistimizt"</string>
+    <string name="settings_check_updates">"Kuntrollõ uddistimizi"</string>
+    <string name="settings_check_updates_desc">"Vȯtš GitHubõst ūdižt versijõ"</string>
+    <string name="settings_checking_updates">"Kuntrollõb uddistimizi..."</string>
+    <string name="update_dialog_title">"Ūž versij sōdavõl"</string>
+    <string name="update_dialog_version">"Versij %1$s"</string>
+    <string name="update_dialog_changelog">"Mis um ūž:"</string>
+    <string name="update_action_download">"Lēdõ ja sāddõ"</string>
+    <string name="update_action_install">"Sāddõ uddistimi"</string>
+    <string name="update_downloading">"Lēdõb uddistimist… (%1$d%%)"</string>
+    <string name="update_already_latest">"Äpp um kūožõl (%1$s)"</string>
+    <string name="update_permission_required">"Äppid sāddõmizõks um vaja lubā. Palūb lubā sīe sādimizis."</string>
+    <string name="update_open_settings">"Lōit sādimizt"</string>
+
     <!-- Station Organization & Empty States -->
     <string name="station_subgroup">"Alamgrup"</string>
     <string name="unknown_station_name">"Tundmatu"</string>
     <string name="add_station">"Līsa stacij"</string>
     <string name="empty_stations_title">"Stacijõd äb ūo"</string>
-    <string name="empty_stations_desc">"Līsa ežmi stacij või laadi kureeritõd nimkiri ūstiz."</string>
-    <string name="empty_stations_hidden_desc">"Kureeritõd stacijõd um pētõd ja sinnõn äb ūo veel ühtigi minņõn stacijõd."</string>
+    <string name="empty_stations_desc">"Līsa ežmi stacij või lēdõ kureeritõd nimkīerõ ūstiz."</string>
+    <string name="empty_stations_hidden_desc">"Kureeritõd stacijõd um pētõd ja sinnõn äb ūo vēl min stacijid."</string>
     <string name="empty_favorites">"Lemmigidi vēl äb ūo.\nPidā stacij all, až tīed sīe lemmigõks."</string>
-    <string name="empty_my_stations">"Sinnõn vēl äb ūo minņõn stacijõd."</string>
-    <string name="action_show_curated">"Näytõ kureeritõd stacijõd"</string>
+    <string name="empty_my_stations">"Sinnõn vēl äb ūo min stacijid."</string>
+    <string name="action_show_curated">"Näutõ kureeritõd stacijid"</string>
     <string name="cd_move_top">"Līgut ežmiks"</string>
     <string name="cd_move_up">"Līgut ülõz"</string>
     <string name="cd_move_down">"Līgut allõ"</string>

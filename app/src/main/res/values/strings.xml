@@ -185,6 +185,10 @@
     <string name="recording_playing">Playing recording</string>
     <string name="recording_failed">Recording failed!</string>
     <string name="notification_recording_title">🔴 Recording: %1$s</string>
+    <string name="notification_recording_muted_title">🔴 Recording in background (muted): %1$s</string>
+    <string name="status_recording_muted_background">Recording in background (muted)</string>
+    <string name="action_unmute_audio">Unmute</string>
+    <string name="action_stop_recording">Stop recording</string>
     <string name="recording_saved_count">(%1$d saved)</string>
     <string name="recording_tracks_saved">%1$d tracks</string>
     <string name="recording_low_storage_warning">Recording stopped: free storage below 500 MB</string>

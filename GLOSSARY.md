@@ -33,15 +33,15 @@ Kasutaja poolt esiletõstetud jaam, mis kuulub püsiva järjekorraga kiirvaliku 
 _Avoid_: Lemmikkanal
 
 **Salvestus (Recording)**:
-Raadio helivoo reaalajas talletamine failisüsteemi bit-perfect helifailina.
+Raadio helivoo reaalajas talletamine failisüsteemi bit-perfect helifailina, mis jätkab väliste helikatkestuste (Bluetoothi lahtiühendamine, kõne, teise äpi audiofookus) korral tööd vaigistatult taustal kuni kasutaja selle ise peatab.
 _Avoid_: Audio rip, striimitõmmis
 
 **Pala (Track)**:
-Tuvastatud esitaja ja pealkirjaga muusikateos, millele päritakse laiendatud metaandmed ja kaanepilt.
+Tuvastatud esitaja ja pealkirjaga muusikateos kestusega kuni 10 minutit, millele päritakse laiendatud metaandmed ja kaanepilt.
 _Avoid_: Lugu, laul kui tehniline salvestis
 
 **Saade (Broadcast / Show)**:
-Mitte-muusikaline raadioprogramm, uudisteplokk või jaama üldine otseeeter, millel puudub konkreetne muusikapala metainfo.
+Mitte-muusikaline raadioprogramm, uudiste- või teenusteade, üheosalise metainfoga ülekanne, äratusega salvestatud programm või üle 10 minuti kestev salvestis.
 _Avoid_: Otseeeter kui failitüüp, jutt
 
 **Kõrvafail (Sidecar File)**:
@@ -53,9 +53,9 @@ Salvestusvoo poolitamine uude faili reaalajas jaama metainfo muutumise hetkel.
 _Avoid_: Segmentimine, lõikamine
 
 **Äratuse salvestus (Alarm Recording)**:
-Salvestuse automaatne käivitamine koos äratuskella käivitumisega vastavalt konkreetse äratuse seadistusele.
+Äratuse käivitumisel automaatselt algav salvestus, mis talletab kogu sessiooni ühe tükeldamata saatena.
 _Avoid_: Äratusripp, automaatsalvesti äratusel
 
 **Pidev salvestus (Continuous Recording)**:
-Rakenduse üldseadistus, mille sisselülitamisel salvestatakse helivoogu automaatselt kogu jaama esitamise vältel.
+Rakenduse üldseadistus, mille sisselülitamisel käivitub salvestus automaatselt iga jaama mängimisel; see juhib automaatset käivitust ega tähenda iseseisvalt väljundseadme kadumise eiramist (häiringukindlus kehtib igale aktiivsele salvestusele).
 _Avoid_: Taustaripp, lausripp
