@@ -365,7 +365,7 @@ class StreamRecordingCoordinator(
 
     private fun createUniqueShowFile(rootDir: File, stationName: String, startTimeMs: Long, ext: String): File {
         val safeStation = sanitize(stationName.ifBlank { "Radio" })
-        val targetDir = File(File(rootDir, AppConfig.Recording.DIR_SHOWS), safeStation)
+        val targetDir = File(File(rootDir, AppConfig.Recording.DIR_BROADCASTS), safeStation)
         if (!targetDir.exists()) targetDir.mkdirs()
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(startTimeMs))

@@ -115,7 +115,7 @@ class StreamRecordingCoordinatorTest {
     }
 
     @Test
-    fun `routes music tracks to Muusika folder with album and two-digit number`() {
+    fun `routes music tracks to Music folder with album and two-digit number`() {
         coordinator.startRecording(
             stationName = "Rock FM",
             streamUrl = "https://icecast.err.ee/raadio2.mp3",
@@ -125,19 +125,19 @@ class StreamRecordingCoordinatorTest {
         coordinator.onStreamBytes(chunk, 0, chunk.size)
         coordinator.stopRecording()
 
-        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
+        val musicFiles = File(baseDir, "Music").walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
         assertEquals(1, musicFiles.size)
         val file = musicFiles.first()
-        // Should be inside Muusika/Queen/Teadmata album/
-        assertTrue(file.parentFile?.path?.contains("Muusika") == true)
+        // Should be inside Music/Queen/Unknown Album/
+        assertTrue(file.parentFile?.path?.contains("Music") == true)
         assertTrue(file.parentFile?.path?.contains("Queen") == true)
-        assertTrue(file.parentFile?.path?.contains("Teadmata album") == true)
+        assertTrue(file.parentFile?.path?.contains("Unknown Album") == true)
         assertEquals("01 - Queen - Bohemian Rhapsody.mp3", file.name)
         assertEquals("QueenAudio", file.readText())
     }
 
     @Test
-    fun `routes broadcast to Saated folder when metadata is live show or station name`() {
+    fun `routes broadcast to Broadcasts folder when metadata is live show or station name`() {
         coordinator.startRecording(
             stationName = "Vikerraadio",
             streamUrl = "https://icecast.err.ee/vikerraadio.mp3",
@@ -147,10 +147,10 @@ class StreamRecordingCoordinatorTest {
         coordinator.onStreamBytes(chunk, 0, chunk.size)
         coordinator.stopRecording()
 
-        val showFiles = File(baseDir, "Saated").walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
+        val showFiles = File(baseDir, "Broadcasts").walkTopDown().filter { it.isFile && it.name.endsWith(".mp3") }.toList()
         assertEquals(1, showFiles.size)
         val file = showFiles.first()
-        assertTrue(file.parentFile?.path?.contains("Saated") == true)
+        assertTrue(file.parentFile?.path?.contains("Broadcasts") == true)
         assertTrue(file.parentFile?.path?.contains("Vikerraadio") == true)
         assertTrue(file.name.startsWith("Vikerraadio_"))
         assertEquals("TalkShowAudio", file.readText())
@@ -171,7 +171,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
 
-        val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
+        val albumDir = File(baseDir, "Music/Queen/Unknown Album")
         val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
 
         assertEquals(2, files.size)
@@ -204,7 +204,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
 
-        val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
+        val albumDir = File(baseDir, "Music/Queen/Unknown Album")
         val files = albumDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
 
         // Non-destructive duplicate handling preserves both recordings
@@ -228,7 +228,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.onStreamBytes("MetAudio".toByteArray(), 0, 8)
         coordinator.awaitPendingFinalizations()
 
-        val albumDir = File(baseDir, "Muusika/Queen/Teadmata album")
+        val albumDir = File(baseDir, "Music/Queen/Unknown Album")
         val jsonBefore = File(albumDir, "01 - Queen - Bohemian Rhapsody.json")
         assertTrue(jsonBefore.exists())
         assertTrue(jsonBefore.readText().contains("\"partial\": true"))
@@ -283,7 +283,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
 
-        val albumDir = File(baseDir, "Muusika/Queen/A Night at the Opera")
+        val albumDir = File(baseDir, "Music/Queen/A Night at the Opera")
         assertTrue(albumDir.exists())
 
         val audioFile = File(albumDir, "11 - Queen - Bohemian Rhapsody.mp3")
@@ -328,7 +328,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
 
-        val albumDir = File(baseDir, "Muusika/Queen/A Night at the Opera")
+        val albumDir = File(baseDir, "Music/Queen/A Night at the Opera")
         assertTrue(albumDir.exists())
 
         val audioFile = File(albumDir, "01 - Queen - Bohemian Rhapsody.mp3")
@@ -371,7 +371,7 @@ class StreamRecordingCoordinatorTest {
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
 
-        val targetDir = File(baseDir, "Muusika/Tundmatu Esitaja/Teadmata album")
+        val targetDir = File(baseDir, "Music/Tundmatu Esitaja/Unknown Album")
         val jsonFile = File(targetDir, "01 - Tundmatu Esitaja - Tundmatu Lugu.json")
         assertTrue(jsonFile.exists())
         val jsonContent = jsonFile.readText()
@@ -683,7 +683,7 @@ class StreamRecordingCoordinatorTest {
     }
 
     @Test
-    fun `routes single-part metadata and ignore terms to Saated without enrichment`() {
+    fun `routes single-part metadata and ignore terms to Broadcasts without enrichment`() {
         var fetchCount = 0
         val countingCoordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
@@ -709,14 +709,14 @@ class StreamRecordingCoordinatorTest {
         countingCoordinator.awaitPendingFinalizations()
 
         assertEquals(0, fetchCount)
-        val showFiles = File(baseDir, "Saated/Vikerraadio").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        val showFiles = File(baseDir, "Broadcasts/Vikerraadio").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
         assertEquals(2, showFiles.size)
-        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile }.toList()
+        val musicFiles = File(baseDir, "Music").walkTopDown().filter { it.isFile }.toList()
         assertEquals(0, musicFiles.size)
     }
 
     @Test
-    fun `relocates track exceeding 10 minutes from Muusika to Saated on finalization`() {
+    fun `relocates track exceeding 10 minutes from Music to Broadcasts on finalization`() {
         var currentTime = 1_000_000L
         val tenMinCoordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
@@ -736,15 +736,15 @@ class StreamRecordingCoordinatorTest {
         tenMinCoordinator.stopRecording()
         tenMinCoordinator.awaitPendingFinalizations()
 
-        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile }.toList()
+        val musicFiles = File(baseDir, "Music").walkTopDown().filter { it.isFile }.toList()
         assertEquals(0, musicFiles.size)
-        assertFalse(File(baseDir, "Muusika/Saatejuht").exists())
+        assertFalse(File(baseDir, "Music/Saatejuht").exists())
 
-        val showFiles = File(baseDir, "Saated/Raadio 2").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        val showFiles = File(baseDir, "Broadcasts/Raadio 2").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
         assertEquals(1, showFiles.size)
         assertEquals("LongShowAudio", showFiles.first().readText())
 
-        val jsonFiles = File(baseDir, "Saated/Raadio 2").listFiles()?.filter { it.name.endsWith(".json") } ?: emptyList()
+        val jsonFiles = File(baseDir, "Broadcasts/Raadio 2").listFiles()?.filter { it.name.endsWith(".json") } ?: emptyList()
         assertEquals(1, jsonFiles.size)
         assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 605"))
         assertTrue(jsonFiles.first().readText().contains("\"album\": null"))
@@ -765,7 +765,7 @@ class StreamRecordingCoordinatorTest {
             initialRawMetadata = "Artist - ShowTitle"
         )
         safeCoordinator.onStreamBytes("Long45MinContent".toByteArray(), 0, 16)
-        currentTime += 500_000L // 500s <= 600s so it stays in Muusika to exercise duplicate check
+        currentTime += 500_000L // 500s <= 600s so it stays in Music to exercise duplicate check
         safeCoordinator.stopRecording()
         safeCoordinator.awaitPendingFinalizations()
 
@@ -784,7 +784,7 @@ class StreamRecordingCoordinatorTest {
         safeCoordinator.stopRecording()
         safeCoordinator.awaitPendingFinalizations()
 
-        val albumDir = File(baseDir, "Muusika/Artist/Teadmata album")
+        val albumDir = File(baseDir, "Music/Artist/Unknown Album")
         val mp3Files = albumDir.listFiles()?.filter { it.name.endsWith(".mp3") }?.sortedBy { it.name } ?: emptyList()
         assertEquals(2, mp3Files.size)
         assertEquals("01 - Artist - ShowTitle.mp3", mp3Files[0].name)
@@ -794,7 +794,7 @@ class StreamRecordingCoordinatorTest {
     }
 
     @Test
-    fun `unsplit show mode records entire session into one Saated file ignoring metadata transitions`() {
+    fun `unsplit show mode records entire session into one Broadcasts file ignoring metadata transitions`() {
         var currentTime = 1_000_000L
         val alarmCoordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
@@ -824,10 +824,10 @@ class StreamRecordingCoordinatorTest {
         alarmCoordinator.awaitPendingFinalizations()
         assertFalse(alarmCoordinator.isUnsplitShowMode)
 
-        val musicFiles = File(baseDir, "Muusika").walkTopDown().filter { it.isFile }.toList()
+        val musicFiles = File(baseDir, "Music").walkTopDown().filter { it.isFile }.toList()
         assertEquals(0, musicFiles.size)
 
-        val showFiles = File(baseDir, "Saated/Vikerraadio").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        val showFiles = File(baseDir, "Broadcasts/Vikerraadio").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
         assertEquals(1, showFiles.size)
         assertEquals("ShowStart-MiddleSong-ShowEnd", showFiles.first().readText())
     }
