@@ -3,7 +3,7 @@
 <string name="app_name">"Rādij"</string>
 <string name="nav_radio">"Rādij"</string>
 <string name="nav_alarms">"Āratõmizt"</string>
-<string name="nav_history">"Aig"</string>
+<string name="nav_recordings">"Tāļtõmizt"</string>
 <string name="nav_add_channel">"Līsa kanāl"</string>
 <string name="nav_settings">"Sādimizt"</string>
 <string name="action_cancel">"Katkestõ"</string>
@@ -39,7 +39,7 @@
 <string name="timer_minutes">"%1$d minūtõd"</string>
 <string name="timer_until">"Mäņgõb saņi kell %1$s"</string>
 <string name="timer_start">"Käivitõ"</string>
-<string name="history_title">"Aig"</string>
+<string name="recordings_title">"Tāļtõmizt"</string>
 <string name="history_empty">"Aig um tījā"</string>
 <string name="history_empty_day">"Säl pǟval äb ūo kūldtõd"</string>
 <string name="history_delete_confirm_title">"Kistūtõ aig"</string>
@@ -164,6 +164,17 @@
     <string name="recording_saved_count">"(%1$d tāļtõd)"</string>
     <string name="recording_tracks_saved">"%1$d louli"</string>
     <string name="recording_low_storage_warning">"Tāļtõmi saisātõd: vaba pīela um allõl 500 MB"</string>
+    <string name="recordings_filter_all">"Amād (%1$d)"</string>
+    <string name="recordings_filter_tracks">"Loulõd (%1$d)"</string>
+    <string name="recordings_filter_broadcasts">"Sōtõd (%1$d)"</string>
+    <string name="recordings_empty_filtered">"Sīe filtrõks tāļtõmizt äb ūo"</string>
+    <string name="recordings_search_hint">"Vȯtš päkēra, ārtist, album või stacij..."</string>
+    <string name="recording_badge_broadcast">"Sōtõ"</string>
+    <string name="recording_badge_partial">"Pūoli"</string>
+    <string name="recording_active_banner_title">"Tāļtõmi kǟb"</string>
+    <string name="recording_default_station">"Tāļtõmi"</string>
+    <string name="action_more">"Jemīņ"</string>
+    <string name="action_song_info">"Loul teed"</string>
 
     <!-- Recording Settings -->
     <string name="settings_group_recording">"Tāļtõmi"</string>

@@ -230,6 +230,8 @@ class RadioService : Service() {
         const val ACTION_SEEK = "app.radiorecalarm.ACTION_SEEK"
         const val EXTRA_SEEK_POSITION = "SEEK_POSITION"
         const val EXTRA_RECORD = "app.radiorecalarm.EXTRA_RECORD"
+        const val EXTRA_TRACK_TITLE = "TRACK_TITLE"
+        const val EXTRA_TRACK_ARTIST = "TRACK_ARTIST"
 
     }
 
@@ -526,15 +528,19 @@ class RadioService : Service() {
             updateWidget()
 
             if (isPlaying) {
-                if ((pendingAutoRecord || isContinuousRecordingEnabled()) && !userManuallyStoppedRecordingForCurrentStation && !isRecording) {
+                val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
+                if (!isLocal && (pendingAutoRecord || isContinuousRecordingEnabled()) && !userManuallyStoppedRecordingForCurrentStation && !isRecording) {
                     startRecording(forceUnsplitShow = unsplitShowModeForCurrentRecording)
                 }
                 isChangingStation = false
-                saveToHistory(currentArtist, currentTitle)
+                if (!isLocal) {
+                    saveToHistory(currentArtist, currentTitle)
+                }
                 LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
                     Intent(ACTION_STATION_CHANGED).apply {
                         putExtra("STATION_NAME", currentStationName)
                         putExtra("CATEGORY_NAME", currentCategory)
+                        putExtra("IS_LOCAL", isLocal)
                     }
                 )
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
@@ -829,6 +835,7 @@ class RadioService : Service() {
             putExtra("RECORDING_TRACK", recordingCoordinator.currentTitle)
             putExtra("RECORDING_ARTIST", recordingCoordinator.currentArtist)
             putExtra("RECORDING_COUNT", recordingCoordinator.completedTrackCount)
+            putExtra("RECORDING_ACTIVE_FILE", recordingCoordinator.activeRecordingFilePath ?: "")
         }
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
     }
@@ -1299,6 +1306,8 @@ class RadioService : Service() {
             val triggeredBy = intent.getStringExtra("TRIGGERED_BY")
             val category = intent.getStringExtra("CATEGORY_NAME")
             val extraRecord = intent.getBooleanExtra(EXTRA_RECORD, false)
+            val trackTitle = intent.getStringExtra(EXTRA_TRACK_TITLE)
+            val trackArtist = intent.getStringExtra(EXTRA_TRACK_ARTIST)
             if (category != null) {
                 currentCategory = category
                 prefs.edit().putString("last_category", category).apply()
@@ -1311,13 +1320,27 @@ class RadioService : Service() {
                 }
                 updateNotification()
             } else {
-                playStation(streamUrl, stationName, triggeredBy, shouldRecord = extraRecord)
+                playStation(
+                    streamUrl = streamUrl,
+                    stationName = stationName,
+                    triggeredBy = triggeredBy,
+                    shouldRecord = extraRecord,
+                    trackTitleOverride = trackTitle,
+                    trackArtistOverride = trackArtist
+                )
             }
         }
         return START_STICKY
     }
 
-    private fun playStation(streamUrl: String, stationName: String?, triggeredBy: String?, shouldRecord: Boolean = false) {
+    private fun playStation(
+        streamUrl: String,
+        stationName: String?,
+        triggeredBy: String?,
+        shouldRecord: Boolean = false,
+        trackTitleOverride: String? = null,
+        trackArtistOverride: String? = null
+    ) {
         Log.d(TAG, "playStation: STARTING '$stationName' url='$streamUrl' triggeredBy='$triggeredBy' shouldRecord=$shouldRecord")
 
         pendingMetadataJob?.cancel()
@@ -1330,12 +1353,13 @@ class RadioService : Service() {
         latestWireMetaInt = -1
         latestWireIsAac = false
 
+        val isLocal = streamUrl.startsWith("file://") || streamUrl.startsWith("file:/")
         val wasRecordingBeforeSwitch = isRecording
         interruptionPolicy.onUserUnmuteOrResume()
         player.volume = 1.0f
         stopRecording()
         userManuallyStoppedRecordingForCurrentStation = false
-        if (wasRecordingBeforeSwitch || shouldRecord || isContinuousRecordingEnabled()) {
+        if (!isLocal && (wasRecordingBeforeSwitch || shouldRecord || isContinuousRecordingEnabled())) {
             pendingAutoRecord = true
         } else {
             pendingAutoRecord = false
@@ -1359,8 +1383,8 @@ class RadioService : Service() {
         }
         currentStationBitmap = app.radiorecalarm.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
 
-        currentArtist = getString(R.string.live_broadcast)
-        currentTitle = currentStationName
+        currentArtist = if (isLocal && trackArtistOverride != null) trackArtistOverride else getString(R.string.live_broadcast)
+        currentTitle = if (isLocal && !trackTitleOverride.isNullOrBlank()) trackTitleOverride else currentStationName
         currentExtra = ""
         
         lastSentTitle = ""
@@ -1368,23 +1392,25 @@ class RadioService : Service() {
         lastSentStationName = ""
         lastSentTime = 0
 
-        serviceScope.launch {
-            val db = AppDatabase.getDatabase(applicationContext)
-            val station = db.radioStationDao().getStationByName(currentStationName)
-            if (station != null) {
-                prefs.edit()
-                    .putInt("last_selected_id", station.id)
-                    .putString("last_category", currentCategory)
-                    .putString("last_name", currentStationName)
-                    .putString("last_url", currentStreamUrl)
-                    .apply()
-            } else {
-                prefs.edit()
-                    .putInt("last_selected_id", -1)
-                    .putString("last_url", currentStreamUrl)
-                    .putString("last_name", currentStationName)
-                    .putString("last_category", currentCategory)
-                    .apply()
+        if (!isLocal) {
+            serviceScope.launch {
+                val db = AppDatabase.getDatabase(applicationContext)
+                val station = db.radioStationDao().getStationByName(currentStationName)
+                if (station != null) {
+                    prefs.edit()
+                        .putInt("last_selected_id", station.id)
+                        .putString("last_category", currentCategory)
+                        .putString("last_name", currentStationName)
+                        .putString("last_url", currentStreamUrl)
+                        .apply()
+                } else {
+                    prefs.edit()
+                        .putInt("last_selected_id", -1)
+                        .putString("last_url", currentStreamUrl)
+                        .putString("last_name", currentStationName)
+                        .putString("last_category", currentCategory)
+                        .apply()
+                }
             }
         }
 
@@ -1418,7 +1444,7 @@ class RadioService : Service() {
         player.updateTrackMetadata(initialMeta)
         player.streamStartTime = SystemClock.elapsedRealtime()
 
-        if (pendingAutoRecord || isContinuousRecordingEnabled()) {
+        if (!isLocal && (pendingAutoRecord || isContinuousRecordingEnabled())) {
             autoRecordArmedForStreamUrl = streamUrl
         }
         requestAudioFocus()

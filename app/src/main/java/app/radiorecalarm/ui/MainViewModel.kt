@@ -82,6 +82,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 RadioService.ACTION_STATION_CHANGED -> {
                     val name = intent.getStringExtra("STATION_NAME") ?: ""
                     val serviceCategory = intent.getStringExtra("CATEGORY_NAME")
+                    val isLocal = intent.getBooleanExtra("IS_LOCAL", false)
+                    if (isLocal) {
+                        _uiState.update { it.copy(
+                            isPlaying = true,
+                            playerStatus = getString(R.string.status_playing),
+                            selectedStationId = -1
+                        )}
+                        return
+                    }
                     
                     var newId = _uiState.value.selectedStationId
                     var newCat = _uiState.value.selectedCategory
@@ -176,6 +185,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val station = intent.getStringExtra("RECORDING_STATION") ?: ""
                     val track = intent.getStringExtra("RECORDING_TRACK") ?: ""
                     val count = intent.getIntExtra("RECORDING_COUNT", 0)
+                    val activeFile = intent.getStringExtra("RECORDING_ACTIVE_FILE") ?: ""
                     _uiState.update { current ->
                         val wasMutedRec = current.isMutedRecording
                         val nextIsPlaying = when {
@@ -196,7 +206,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             recordingDuration = dur,
                             recordingStation = station,
                             recordingTrack = track,
-                            recordingCount = count
+                            recordingCount = count,
+                            activeRecordingFilePath = activeFile
                         )
                     }
                 }
@@ -430,20 +441,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         context.startService(i)
     }
 
-    fun onPlayRecordingClicked(file: java.io.File) {
-        val fileUri = android.net.Uri.fromFile(file).toString()
-        val displayName = file.name.removePrefix("Recording_").substringBeforeLast("_202").replace("_", " ")
-        val finalName = if (displayName.isNotBlank()) "Salvestis: $displayName" else "Salvestis"
+    fun onPlayRecordingClicked(entry: app.radiorecalarm.RecordingEntry) {
+        val fileUri = android.net.Uri.fromFile(entry.audioFile).toString()
+        val displayStation = entry.stationName.ifBlank { getString(R.string.recording_default_station) }
+        val displayTitle = entry.title.ifBlank { entry.audioFile.nameWithoutExtension }
+        val displayArtist = entry.artist
+        val displayExtra = entry.album ?: ""
         _uiState.update { it.copy(
-            activeStationName = finalName,
+            activeStationName = displayStation,
             activeStreamUrl = fileUri,
             selectedStationId = -1,
+            parsedTitle = displayTitle,
+            parsedArtist = displayArtist,
+            parsedExtra = displayExtra,
             isPlaying = true,
             playerStatus = getString(R.string.status_buffering)
         )}
         val i = Intent(context, RadioService::class.java).apply {
             putExtra("STREAM_URL", fileUri)
-            putExtra("STATION_NAME", finalName)
+            putExtra("STATION_NAME", displayStation)
+            putExtra(RadioService.EXTRA_TRACK_TITLE, displayTitle)
+            putExtra(RadioService.EXTRA_TRACK_ARTIST, displayArtist)
             putExtra("TRIGGERED_BY", "USER")
         }
         context.startForegroundService(i)
@@ -468,13 +486,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 playerStatus = getString(R.string.status_stopped),
                 bitrate = "",
                 activeStreamUrl = "",
+                parsedTitle = "",
+                parsedArtist = "",
+                parsedExtra = "",
                 playbackPosition = 0L,
                 playbackDuration = 0L
             )}
         }
         try {
-            if (file.exists()) {
-                file.delete()
+            val rootDir = java.io.File(context.getExternalFilesDir(null), app.radiorecalarm.AppConfig.Recording.DEFAULT_AUDIO_DIR)
+            if (app.radiorecalarm.RecordingLibrary.deleteRecordingWithCleanup(file, rootDir)) {
                 Toast.makeText(context, getString(R.string.recording_toast_deleted), Toast.LENGTH_SHORT).show()
             }
         } catch (e: java.lang.Exception) {

@@ -134,6 +134,9 @@ class StreamRecordingCoordinator(
     var currentFile: File? = null
         private set
 
+    val activeRecordingFilePath: String?
+        get() = synchronized(lock) { if (isRecording) currentFile?.absolutePath else null }
+
     private var trackStartTimeMs: Long = 0L
     private var isPartialTrack: Boolean = false
     private var currentBytesWritten: Long = 0L

@@ -21,6 +21,7 @@ data class MainUiState(
     val recordingStation: String = "",
     val recordingTrack: String = "",
     val recordingCount: Int = 0,
+    val activeRecordingFilePath: String = "",
 
     // --- METAANDMED ---
     val parsedArtist: String = "",

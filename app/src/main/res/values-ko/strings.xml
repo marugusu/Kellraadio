@@ -4,7 +4,7 @@
     <!-- Navigation -->
     <string name="nav_radio">라디오</string>
     <string name="nav_alarms">알람</string>
-    <string name="nav_history">기록</string> <!-- Ajalugu/Kirjed -->
+    <string name="nav_recordings">녹음 목록</string>
     <string name="nav_add_channel">추가</string>
     <string name="nav_settings">설정</string>
 
@@ -48,8 +48,8 @@
     <string name="timer_until">%1$s까지 재생</string>
     <string name="timer_start">시작</string>
 
-    <!-- History -->
-    <string name="history_title">청취 기록</string>
+    <!-- Recordings & History -->
+    <string name="recordings_title">녹음 목록</string>
     <string name="history_empty">기록이 없습니다.</string>
     <string name="history_empty_day">이 날짜의 기록이 없습니다.</string>
     <string name="history_delete_confirm_title">기록 삭제</string>
@@ -192,6 +192,17 @@
     <string name="recording_saved_count">(%1$d개 저장됨)</string>
     <string name="recording_tracks_saved">%1$d곡</string>
     <string name="recording_low_storage_warning">저장 공간 부족(500MB 미만)으로 녹음이 중지되었습니다</string>
+    <string name="recordings_filter_all">전체 (%1$d)</string>
+    <string name="recordings_filter_tracks">트랙 (%1$d)</string>
+    <string name="recordings_filter_broadcasts">방송 (%1$d)</string>
+    <string name="recordings_empty_filtered">조건에 맞는 녹음이 없습니다</string>
+    <string name="recordings_search_hint">제목, 아티스트, 앨범 또는 방송국 검색...</string>
+    <string name="recording_badge_broadcast">방송</string>
+    <string name="recording_badge_partial">일부</string>
+    <string name="recording_active_banner_title">녹음 진행 중</string>
+    <string name="recording_default_station">녹음</string>
+    <string name="action_more">더보기</string>
+    <string name="action_song_info">곡 정보</string>
 
     <!-- Recording Settings -->
     <string name="settings_group_recording">녹음</string>

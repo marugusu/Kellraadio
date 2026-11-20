@@ -4,7 +4,7 @@
     <!-- Navigation -->
     <string name="nav_radio">Radio</string>
     <string name="nav_alarms">Alarms</string>
-    <string name="nav_history">History</string>
+    <string name="nav_recordings">Recordings</string>
     <string name="nav_add_channel">Add</string>
     <string name="nav_settings">Settings</string>
 
@@ -53,8 +53,8 @@
     <string name="timer_until">Plays until %1$s</string>
     <string name="timer_start">Start</string>
 
-    <!-- History -->
-    <string name="history_title">History</string>
+    <!-- Recordings & History -->
+    <string name="recordings_title">Recordings</string>
     <string name="history_empty">History is empty.</string>
     <string name="history_empty_day">No history for this day.</string>
     <string name="history_delete_confirm_title">Clear History</string>
@@ -192,6 +192,17 @@
     <string name="recording_saved_count">(%1$d saved)</string>
     <string name="recording_tracks_saved">%1$d tracks</string>
     <string name="recording_low_storage_warning">Recording stopped: free storage below 500 MB</string>
+    <string name="recordings_filter_all">All (%1$d)</string>
+    <string name="recordings_filter_tracks">Tracks (%1$d)</string>
+    <string name="recordings_filter_broadcasts">Broadcasts (%1$d)</string>
+    <string name="recordings_empty_filtered">No recordings match this filter</string>
+    <string name="recordings_search_hint">Search title, artist, album or station...</string>
+    <string name="recording_badge_broadcast">Broadcast</string>
+    <string name="recording_badge_partial">Partial</string>
+    <string name="recording_active_banner_title">Recording in progress</string>
+    <string name="recording_default_station">Recording</string>
+    <string name="action_more">More options</string>
+    <string name="action_song_info">Track info</string>
 
     <!-- Recording Settings -->
     <string name="settings_group_recording">Recording</string>

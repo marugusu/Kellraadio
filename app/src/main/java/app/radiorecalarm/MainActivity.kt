@@ -158,7 +158,7 @@ fun RaadioEkraan(
 
     val navRadioTitle = stringResource(R.string.nav_radio)
     val navAlarmsTitle = stringResource(R.string.nav_alarms)
-    val navHistoryTitle = stringResource(R.string.nav_history)
+    val navRecordingsTitle = stringResource(R.string.nav_recordings)
     val navAddTitle = stringResource(R.string.nav_add_channel)
     val navSettingsTitle = stringResource(R.string.nav_settings)
 
@@ -178,7 +178,7 @@ fun RaadioEkraan(
                 Spacer(modifier = Modifier.weight(1f))
                 NavigationRailItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = railItemColors)
                 NavigationRailItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = railItemColors)
-                NavigationRailItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text(navRecordingsTitle) }, colors = railItemColors)
                 NavigationRailItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = railItemColors)
                 NavigationRailItem(
                     selected = state.currentTab == 4,
@@ -296,7 +296,7 @@ fun RaadioEkraan(
                         )
                         NavigationBarItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = navItemColors)
                         NavigationBarItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = navItemColors)
-                        NavigationBarItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text(navHistoryTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text(navRecordingsTitle) }, colors = navItemColors)
                         NavigationBarItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = navItemColors)
                         NavigationBarItem(
                             selected = state.currentTab == 4,
@@ -465,15 +465,15 @@ fun ContentScreens(
             onShowCuratedClick = { viewModel.toggleHideRemoteStations(false) }
         )
         1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })
-        2 -> HistoryScreen(
+        2 -> RecordingsScreen(
             repository = viewModel.stationRepository,
             onPlayStationByName = viewModel::onHistoryStationClicked,
-            onPlayRecording = { file ->
-                val fileUri = android.net.Uri.fromFile(file).toString()
+            onPlayRecording = { entry ->
+                val fileUri = android.net.Uri.fromFile(entry.audioFile).toString()
                 if (state.activeStreamUrl == fileUri) {
                     viewModel.onPlayPauseClicked()
                 } else {
-                    viewModel.onPlayRecordingClicked(file)
+                    viewModel.onPlayRecordingClicked(entry)
                 }
             },
             onDeleteRecording = viewModel::onDeleteRecording,
@@ -482,6 +482,13 @@ fun ContentScreens(
             playbackPosition = state.playbackPosition,
             playbackDuration = state.playbackDuration,
             onSeek = viewModel::seekTo,
+            isRecording = state.isRecording,
+            recordingDuration = state.recordingDuration,
+            recordingStation = state.recordingStation,
+            recordingTrack = state.recordingTrack,
+            recordingCount = state.recordingCount,
+            activeRecordingFilePath = state.activeRecordingFilePath,
+            onStopRecording = viewModel::onRecordClicked,
             onClearHistory = viewModel::clearHistory
         )
         3 -> SearchScreen(

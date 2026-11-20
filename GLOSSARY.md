@@ -67,3 +67,11 @@ _Avoid_: Eelpuhvri fail, ajanihe kui objekt
 **Akustiline lõikepunkt (Acoustic Split Point)**:
 Helisignaali energialanguse või pausi põhjal tuvastatud tegelik üleminekuhetk kahe segmendi vahel, mille järgi eraldatakse **Pala** ja vahepealne kõll või reklaam.
 _Avoid_: Vaikusefilter, dekodeeritud lõige
+
+**Salvestised (Recordings)**:
+Rakenduse põhivaade, mis koondab ja korraldab failisüsteemi talletatud **Palad** ja **Saated** ning pakub teise alamvahelehena **Laulude ajalugu**.
+_Avoid_: Ajalugu (kui põhivaate nimi), Salvestuste ajalugu
+
+**Laulude ajalugu (Song History)**:
+Raadioeetris kuulatud ja metainfona tuvastatud lugude ajaline logi, mis ei sõltu helifaili salvestamisest.
+_Avoid_: Salvestiste ajalugu
