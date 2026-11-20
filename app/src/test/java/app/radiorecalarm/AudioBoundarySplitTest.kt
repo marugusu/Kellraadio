@@ -236,13 +236,13 @@ class AudioBoundarySplitTest {
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
 
-        val song1File = File(baseDir, "Muusika/Krõll/Teadmata album/01 - Krõll - Lucille.aac")
-        val song2File = File(baseDir, "Muusika/Ahti Nurmis/Teadmata album/01 - Ahti Nurmis - Nüüd astub hobu omapead.aac")
-        val showDir = File(baseDir, "Saated")
+        val song1File = File(baseDir, "Music/Krõll/Unknown Album/01 - Krõll - Lucille.aac")
+        val song2File = File(baseDir, "Music/Ahti Nurmis/Unknown Album/01 - Ahti Nurmis - Nüüd astub hobu omapead.aac")
+        val showDir = File(baseDir, "Broadcasts")
 
         assertTrue("Song 1 file should exist", song1File.exists())
         assertTrue("Song 2 file should exist", song2File.exists())
-        assertFalse("Pruned jingle should leave no Saated files", showDir.walkTopDown().any { it.isFile })
+        assertFalse("Pruned jingle should leave no Broadcasts files", showDir.walkTopDown().any { it.isFile })
 
         // Song 1 must contain ONLY 1400 Song 1 frames (zero jingle bytes!)
         val s1Bytes = song1File.readBytes()

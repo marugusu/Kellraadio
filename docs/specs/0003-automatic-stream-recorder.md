@@ -13,10 +13,10 @@ Kasutaja kuulab raadiot ning soovib eetri kaudu edastatavaid laule ja saateid au
 
 Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksimaalse helikvaliteedi, puhta kaustapuu ja täpse metaandmestiku:
 1. **Bit-perfect salvestus ja kõrvafailid (ADR-0004):** Jaama helivoog salvestatakse puhtalt algsel kujul (MP3 või AAC) ilma akut koormava ümberkodeerimiseta. Iga pala kõrvale salvestatakse struktureeritud JSON-kõrvafail (`<fail>.json`) kõigi tuvastatud metaandmetega ja veebist alla laaditud `cover.jpg`.
-2. **Korrastatud kaustapuu ja standardne nummerdus:** Tuvastatud muusikapalad jaotatakse albumite kaupa kaustadesse (`Music/Muusika/<Esitaja>/<Album>/`), varustatakse kahekohalise palanumbriga (`01`, `02`, ...) ning jutusaated paigutatakse kausta `Music/Saated/<Jaam>/`.
+2. **Korrastatud kaustapuu ja standardne nummerdus:** Tuvastatud muusikapalad jaotatakse albumite kaupa kaustadesse (`Recordings/Music/<Esitaja>/<Album>/`), varustatakse kahekohalise palanumbriga (`01`, `02`, ...) ning jutusaated paigutatakse kausta `Recordings/Broadcasts/<Jaam>/`.
 3. **Voosisene nullviivitusega tükeldus (Zero-Latency Byte Alignment):** Salvestus poolitatakse uueks failiks täpselt sel baidipositsioonil võrguvoos, kus jaam edastab ICY-metainfo, tagades puhta lõike ilma taasesituspuhvri nihketa.
 4. **Intelligentne prügifilter ja osaliste lugude tugi:** Alla 30 sekundi kestvad vaheklipid ja reklaamid kustutatakse automaatselt. Poolelt laulult alustatud salvestised säilitatakse ja märgistatakse kõrvafailis selge tunnusega `"partial": true`.
-5. **Vaba USB ligipääs:** Failid talletatakse välisele salvestuskettale (`Android/data/app.radiorecalarm/files/Music/`), mis on arvutiga USB kaudu koheselt kättesaadav ega vaja Androidi süsteemseid lisalubasid.
+5. **Vaba USB ligipääs:** Failid talletatakse välisele salvestuskettale (`Android/data/app.radiorecalarm/files/Recordings/`), mis on arvutiga USB kaudu koheselt kättesaadav ega vaja Androidi süsteemseid lisalubasid.
 
 ## User Stories
 
@@ -29,7 +29,7 @@ Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksima
 7. As a music collector, I want album cover artwork (`cover.jpg`) to be automatically fetched and saved alongside the track files, so that cover art is immediately available for offline tagging and viewing.
 8. As a radio listener, I want station jingles, station IDs, and short ads lasting under 30 seconds to be automatically deleted, so that my storage is not cluttered with hundreds of useless audio snippets.
 9. As a radio listener hearing a great song already in progress, I want to tap record and have the partial song saved, with the sidecar file marking `"partial": true`, so that I don't lose the song even if its beginning was missed.
-10. As a radio listener tuning in to a talk show or news broadcast without song metadata, I want the audio to be categorized and saved into a dedicated `Saated/` folder, so that spoken programs do not mix into music album folders.
+10. As a radio listener tuning in to a talk show or news broadcast without song metadata, I want the audio to be categorized and saved into a dedicated `Broadcasts/` folder, so that spoken programs do not mix into music album folders.
 11. As a radio listener, when a station transitions from a talk show to a music song, I want the show file to cleanly close and the song to start in its album folder, so that talk and music are distinctly separated.
 12. As a radio listener on mobile data experiencing a momentary 2-second reconnect, I want recording to seamlessly continue appending to the active file if the song metadata hasn't changed, so that brief network hiccups do not fragment tracks.
 13. As an audiophile, I want track splits to occur at the exact byte boundary where the radio server sends the ICY metadata block in the stream, so that the playback buffer does not cut off the first few seconds of the song.
@@ -38,7 +38,7 @@ Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksima
 16. As a PC user connecting via USB cable (MTP), I want recorded folders, audio files, JSON sidecars, and cover images to be immediately visible and copyable, so that I don't need root permissions or specialized file transfer tools.
 17. As a listener stopping recording, I want the final in-progress track or show to be flushed and safely closed, pruning it if it was under 30 seconds, so that no corrupted half-written files remain on disk.
 18. As a user recording a song that was already recorded earlier in the day, I want the new file to automatically receive a suffix index (e.g. `_01`, `_02`), so that previous recordings are never overwritten or lost.
-19. As a radio listener listening to songs not listed in iTunes, I want the recording to gracefully fall back to a `Teadmata album/` folder with null fields in the sidecar JSON, so that unindexed local music is still captured reliably.
+19. As a radio listener listening to songs not listed in iTunes, I want the recording to gracefully fall back to an `Unknown Album/` folder with null fields in the sidecar JSON, so that unindexed local music is still captured reliably.
 20. As a phone user, I want the background recording to stream directly from the network data source to disk without accumulating large audio chunks in RAM, so that the app cannot crash with OutOfMemory errors.
 21. As a radio listener waking up to a morning broadcast, I want my alarm to automatically start recording the station, so that I capture the broadcast while waking up without having to manually start recording.
 22. As an avid radio recorder, I want a setting to record continuously whenever the radio is streaming, so that all stations I listen to are automatically archived.
@@ -58,10 +58,10 @@ Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksima
   - When the ICY parser identifies a change in title/artist, the current file output stream is flushed and completed at that exact byte offset, and the subsequent bytes route into the newly created track file.
 
 - **Folder Hierarchy and File Naming Rules**:
-  - Music base path: `Android/data/app.radiorecalarm/files/Music/`
-  - Track path: `Muusika/<SanitizedArtist>/<SanitizedAlbum>/<NN> - <SanitizedArtist> - <SanitizedTitle>.<ext>`
-  - Fallback album folder when album metadata is absent: `Teadmata album`
-  - Show path: `Saated/<SanitizedStation>/<SanitizedStation>_<yyyyMMdd_HHmmss>.<ext>`
+  - Recording base path: `Android/data/app.radiorecalarm/files/Recordings/`
+  - Track path: `Music/<SanitizedArtist>/<SanitizedAlbum>/<NN> - <SanitizedArtist> - <SanitizedTitle>.<ext>`
+  - Fallback album folder when album metadata is absent: `Unknown Album`
+  - Broadcast path: `Broadcasts/<SanitizedStation>/<SanitizedStation>_<yyyyMMdd_HHmmss>.<ext>`
   - Track number formatting: Two-digit zero-padded number (`01`, `02`, ...). If the official iTunes/MusicBrainz track number is known, it is formatted as two digits; otherwise, it is assigned the next sequential index in that album directory.
   - Collision resolution: If target file exists, append `_01`, `_02`, etc.
 
@@ -131,7 +131,7 @@ Luua automaatne ja taustal toimiv raadiovoo salvestussüsteem, mis tagab maksima
   2. *Minimum Duration Pruning*: Feed a 15-second track followed by a 180-second track; verify the 15-second file is deleted and the 180-second file is preserved.
   3. *Sidecar Verification*: Verify that the output `.json` matches the specified schema with correct duration, timestamps, artist, and album.
   4. *Partial Track Flagging*: Start recording mid-track; verify the sidecar has `"partial": true`.
-  5. *Show vs Music Classification*: Provide metadata with "Otseeeter" or station name; verify it routes to `Saated/` instead of `Muusika/`.
+  5. *Show vs Music Classification*: Provide metadata with "Otseeeter" or station name; verify it routes to `Broadcasts/` instead of `Music/`.
   6. *Two-Digit Numbering*: Verify tracks are saved as `01 - ...`, `02 - ...`, and collisions use `_01`, `_02`.
   7. *Reconnect Continuity*: Simulate a momentary zero-byte gap without metadata change; verify bytes are appended to the existing file.
 - **Prior Art**:

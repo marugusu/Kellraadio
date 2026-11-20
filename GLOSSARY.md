@@ -40,9 +40,9 @@ _Avoid_: Audio rip, striimitõmmis
 Tuvastatud esitaja ja pealkirjaga muusikateos kestusega kuni 10 minutit, millele päritakse laiendatud metaandmed ja kaanepilt.
 _Avoid_: Lugu, laul kui tehniline salvestis
 
-**Saade (Broadcast / Show)**:
+**Saade (Broadcast)**:
 Mitte-muusikaline raadioprogramm, uudiste- või teenusteade, üheosalise metainfoga ülekanne, äratusega salvestatud programm või üle 10 minuti kestev salvestis.
-_Avoid_: Otseeeter kui failitüüp, jutt
+_Avoid_: Otseeeter kui failitüüp, jutt, Show
 
 **Kõrvafail (Sidecar File)**:
 Helifailiga kaasas käiv struktureeritud `.json` metaandmefail koos kaanepildiga (`cover.jpg`) hilisemaks sildistamiseks.

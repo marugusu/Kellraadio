@@ -123,10 +123,10 @@ object AppConfig {
         const val SPLIT_SEARCH_WINDOW_MS = 6500L
         const val SPLIT_FALLBACK_OFFSET_MS = 2000L
         const val SPLIT_MIN_SEGMENT_GUARD_MS = 400L
-        const val DIR_MUSIC = "Muusika"
-        const val DIR_SHOWS = "Saated"
-        const val DIR_UNKNOWN_ALBUM = "Teadmata album"
-        const val DEFAULT_AUDIO_DIR = "Music"
+        const val DIR_MUSIC = "Music"
+        const val DIR_BROADCASTS = "Broadcasts"
+        const val DIR_UNKNOWN_ALBUM = "Unknown Album"
+        const val DEFAULT_AUDIO_DIR = "Recordings"
         const val PREF_CONTINUOUS_RECORDING = "continuous_recording"
         const val MIN_FREE_STORAGE_BYTES = 500L * 1024L * 1024L // 500 MB (ADR-0005)
     }
