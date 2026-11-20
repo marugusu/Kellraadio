@@ -84,11 +84,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val serviceCategory = intent.getStringExtra("CATEGORY_NAME")
                     val isLocal = intent.getBooleanExtra("IS_LOCAL", false)
                     if (isLocal) {
-                        _uiState.update { it.copy(
-                            isPlaying = true,
-                            playerStatus = getString(R.string.status_playing),
-                            selectedStationId = -1
-                        )}
+                        val streamUrl = intent.getStringExtra("STREAM_URL")
+                        val isPlayingExtra = if (intent.hasExtra("IS_PLAYING")) {
+                            intent.getBooleanExtra("IS_PLAYING", true)
+                        } else {
+                            true
+                        }
+                        _uiState.update {
+                            app.radiorecalarm.PlaybackStatusSync.applyLocalStationChanged(
+                                current = it,
+                                stationName = name,
+                                streamUrl = streamUrl,
+                                isPlaying = isPlayingExtra,
+                                playingStatusText = getString(R.string.status_playing),
+                                pausedStatusText = getString(R.string.status_stopped)
+                            )
+                        }
                         return
                     }
                     
@@ -409,7 +420,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }
             context.startService(i)
         } else {
-            val isLocal = _uiState.value.activeStreamUrl.startsWith("file://") || _uiState.value.activeStreamUrl.startsWith("file:/")
+            val isLocal = app.radiorecalarm.PlaybackStatusSync.isLocalStreamUri(_uiState.value.activeStreamUrl)
             if (isLocal) {
                 _uiState.update { it.copy(isPlaying = true, playerStatus = getString(R.string.status_buffering)) }
                 val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }

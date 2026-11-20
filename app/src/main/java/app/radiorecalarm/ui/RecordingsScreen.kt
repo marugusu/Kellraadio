@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -99,20 +100,20 @@ fun RecordingsScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val scope = rememberCoroutineScope()
 
-    var activeSubTab by remember { mutableStateOf(0) }
+    var activeSubTab by rememberSaveable { mutableStateOf(0) }
 
     // --- Salvestiste olek ---
     var allRecordings by remember { mutableStateOf<List<RecordingEntry>>(emptyList()) }
-    var recordingsFilter by remember { mutableStateOf(RecordingFilter.ALL) }
-    var showSearchBar by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedRecordingDateMillis by remember { mutableStateOf<Long?>(null) }
+    var recordingsFilter by rememberSaveable { mutableStateOf(RecordingFilter.ALL) }
+    var showSearchBar by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedRecordingDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var recordingToDelete by remember { mutableStateOf<RecordingEntry?>(null) }
 
     // --- Laulude ajaloo olek ---
     var loadingItemId by remember { mutableStateOf<Long?>(null) }
-    var selectedHistoryDateMillis by remember { mutableStateOf<Long?>(null) }
-    var showClearHistoryDialog by remember { mutableStateOf(false) }
+    var selectedHistoryDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showClearHistoryDialog by rememberSaveable { mutableStateOf(false) }
 
     // --- Ühine SongInfoSheet + DatePicker ---
     var sheetArtist by remember { mutableStateOf("") }
