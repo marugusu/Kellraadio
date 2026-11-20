@@ -466,7 +466,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             parsedArtist = displayArtist,
             parsedExtra = displayExtra,
             isPlaying = true,
-            playerStatus = getString(R.string.status_buffering)
+            playerStatus = getString(R.string.status_buffering),
+            playbackPosition = 0L,
+            playbackDuration = (entry.durationSeconds * 1000L).coerceAtLeast(0L)
         )}
         val i = Intent(context, RadioService::class.java).apply {
             putExtra("STREAM_URL", fileUri)
@@ -479,10 +481,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun seekTo(positionMs: Long) {
-        _uiState.update { it.copy(playbackPosition = positionMs) }
+        val clampedPositionMs = app.radiorecalarm.PlaybackStatusSync.clampSeekPosition(
+            positionMs = positionMs,
+            durationMs = _uiState.value.playbackDuration
+        )
+        _uiState.update { it.copy(playbackPosition = clampedPositionMs) }
         val i = Intent(context, RadioService::class.java).apply {
             action = RadioService.ACTION_SEEK
-            putExtra(RadioService.EXTRA_SEEK_POSITION, positionMs)
+            putExtra(RadioService.EXTRA_SEEK_POSITION, clampedPositionMs)
         }
         context.startService(i)
     }

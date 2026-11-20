@@ -956,8 +956,12 @@ fun RecordingRow(
 
             if (isCurrent && (isPlaying || playbackPosition > 0L)) {
                 var sliderPosition by remember { mutableStateOf<Float?>(null) }
+                val effectiveDuration = app.radiorecalarm.PlaybackStatusSync.resolveEffectiveDurationMs(
+                    playbackDurationMs = playbackDuration,
+                    metadataDurationSeconds = entry.durationSeconds
+                )
                 val currentPosition = sliderPosition ?: playbackPosition.toFloat()
-                val safeDuration = if (playbackDuration > 0) playbackDuration else 1L
+                val safeDuration = if (effectiveDuration > 0L) effectiveDuration else 1L
                 val finalSliderValue = currentPosition.coerceIn(0f, safeDuration.toFloat())
 
                 Column(
@@ -973,6 +977,7 @@ fun RecordingRow(
                             sliderPosition?.let { onSeek(it.toLong()) }
                             sliderPosition = null
                         },
+                        enabled = effectiveDuration > 0L,
                         valueRange = 0f..safeDuration.toFloat(),
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
@@ -994,7 +999,7 @@ fun RecordingRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = formatTime(playbackDuration),
+                            text = formatTime(effectiveDuration),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

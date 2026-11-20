@@ -118,10 +118,7 @@ class SkodaAwarePlayer(
     // --- Kestus: 5 minutit raadiovoole, reaalne kestus kohalikule failile ---
     override fun getDuration(): Long {
         if (isLocalPlayback()) {
-            val realDuration = super.getDuration()
-            if (realDuration != C.TIME_UNSET) {
-                return realDuration
-            }
+            return super.getDuration()
         }
         return 300000L
     }

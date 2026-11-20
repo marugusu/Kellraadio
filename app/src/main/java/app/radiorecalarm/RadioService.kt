@@ -484,6 +484,9 @@ class RadioService : Service() {
             if (playbackState == Player.STATE_READY) {
                 hasSuccessfullyStartedPlaying = true
                 consecutiveErrorCount = 0
+                if (PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)) {
+                    broadcastPlaybackProgress(player.currentPosition, player.duration.coerceAtLeast(0L))
+                }
             }
             
             // LAHENDUS: Kui striim saab otsa (server paneb toru ära), proovi kiiresti uuesti valmistada (seek + prepare)
@@ -1111,10 +1114,10 @@ class RadioService : Service() {
         }
 
         val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(this, customDataSourceFactory)
+        val extractorsFactory = PlaybackStatusSync.createExtractorsFactory()
 
         val realPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(this)
-                .setDataSourceFactory(defaultDataSourceFactory)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(defaultDataSourceFactory, extractorsFactory)
                 .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
             )
             .setTrackSelector(trackSelector)
@@ -1329,8 +1332,11 @@ class RadioService : Service() {
             }
             ACTION_SEEK -> {
                 val positionMs = intent.getLongExtra(EXTRA_SEEK_POSITION, 0L)
-                if (::player.isInitialized) {
-                    player.seekTo(positionMs)
+                if (::player.isInitialized && PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)) {
+                    val dur = player.duration.coerceAtLeast(0L)
+                    val clampedPositionMs = PlaybackStatusSync.clampSeekPosition(positionMs, dur)
+                    player.seekTo(clampedPositionMs)
+                    broadcastPlaybackProgress(player.currentPosition, dur)
                 }
                 return START_STICKY
             }
