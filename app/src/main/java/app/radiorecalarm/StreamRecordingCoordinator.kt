@@ -20,6 +20,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 fun interface MetadataFetcher {
     suspend fun fetch(artist: String, title: String): SongAdditionalInfo?
@@ -79,7 +80,7 @@ class StreamRecordingCoordinator(
     private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
     private val maxTrackDurationSeconds: Long = AppConfig.Recording.MAX_TRACK_DURATION_SECONDS,
     private val lookbackDurationSeconds: Long = AppConfig.Recording.LOOKBACK_BUFFER_SECONDS,
-    private val audioBoundaryDetector: AudioBoundaryDetector = AudioBoundaryDetector { frames, _ -> frames.size },
+    private val audioBoundaryDetector: AudioBoundaryDetector = AudioBoundaryDetector { req -> SplitRange(req.frames.size) },
     private val storageSpaceChecker: StorageSpaceChecker = AndroidStorageSpaceChecker(),
     private val onLowStorage: (() -> Unit)? = null
 ) {
@@ -142,6 +143,7 @@ class StreamRecordingCoordinator(
     private var currentBytesWritten: Long = 0L
     private var currentDurationTracker: AudioDurationTracker? = null
     private var currentEnrichmentDeferred: Deferred<SongAdditionalInfo?>? = null
+    private var currentEnrichmentInfoRef: AtomicReference<SongAdditionalInfo?>? = null
     private var frameAccumulator: AudioFrameAccumulator? = null
     private var lookbackBuffer: LookbackFrameBuffer? = null
 
@@ -291,10 +293,28 @@ class StreamRecordingCoordinator(
             if (lb != null && !lb.isEmpty()) {
                 val buffered = lb.snapshotFrames()
                 val hasFlushedPrefix = currentBytesWritten > 0L
-                val splitIdx = audioBoundaryDetector.findSplitFrameIndex(buffered, hasFlushedPrefix)
-                    .coerceIn(0, buffered.size)
-                lb.popPrefix(splitIdx) { frame ->
+                val tracker = currentDurationTracker
+                val flushedDurationMs = if (tracker != null && tracker.validFrameCount >= 2L) {
+                    (tracker.totalDurationMicros / 1000L).coerceAtLeast(0L)
+                } else {
+                    (clock() - trackStartTimeMs).coerceAtLeast(0L)
+                }
+                val expectedDurationMs = currentEnrichmentInfoRef?.get()?.durationMs
+                val splitRange = audioBoundaryDetector.findSplitRange(
+                    BoundaryAnalysisRequest(
+                        frames = buffered,
+                        hasFlushedPrefix = hasFlushedPrefix,
+                        flushedDurationMs = flushedDurationMs,
+                        expectedTrackDurationMs = expectedDurationMs
+                    )
+                )
+                val closeIdx = splitRange.closeEndIndex.coerceIn(0, buffered.size)
+                val nextStartIdx = splitRange.nextStartIndex.coerceIn(closeIdx, buffered.size)
+                lb.popPrefix(closeIdx) { frame ->
                     writeFrameToCurrentTrackLocked(frame)
+                }
+                if (nextStartIdx > closeIdx) {
+                    lb.discardPrefix(nextStartIdx - closeIdx)
                 }
             }
 
@@ -408,6 +428,7 @@ class StreamRecordingCoordinator(
         currentBytesWritten = 0L
         currentDurationTracker = AudioDurationTracker(preferAac = isCurrentStreamAac)
         currentEnrichmentDeferred = null
+        currentEnrichmentInfoRef = null
 
         isCurrentShow = isShow(rawMetadata, currentArtist, currentTitle, currentStationName)
 
@@ -452,9 +473,13 @@ class StreamRecordingCoordinator(
 
             val artistForQuery = currentArtist
             val titleForQuery = currentTitle
+            val infoRef = AtomicReference<SongAdditionalInfo?>(null)
+            currentEnrichmentInfoRef = infoRef
             currentEnrichmentDeferred = coordinatorScope.async {
                 try {
-                    metadataFetcher.fetch(artistForQuery, titleForQuery)
+                    metadataFetcher.fetch(artistForQuery, titleForQuery)?.also {
+                        infoRef.set(it)
+                    }
                 } catch (_: Exception) {
                     null
                 }
@@ -481,6 +506,7 @@ class StreamRecordingCoordinator(
             currentOutputStream = null
             currentFile = null
             currentEnrichmentDeferred = null
+            currentEnrichmentInfoRef = null
             currentDurationTracker = null
             currentBytesWritten = 0L
         }
