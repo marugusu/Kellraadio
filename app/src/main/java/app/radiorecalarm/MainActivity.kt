@@ -27,7 +27,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
@@ -176,10 +178,10 @@ fun RaadioEkraan(
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
-                NavigationRailItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = railItemColors)
-                NavigationRailItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = railItemColors)
-                NavigationRailItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text(navRecordingsTitle) }, colors = railItemColors)
-                NavigationRailItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { NavItemLabel(navRadioTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { NavItemLabel(navAlarmsTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { NavItemLabel(navRecordingsTitle) }, colors = railItemColors)
+                NavigationRailItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { NavItemLabel(navAddTitle) }, colors = railItemColors)
                 NavigationRailItem(
                     selected = state.currentTab == 4,
                     onClick = { mainViewModel.onTabSelected(4) },
@@ -188,7 +190,7 @@ fun RaadioEkraan(
                             Icon(Icons.Default.Settings, null)
                         }
                     },
-                    label = { Text(navSettingsTitle) },
+                    label = { NavItemLabel(navSettingsTitle) },
                     colors = railItemColors
                 )
                 Spacer(modifier = Modifier.weight(1f))
@@ -294,10 +296,10 @@ fun RaadioEkraan(
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
-                        NavigationBarItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { Text(navRadioTitle) }, colors = navItemColors)
-                        NavigationBarItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { Text(navAlarmsTitle) }, colors = navItemColors)
-                        NavigationBarItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text(navRecordingsTitle) }, colors = navItemColors)
-                        NavigationBarItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { Text(navAddTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 0, onClick = { mainViewModel.onTabSelected(0) }, icon = { Icon(Icons.Default.Radio, null) }, label = { NavItemLabel(navRadioTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 1, onClick = { mainViewModel.onTabSelected(1) }, icon = { Icon(Icons.Default.Alarm, null) }, label = { NavItemLabel(navAlarmsTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 2, onClick = { mainViewModel.onTabSelected(2) }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { NavItemLabel(navRecordingsTitle) }, colors = navItemColors)
+                        NavigationBarItem(selected = state.currentTab == 3, onClick = { mainViewModel.onTabSelected(3) }, icon = { Icon(Icons.Default.AddCircleOutline, null) }, label = { NavItemLabel(navAddTitle) }, colors = navItemColors)
                         NavigationBarItem(
                             selected = state.currentTab == 4,
                             onClick = { mainViewModel.onTabSelected(4) },
@@ -306,7 +308,7 @@ fun RaadioEkraan(
                                     Icon(Icons.Default.Settings, null)
                                 }
                             },
-                            label = { Text(navSettingsTitle) },
+                            label = { NavItemLabel(navSettingsTitle) },
                             colors = navItemColors
                         )
                     }
@@ -558,5 +560,20 @@ fun ContentScreens(
             )
         }
     }
+}
+
+/**
+ * Single-line navigation destination label tuned so 5-tab labels fit without mid-word wrapping.
+ */
+@Composable
+private fun NavItemLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 11.sp,
+        letterSpacing = 0.sp,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
