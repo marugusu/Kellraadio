@@ -71,6 +71,34 @@ class MediaCodecAudioBoundaryDetectorTest {
         )
     }
 
+    @Test
+    fun detectsStepUpFromFadeOutToLoudStartInRealAacAdtsStreamViaMediaCodec() {
+        val sampleRate = 44100
+        val channels = 2
+        val totalSeconds = 10
+        val fadeStartMs = 4500
+        val stepUpMs = 7000
+
+        val adtsBytes = encodePcmToAdtsAac(
+            sampleRate = sampleRate,
+            channels = channels,
+            durationMs = totalSeconds * 1000,
+            amplitudeAtMs = { tMs -> if (tMs in fadeStartMs until stepUpMs) 0.04 else 0.65 }
+        )
+
+        val frames = parseAdtsFrames(adtsBytes)
+        assertTrue("Expected encoded ADTS frames (> 350), got ${frames.size}", frames.size > 350)
+
+        val detector = MediaCodecAudioBoundaryDetector()
+        val range = detector.findSplitRange(BoundaryAnalysisRequest(frames, hasFlushedPrefix = true))
+        val splitTimeMs = frames.take(range.closeEndIndex).sumOf { it.durationMicros } / 1000L
+
+        assertTrue(
+            "Expected MediaCodec step-up split near ${stepUpMs}ms (${stepUpMs - 200}..${stepUpMs + 200}ms), got ${splitTimeMs}ms (${range.strategy})",
+            splitTimeMs in (stepUpMs - 200L)..(stepUpMs + 200L)
+        )
+    }
+
     private fun parseAdtsFrames(adtsBytes: ByteArray): List<AudioFrame> {
         val frames = mutableListOf<AudioFrame>()
         val accumulator = AudioFrameAccumulator(preferAac = true)

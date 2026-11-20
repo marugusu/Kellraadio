@@ -119,10 +119,13 @@ object AppConfig {
         const val MIN_DURATION_SECONDS = 30L
         const val MAX_TRACK_DURATION_SECONDS = 600L // Üle 10 min kestev salvestis liigitatakse saateks (ADR-0006)
         const val ENRICHMENT_TIMEOUT_MS = 2000L
-        const val LOOKBACK_BUFFER_SECONDS = 8L
-        const val SPLIT_SEARCH_WINDOW_MS = 6500L
-        const val SPLIT_FALLBACK_OFFSET_MS = 2000L
+        const val LOOKBACK_BUFFER_SECONDS = 20L
+        const val SPLIT_SEARCH_WINDOW_MS = 15000L
+        const val SPLIT_FALLBACK_OFFSET_MS = 2800L
         const val SPLIT_MIN_SEGMENT_GUARD_MS = 400L
+        const val JINGLE_MIN_GAP_MS = 2000L
+        const val JINGLE_MAX_GAP_MS = 12000L
+        const val DURATION_ANCHOR_TOLERANCE_MS = 5000L
         const val DIR_MUSIC = "Music"
         const val DIR_BROADCASTS = "Broadcasts"
         const val DIR_UNKNOWN_ALBUM = "Unknown Album"

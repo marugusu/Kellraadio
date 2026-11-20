@@ -49,11 +49,11 @@ Helifailiga kaasas käiv struktureeritud `.json` metaandmefail koos kaanepildiga
 _Avoid_: Info fail, txt fail, nfo
 
 **Automaatne tükeldus (Auto-splitting)**:
-Salvestusvoo poolitamine uude faili reaalajas jaama metainfo muutumise hetkel.
+Salvestusvoo poolitamine uueks **Palaks** või **Saateks** jaama metainfo muutumisel, rakendades **Paladele** alguse ja lõpu puhast raamistamist.
 _Avoid_: Segmentimine, lõikamine
 
 **Äratuse salvestus (Alarm Recording)**:
-Äratuse käivitumisel automaatselt algav salvestus, mis talletab kogu sessiooni ühe tükeldamata saatena.
+Äratuse käivitumisel automaatselt algav salvestus, mis talletab kogu sessiooni ühe tükeldamata ja kärpimata saatena.
 _Avoid_: Äratusripp, automaatsalvesti äratusel
 
 **Pidev salvestus (Continuous Recording)**:
@@ -61,12 +61,16 @@ Rakenduse üldseadistus, mille sisselülitamisel käivitub salvestus automaatsel
 _Avoid_: Taustaripp, lausripp
 
 **Viivepuhver (Lookback Buffer)**:
-Salvestamise ajal enne faili lõplikku sulgemist mälus hoitav viimaste sekundite heliaken, mis võimaldab jaama metainfo hilinemise korral nihutada lõikepunkti ajas tagasi.
+Salvestamise ajal enne faili lõplikku sulgemist mälus hoitav libisev heliaken, mis võimaldab jaama metainfo hilinemise korral leida tegelikud üleminekupiirid ja jätta vahekõllid välja.
 _Avoid_: Eelpuhvri fail, ajanihe kui objekt
 
 **Akustiline lõikepunkt (Acoustic Split Point)**:
-Helisignaali energialanguse või pausi põhjal tuvastatud tegelik üleminekuhetk kahe segmendi vahel, mille järgi eraldatakse **Pala** ja vahepealne kõll või reklaam.
+Helisignaali vaikuse, energialanguse või järsu helitugevuse tõusu põhjal tuvastatud üleminekuhetk, mille järgi eraldatakse **Pala** algus ja lõpp teistest paladest ning vahekõllidest.
 _Avoid_: Vaikusefilter, dekodeeritud lõige
+
+**Vahekõll (Interstitial Jingle)**:
+Kahe **Pala** vahel eetris kõlav lühike jaama tunnusheli või reklaamklipp, mis jääb välja mõlema **Pala** salvestisest sõltumata sellest, kas jaam selle kohta metainfot saatis.
+_Avoid_: Prügiklipp, jingle
 
 **Salvestised (Recordings)**:
 Rakenduse põhivaade, mis koondab ja korraldab failisüsteemi talletatud **Palad** ja **Saated** ning pakub teise alamvahelehena **Laulude ajalugu**.

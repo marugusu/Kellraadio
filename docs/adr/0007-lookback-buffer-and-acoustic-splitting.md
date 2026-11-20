@@ -1,6 +1,6 @@
 # 0007. Viivepuhver ja akustiline lõikepunkt Icecasti metainfo viivituse kompenseerimiseks
 
-Status: accepted (täiendab dokumenti [ADR-0004](0004-stream-recording-architecture.md))
+Status: superseded by [ADR-0008](0008-bulletproof-track-framing.md) (täiendab dokumenti [ADR-0004](0004-stream-recording-architecture.md))
 
 Raadiojaamade väljastusautomaatika ja Icecasti kodeerijate puhvrite tõttu saabub `StreamTitle` metainfo sageli 2–4 sekundit pärast **Pala** tegelikku algust ja lõppu. Kui **Automaatne tükeldus** lõikab faili täpselt `StreamTitle` saabumise hetkel, jääb eelmise **Pala** lõppu 2–3 sekundit jaamakõlli ning järgmise **Pala** algusest läheb 2–3 sekundit kaduma (eriti kui vahepealne kõll või reklaam kestab alla 30 sekundi ja kustutatakse prügina). Otsustasime lisada salvestustorule 8-sekundilise **Viivepuhvri** ja metainfo piiril käivitatava **Akustilise lõikepunkti** tuvastuse.
 
