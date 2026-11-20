@@ -488,7 +488,7 @@ class RadioService : Service() {
             
             // LAHENDUS: Kui striim saab otsa (server paneb toru ära), proovi kiiresti uuesti valmistada (seek + prepare)
             if (playbackState == Player.STATE_ENDED && player.playWhenReady) {
-                val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
+                val isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)
                 if (isLocal) {
                     stopRadio()
                 } else {
@@ -528,7 +528,7 @@ class RadioService : Service() {
             updateWidget()
 
             if (isPlaying) {
-                val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
+                val isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)
                 if (!isLocal && (pendingAutoRecord || isContinuousRecordingEnabled()) && !userManuallyStoppedRecordingForCurrentStation && !isRecording) {
                     startRecording(forceUnsplitShow = unsplitShowModeForCurrentRecording)
                 }
@@ -536,13 +536,7 @@ class RadioService : Service() {
                 if (!isLocal) {
                     saveToHistory(currentArtist, currentTitle)
                 }
-                LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
-                    Intent(ACTION_STATION_CHANGED).apply {
-                        putExtra("STATION_NAME", currentStationName)
-                        putExtra("CATEGORY_NAME", currentCategory)
-                        putExtra("IS_LOCAL", isLocal)
-                    }
-                )
+                sendStationChangedBroadcast(isLocal = isLocal, isPlaying = true)
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
                 
                 if (isInitialStationPlayback) {
@@ -561,8 +555,11 @@ class RadioService : Service() {
 
                 startProgressTracker()
             } else {
+                val isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)
+                val isPausedLocal = isLocal && !isChangingStation &&
+                    player.playbackState != Player.STATE_IDLE &&
+                    player.playbackState != Player.STATE_ENDED
                 if (!player.playWhenReady && !isChangingStation && !interruptionPolicy.wasSuppressedByTransientLoss) {
-                    val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
                     val action = if (isLocal) ACTION_PLAYER_PAUSED else ACTION_PLAYER_STOPPED
                     LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(action))
                     autoRecordArmedForStreamUrl = null
@@ -573,7 +570,10 @@ class RadioService : Service() {
                 metadataPushJob?.cancel()
                 pendingMetadataJob?.cancel()
                 pendingMetadataJob = null
-                stopProgressTracker()
+                stopProgressTracker(resetToZero = !isPausedLocal)
+                if (isPausedLocal) {
+                    broadcastPlaybackProgress(player.currentPosition, player.duration.coerceAtLeast(0L))
+                }
             }
         }
 
@@ -699,25 +699,45 @@ class RadioService : Service() {
 
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (currentStationName != "Radio" && currentStationName.isNotEmpty()) {
-                 LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(
-                    Intent(ACTION_STATION_CHANGED).apply { 
-                        putExtra("STATION_NAME", currentStationName)
-                        putExtra("CATEGORY_NAME", currentCategory)
-                    }
-                )
+            val isPlayerReady = ::player.isInitialized
+            val hasLoadedMedia = isPlayerReady &&
+                player.playbackState != Player.STATE_IDLE &&
+                player.playbackState != Player.STATE_ENDED
+            val snapshot = PlaybackStatusSync.resolveServiceStatus(
+                stationName = currentStationName,
+                streamUrl = currentStreamUrl,
+                isPlayerInitialized = isPlayerReady,
+                isPlaying = isPlayerReady && player.isPlaying,
+                hasLoadedMedia = hasLoadedMedia
+            )
+
+            if (snapshot.sendStationChanged) {
+                sendStationChangedBroadcast(isLocal = snapshot.isLocal, isPlaying = snapshot.isPlaying)
             }
 
             if (currentTitle.isNotEmpty() || currentArtist.isNotEmpty()) {
                 sendMetadataUpdate(currentTitle, currentArtist, currentExtra)
             }
 
-            if (player.isPlaying) {
+            if (snapshot.sendBitrateAndTimer) {
                 sendBitrateUpdate()
                 sendTimerTick(sleepTimerRemainingMillis)
-            } else { 
-                LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(Intent(ACTION_PLAYER_STOPPED)) 
             }
+
+            when (snapshot.terminalAction) {
+                PlaybackStatusAction.NONE -> Unit
+                PlaybackStatusAction.PAUSED -> {
+                    LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(Intent(ACTION_PLAYER_PAUSED))
+                }
+                PlaybackStatusAction.STOPPED -> {
+                    LocalBroadcastManager.getInstance(this@RadioService).sendBroadcast(Intent(ACTION_PLAYER_STOPPED))
+                }
+            }
+
+            if (snapshot.sendPlaybackProgress && isPlayerReady) {
+                broadcastPlaybackProgress(player.currentPosition, player.duration.coerceAtLeast(0L))
+            }
+
             sendRecordingStatus()
         }
     }
@@ -840,13 +860,27 @@ class RadioService : Service() {
         LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
     }
 
+    private fun sendStationChangedBroadcast(isLocal: Boolean, isPlaying: Boolean) {
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(
+            Intent(ACTION_STATION_CHANGED).apply {
+                putExtra("STATION_NAME", currentStationName)
+                putExtra("CATEGORY_NAME", currentCategory)
+                putExtra("IS_LOCAL", isLocal)
+                if (isLocal) {
+                    putExtra("STREAM_URL", currentStreamUrl)
+                    putExtra("IS_PLAYING", isPlaying)
+                }
+            }
+        )
+    }
+
     private fun startProgressTracker() {
-        stopProgressTracker()
-        if (currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")) {
+        stopProgressTracker(resetToZero = false)
+        if (PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)) {
             progressJob = sessionScope.launch {
                 while (player.isPlaying) {
                     val pos = player.currentPosition
-                    val dur = player.duration
+                    val dur = player.duration.coerceAtLeast(0L)
                     broadcastPlaybackProgress(pos, dur)
                     delay(250)
                 }
@@ -854,10 +888,12 @@ class RadioService : Service() {
         }
     }
 
-    private fun stopProgressTracker() {
+    private fun stopProgressTracker(resetToZero: Boolean = true) {
         progressJob?.cancel()
         progressJob = null
-        broadcastPlaybackProgress(0L, 0L)
+        if (resetToZero) {
+            broadcastPlaybackProgress(0L, 0L)
+        }
     }
 
     private fun broadcastPlaybackProgress(position: Long, duration: Long) {
@@ -1218,7 +1254,7 @@ class RadioService : Service() {
                     return START_STICKY
                 }
                 if (!player.isPlaying && currentStreamUrl.isNotEmpty()) {
-                    val isLocal = currentStreamUrl.startsWith("file://") || currentStreamUrl.startsWith("file:/")
+                    val isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)
                     if (isLocal && player.playbackState != Player.STATE_IDLE) {
                         requestAudioFocus()
                         player.volume = 1.0f
@@ -1319,6 +1355,10 @@ class RadioService : Service() {
                     notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
                 }
                 updateNotification()
+                if (PlaybackStatusSync.isLocalStreamUri(streamUrl)) {
+                    sendStationChangedBroadcast(isLocal = true, isPlaying = true)
+                    broadcastPlaybackProgress(player.currentPosition, player.duration.coerceAtLeast(0L))
+                }
             } else {
                 playStation(
                     streamUrl = streamUrl,
@@ -1353,7 +1393,7 @@ class RadioService : Service() {
         latestWireMetaInt = -1
         latestWireIsAac = false
 
-        val isLocal = streamUrl.startsWith("file://") || streamUrl.startsWith("file:/")
+        val isLocal = PlaybackStatusSync.isLocalStreamUri(streamUrl)
         val wasRecordingBeforeSwitch = isRecording
         interruptionPolicy.onUserUnmuteOrResume()
         player.volume = 1.0f
