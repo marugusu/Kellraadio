@@ -366,7 +366,7 @@ fun SettingsScreen(
 
                 SettingsRow(
                     headline = stringResource(R.string.settings_recording_folder),
-                    supporting = "Android/data/app.radiorecalarm/files/Music",
+                    supporting = "Android/data/${context.packageName}/files/${AppConfig.Recording.DEFAULT_AUDIO_DIR}",
                     icon = Icons.Default.Folder,
                     onClick = null
                 )
