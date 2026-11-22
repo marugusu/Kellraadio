@@ -180,6 +180,12 @@
     <string name="settings_group_recording">"Tāļtõmi"</string>
     <string name="settings_continuous_recording">"Piddõz tāļtõmi"</string>
     <string name="settings_continuous_recording_desc">"Tāļtõ helīvoogõ automātlizt ku stacij mäņgõb"</string>
+    <string name="settings_min_track_duration">"Kõgõ līem loul pikkus"</string>
+    <string name="settings_min_track_duration_desc">"Kustūb līemõd klipõd (ku kõllid ja reklām)"</string>
+    <string name="settings_overlap_margin">"Loul algõ ja loppõ varā"</string>
+    <string name="settings_overlap_margin_desc">"Üllekattimi iedõ ja perā loul vahetust, až algõ ja loppõ äb kaddõks"</string>
+    <string name="settings_seconds_value">"%1$d s"</string>
+    <string name="settings_option_off">"Āndamizt (0 s)"</string>
     <string name="settings_storage_safeguard">"Pīela kaitzõmi"</string>
     <string name="settings_storage_safeguard_desc">"Saisātab tāļtõmist ku vaba pīela lǟb allõl 500 MB"</string>
     <string name="settings_recording_folder">"Tāļtõmizt kūož"</string>

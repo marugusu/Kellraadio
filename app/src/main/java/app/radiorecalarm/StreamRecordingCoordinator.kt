@@ -20,7 +20,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 
 fun interface MetadataFetcher {
     suspend fun fetch(artist: String, title: String): SongAdditionalInfo?
@@ -79,12 +78,84 @@ class StreamRecordingCoordinator(
     private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false },
     private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
     private val maxTrackDurationSeconds: Long = AppConfig.Recording.MAX_TRACK_DURATION_SECONDS,
-    private val lookbackDurationSeconds: Long = AppConfig.Recording.LOOKBACK_BUFFER_SECONDS,
-    private val audioBoundaryDetector: AudioBoundaryDetector = AudioBoundaryDetector { req -> SplitRange(req.frames.size) },
+    private val overlapMarginSeconds: Long = AppConfig.Recording.OVERLAP_MARGIN_SECONDS,
+    private val minDurationSecondsProvider: (() -> Long)? = null,
+    private val overlapMarginSecondsProvider: (() -> Long)? = null,
     private val storageSpaceChecker: StorageSpaceChecker = AndroidStorageSpaceChecker(),
     private val onLowStorage: (() -> Unit)? = null
 ) {
     private class RecordingSession(val completedCount: AtomicInteger = AtomicInteger(0))
+
+    private class ActiveTrack(
+        val session: RecordingSession,
+        val file: File,
+        val outputStream: OutputStream,
+        val enrichmentDeferred: Deferred<SongAdditionalInfo?>?,
+        val stationName: String,
+        val streamUrl: String,
+        val artist: String,
+        val title: String,
+        val bitrate: String?,
+        val ext: String,
+        val isShow: Boolean,
+        var isPartial: Boolean,
+        val trackStartTimeMs: Long,
+        val coreStartTimeMs: Long,
+        val coreDurationTracker: AudioDurationTracker,
+        val totalDurationTracker: AudioDurationTracker
+    ) {
+        var coreEndTimeMs: Long? = null
+        var coreBytesWritten: Long = 0L
+        var totalBytesWritten: Long = 0L
+        var postRollRemainingMicros: Long = 0L
+        var postRollTotalMicros: Long = 0L
+
+        fun writePreRollFrame(frame: AudioFrame) {
+            writeToStream(frame.bytes, 0, frame.bytes.size, countAsCore = false)
+        }
+
+        fun writeCoreFrame(frame: AudioFrame) {
+            writeToStream(frame.bytes, 0, frame.bytes.size, countAsCore = true)
+        }
+
+        fun writeCoreBytes(buffer: ByteArray, offset: Int, length: Int) {
+            writeToStream(buffer, offset, length, countAsCore = true)
+        }
+
+        fun writePostRollFrame(frame: AudioFrame) {
+            writeToStream(frame.bytes, 0, frame.bytes.size, countAsCore = false)
+            postRollRemainingMicros -= frame.durationMicros
+        }
+
+        fun writePostRollRaw(buffer: ByteArray, offset: Int, length: Int, estimatedMicros: Long) {
+            writeToStream(buffer, offset, length, countAsCore = false)
+            postRollRemainingMicros -= estimatedMicros
+        }
+
+        private fun writeToStream(buffer: ByteArray, offset: Int, length: Int, countAsCore: Boolean) {
+            if (length <= 0) return
+            try {
+                outputStream.write(buffer, offset, length)
+                totalDurationTracker.consume(buffer, offset, length)
+                totalBytesWritten += length.toLong()
+                if (countAsCore) {
+                    coreDurationTracker.consume(buffer, offset, length)
+                    coreBytesWritten += length.toLong()
+                }
+            } catch (_: Exception) {
+                // Ignore write error; safeguard/close handles cleanup
+            }
+        }
+
+        fun closeStream() {
+            try {
+                outputStream.flush()
+                outputStream.close()
+            } catch (_: Exception) {
+                // Ignore close error
+            }
+        }
+    }
 
     private data class PendingTrackSnapshot(
         val session: RecordingSession,
@@ -100,8 +171,12 @@ class StreamRecordingCoordinator(
         val isPartial: Boolean,
         val trackStartTimeMs: Long,
         val closedAtMs: Long,
-        val bytesWritten: Long,
-        val durationTracker: AudioDurationTracker?
+        val coreStartTimeMs: Long,
+        val coreEndTimeMs: Long,
+        val coreBytesWritten: Long,
+        val coreDurationTracker: AudioDurationTracker,
+        val totalBytesWritten: Long,
+        val totalDurationTracker: AudioDurationTracker
     )
 
     @Volatile
@@ -131,21 +206,17 @@ class StreamRecordingCoordinator(
         private set
 
     private var isCurrentStreamAac: Boolean = false
-    private var currentOutputStream: OutputStream? = null
-    var currentFile: File? = null
-        private set
+    private var currentTrack: ActiveTrack? = null
+    private val postRollTracks = mutableListOf<ActiveTrack>()
+
+    val currentFile: File?
+        get() = synchronized(lock) { currentTrack?.file }
 
     val activeRecordingFilePath: String?
-        get() = synchronized(lock) { if (isRecording) currentFile?.absolutePath else null }
+        get() = synchronized(lock) { if (isRecording) currentTrack?.file?.absolutePath else null }
 
-    private var trackStartTimeMs: Long = 0L
-    private var isPartialTrack: Boolean = false
-    private var currentBytesWritten: Long = 0L
-    private var currentDurationTracker: AudioDurationTracker? = null
-    private var currentEnrichmentDeferred: Deferred<SongAdditionalInfo?>? = null
-    private var currentEnrichmentInfoRef: AtomicReference<SongAdditionalInfo?>? = null
     private var frameAccumulator: AudioFrameAccumulator? = null
-    private var lookbackBuffer: LookbackFrameBuffer? = null
+    private var preRollBuffer: PreRollFrameBuffer? = null
 
     private var activeSession: RecordingSession? = null
     private var lastSession: RecordingSession? = null
@@ -155,9 +226,29 @@ class StreamRecordingCoordinator(
     private val lock = Any()
     private val json = Json { prettyPrint = true; encodeDefaults = true }
 
+    private fun currentMinDurationSeconds(): Long {
+        return (minDurationSecondsProvider?.invoke() ?: minDurationSeconds).coerceAtLeast(0L)
+    }
+
+    private fun currentOverlapMarginSeconds(): Long {
+        return (overlapMarginSecondsProvider?.invoke() ?: overlapMarginSeconds).coerceAtLeast(0L)
+    }
+
     fun setBitrate(bitrate: String?) {
         synchronized(lock) {
             currentBitrate = bitrate
+        }
+    }
+
+    /**
+     * Resets compressed frame sync state after an HTTP reconnect on the same recording session
+     * so trailing incomplete bytes from the dropped socket cannot fuse with the new stream.
+     */
+    fun resetFrameAlignment() {
+        synchronized(lock) {
+            if (isRecording) {
+                frameAccumulator?.reset()
+            }
         }
     }
 
@@ -167,10 +258,7 @@ class StreamRecordingCoordinator(
             val availableBytes = storageSpaceChecker.getAvailableBytes(baseDir)
             if (availableBytes < AppConfig.Recording.MIN_FREE_STORAGE_BYTES) {
                 if (isRecording) {
-                    isRecording = false
-                    drainLookbackToCurrentTrackLocked(clearPipeline = true)
-                    closeCurrentTrackLocked()
-                    activeSession = null
+                    haltRecordingImmediateLocked(markLastTrackPartial = true, onSessionFinalized = null)
                 }
                 onLowStorage?.invoke()
                 return false
@@ -201,17 +289,20 @@ class StreamRecordingCoordinator(
             isCurrentStreamAac = isAacHint ?: streamUrl.contains("aac", ignoreCase = true)
             isUnsplitShowMode = forceUnsplitShow
             isRecording = true
-            isPartialTrack = true // First track started mid-stream
 
-            if (!isUnsplitShowMode && lookbackDurationSeconds > 0L) {
+            if (!isUnsplitShowMode) {
                 frameAccumulator = AudioFrameAccumulator(preferAac = isCurrentStreamAac)
-                lookbackBuffer = LookbackFrameBuffer(maxDurationMicros = lookbackDurationSeconds * 1_000_000L)
+                preRollBuffer = PreRollFrameBuffer(maxDurationMicros = currentOverlapMarginSeconds() * 1_000_000L)
             } else {
                 frameAccumulator = null
-                lookbackBuffer = null
+                preRollBuffer = null
             }
 
-            openNewTrackLocked(initialRawMetadata)
+            currentTrack = openNewTrackLocked(
+                rawMetadata = initialRawMetadata,
+                isPartial = true, // First track started mid-stream
+                preRollFrames = emptyList()
+            )
         }
     }
 
@@ -230,11 +321,7 @@ class StreamRecordingCoordinator(
                 }
                 return
             }
-            isRecording = false
-            isUnsplitShowMode = false
-            drainLookbackToCurrentTrackLocked(clearPipeline = true)
-            closeCurrentTrackLocked(onSessionFinalized = onAllFinalized)
-            activeSession = null
+            haltRecordingImmediateLocked(markLastTrackPartial = true, onSessionFinalized = onAllFinalized)
         }
     }
 
@@ -253,24 +340,26 @@ class StreamRecordingCoordinator(
 
         synchronized(lock) {
             if (!isRecording) return
+            val active = currentTrack ?: return
             val acc = frameAccumulator
-            val lb = lookbackBuffer
-            if (acc != null && lb != null && !isUnsplitShowMode) {
+            val pr = preRollBuffer
+            if (acc != null && pr != null && !isUnsplitShowMode) {
                 acc.push(
                     input = buffer,
                     offset = offset,
                     length = length,
                     onFrame = { frame ->
-                        lb.push(frame) { overflow ->
-                            writeFrameToCurrentTrackLocked(overflow)
-                        }
+                        pr.push(frame)
+                        active.writeCoreFrame(frame)
+                        advancePostRollFramesLocked(frame)
                     },
                     onRawFallback = { rawBuf, rawOff, rawLen ->
-                        writeBytesToCurrentTrackLocked(rawBuf, rawOff, rawLen)
+                        active.writeCoreBytes(rawBuf, rawOff, rawLen)
+                        advancePostRollRawLocked(rawBuf, rawOff, rawLen)
                     }
                 )
             } else {
-                writeBytesToCurrentTrackLocked(buffer, offset, length)
+                active.writeCoreBytes(buffer, offset, length)
             }
         }
     }
@@ -286,75 +375,121 @@ class StreamRecordingCoordinator(
 
             if (!checkStorageSafeguard()) return
 
+            val active = currentTrack
             frameAccumulator?.drainUnparsed { rawBuf, rawOff, rawLen ->
-                writeBytesToCurrentTrackLocked(rawBuf, rawOff, rawLen)
+                active?.writeCoreBytes(rawBuf, rawOff, rawLen)
             }
-            val lb = lookbackBuffer
-            if (lb != null && !lb.isEmpty()) {
-                val buffered = lb.snapshotFrames()
-                val hasFlushedPrefix = currentBytesWritten > 0L
-                val tracker = currentDurationTracker
-                val flushedDurationMs = if (tracker != null && tracker.validFrameCount >= 2L) {
-                    (tracker.totalDurationMicros / 1000L).coerceAtLeast(0L)
+
+            val overlapSeconds = currentOverlapMarginSeconds()
+            preRollBuffer?.updateCapacity(overlapSeconds * 1_000_000L)
+
+            val nowMs = clock()
+            if (active != null) {
+                active.coreEndTimeMs = nowMs
+                if (!active.isShow && overlapSeconds > 0L) {
+                    val marginMicros = overlapSeconds * 1_000_000L
+                    active.postRollTotalMicros = marginMicros
+                    active.postRollRemainingMicros = marginMicros
+                    postRollTracks.add(active)
                 } else {
-                    (clock() - trackStartTimeMs).coerceAtLeast(0L)
+                    finalizeActiveTrackNowLocked(active, closedAtMs = nowMs)
                 }
-                val expectedDurationMs = currentEnrichmentInfoRef?.get()?.durationMs
-                val splitRange = audioBoundaryDetector.findSplitRange(
-                    BoundaryAnalysisRequest(
-                        frames = buffered,
-                        hasFlushedPrefix = hasFlushedPrefix,
-                        flushedDurationMs = flushedDurationMs,
-                        expectedTrackDurationMs = expectedDurationMs
-                    )
-                )
-                val closeIdx = splitRange.closeEndIndex.coerceIn(0, buffered.size)
-                val nextStartIdx = splitRange.nextStartIndex.coerceIn(closeIdx, buffered.size)
-                lb.popPrefix(closeIdx) { frame ->
-                    writeFrameToCurrentTrackLocked(frame)
-                }
-                if (nextStartIdx > closeIdx) {
-                    lb.discardPrefix(nextStartIdx - closeIdx)
-                }
+                currentTrack = null
             }
 
-            closeCurrentTrackLocked()
-            isPartialTrack = false // Subsequent tracks started at the track transition boundary
-            openNewTrackLocked(rawMetadata)
+            val preRollFrames = if (overlapSeconds > 0L) {
+                preRollBuffer?.snapshotFrames().orEmpty()
+            } else {
+                emptyList()
+            }
+
+            currentTrack = openNewTrackLocked(
+                rawMetadata = rawMetadata,
+                isPartial = false,
+                preRollFrames = preRollFrames
+            )
         }
     }
 
-    private fun writeBytesToCurrentTrackLocked(buffer: ByteArray, offset: Int, length: Int) {
-        if (length <= 0) return
-        try {
-            currentOutputStream?.write(buffer, offset, length)
-            currentDurationTracker?.consume(buffer, offset, length)
-            currentBytesWritten += length.toLong()
-        } catch (_: Exception) {
-            // Ignore or handle write error
+    private fun haltRecordingImmediateLocked(
+        markLastTrackPartial: Boolean,
+        onSessionFinalized: ((Int) -> Unit)?
+    ) {
+        isRecording = false
+        isUnsplitShowMode = false
+
+        val nowMs = clock()
+
+        if (postRollTracks.isNotEmpty()) {
+            val pendingTrailing = postRollTracks.toList()
+            postRollTracks.clear()
+            for (trailing in pendingTrailing) {
+                finalizeActiveTrackNowLocked(trailing, closedAtMs = nowMs)
+            }
+        }
+
+        val active = currentTrack
+        if (active != null) {
+            frameAccumulator?.drainUnparsed { rawBuf, rawOff, rawLen ->
+                active.writeCoreBytes(rawBuf, rawOff, rawLen)
+            }
+            if (markLastTrackPartial && !active.isShow) {
+                active.isPartial = true
+            }
+            active.coreEndTimeMs = nowMs
+            finalizeActiveTrackNowLocked(active, closedAtMs = nowMs, onSessionFinalized = onSessionFinalized)
+            currentTrack = null
+        } else if (onSessionFinalized != null) {
+            val session = activeSession ?: lastSession
+            val prevJob = lastFinalizationJob
+            val job = coordinatorScope.launch {
+                prevJob?.join()
+                onSessionFinalized(session?.completedCount?.get() ?: 0)
+            }
+            lastFinalizationJob = job
+        }
+
+        frameAccumulator = null
+        preRollBuffer?.clear()
+        preRollBuffer = null
+        activeSession = null
+    }
+
+    private fun advancePostRollFramesLocked(frame: AudioFrame) {
+        if (postRollTracks.isEmpty()) return
+        val nowMs = clock()
+        val iterator = postRollTracks.iterator()
+        while (iterator.hasNext()) {
+            val trailing = iterator.next()
+            trailing.writePostRollFrame(frame)
+            if (trailing.postRollRemainingMicros <= 0L) {
+                iterator.remove()
+                finalizeActiveTrackNowLocked(trailing, closedAtMs = nowMs)
+            }
         }
     }
 
-    private fun writeFrameToCurrentTrackLocked(frame: AudioFrame) {
-        try {
-            currentOutputStream?.write(frame.bytes)
-            currentDurationTracker?.consume(frame.bytes, 0, frame.bytes.size)
-            currentBytesWritten += frame.bytes.size.toLong()
-        } catch (_: Exception) {
-            // Ignore or handle write error
-        }
-    }
-
-    private fun drainLookbackToCurrentTrackLocked(clearPipeline: Boolean) {
-        frameAccumulator?.drainUnparsed { rawBuf, rawOff, rawLen ->
-            writeBytesToCurrentTrackLocked(rawBuf, rawOff, rawLen)
-        }
-        lookbackBuffer?.drainAll { frame ->
-            writeFrameToCurrentTrackLocked(frame)
-        }
-        if (clearPipeline) {
-            frameAccumulator = null
-            lookbackBuffer = null
+    private fun advancePostRollRawLocked(buffer: ByteArray, offset: Int, length: Int) {
+        if (postRollTracks.isEmpty() || length <= 0) return
+        val nowMs = clock()
+        val iterator = postRollTracks.iterator()
+        while (iterator.hasNext()) {
+            val trailing = iterator.next()
+            val bitrateBps = parseBitrateBps(trailing.bitrate)
+            val estimatedMicros = if (bitrateBps > 0L) {
+                (length.toLong() * 8L * 1_000_000L) / bitrateBps
+            } else {
+                0L
+            }
+            if (estimatedMicros > 0L) {
+                trailing.writePostRollRaw(buffer, offset, length, estimatedMicros)
+            }
+            val elapsedMs = (nowMs - (trailing.coreEndTimeMs ?: nowMs)).coerceAtLeast(0L)
+            val marginMs = trailing.postRollTotalMicros / 1000L
+            if (trailing.postRollRemainingMicros <= 0L || elapsedMs >= marginMs) {
+                iterator.remove()
+                finalizeActiveTrackNowLocked(trailing, closedAtMs = nowMs)
+            }
         }
     }
 
@@ -416,28 +551,31 @@ class StreamRecordingCoordinator(
         }
     }
 
-    private fun openNewTrackLocked(rawMetadata: String) {
+    private fun openNewTrackLocked(
+        rawMetadata: String,
+        isPartial: Boolean,
+        preRollFrames: List<AudioFrame>
+    ): ActiveTrack {
         val cleaned = metadataHelper.sanitizeRawInput(rawMetadata)
         currentRawMetadata = cleaned
 
         val parsed = metadataHelper.parse(rawMetadata, currentStationName)
         currentArtist = parsed.artist
         currentTitle = parsed.title
-        val retainedMicros = lookbackBuffer?.totalDurationMicros ?: 0L
-        trackStartTimeMs = clock() - (retainedMicros / 1000L)
-        currentBytesWritten = 0L
-        currentDurationTracker = AudioDurationTracker(preferAac = isCurrentStreamAac)
-        currentEnrichmentDeferred = null
-        currentEnrichmentInfoRef = null
-
         isCurrentShow = isShow(rawMetadata, currentArtist, currentTitle, currentStationName)
+
+        val coreStartMs = clock()
+        val appliedPreRoll = if (!isCurrentShow) preRollFrames else emptyList()
+        val preRollDurationMs = appliedPreRoll.sumOf { it.durationMicros } / 1000L
+        val trackStartMs = coreStartMs - preRollDurationMs
 
         val rootDir = baseDirProvider()
         val ext = if (isCurrentStreamAac) "aac" else "mp3"
 
         val file: File
+        var enrichmentDeferred: Deferred<SongAdditionalInfo?>? = null
         if (isCurrentShow) {
-            file = createUniqueShowFile(rootDir, currentStationName, trackStartTimeMs, ext)
+            file = createUniqueShowFile(rootDir, currentStationName, trackStartMs, ext)
         } else {
             val safeArtist = sanitize(currentArtist)
             val safeAlbum = AppConfig.Recording.DIR_UNKNOWN_ALBUM
@@ -473,61 +611,69 @@ class StreamRecordingCoordinator(
 
             val artistForQuery = currentArtist
             val titleForQuery = currentTitle
-            val infoRef = AtomicReference<SongAdditionalInfo?>(null)
-            currentEnrichmentInfoRef = infoRef
-            currentEnrichmentDeferred = coordinatorScope.async {
+            enrichmentDeferred = coordinatorScope.async {
                 try {
-                    metadataFetcher.fetch(artistForQuery, titleForQuery)?.also {
-                        infoRef.set(it)
-                    }
+                    metadataFetcher.fetch(artistForQuery, titleForQuery)
                 } catch (_: Exception) {
                     null
                 }
             }
         }
 
-        currentFile = file
-        currentOutputStream = FileOutputStream(file)
+        val session = activeSession ?: lastSession ?: RecordingSession()
+        val active = ActiveTrack(
+            session = session,
+            file = file,
+            outputStream = FileOutputStream(file),
+            enrichmentDeferred = enrichmentDeferred,
+            stationName = currentStationName,
+            streamUrl = currentStreamUrl,
+            artist = currentArtist,
+            title = currentTitle,
+            bitrate = currentBitrate,
+            ext = ext,
+            isShow = isCurrentShow,
+            isPartial = isPartial,
+            trackStartTimeMs = trackStartMs,
+            coreStartTimeMs = coreStartMs,
+            coreDurationTracker = AudioDurationTracker(preferAac = isCurrentStreamAac),
+            totalDurationTracker = AudioDurationTracker(preferAac = isCurrentStreamAac)
+        )
+
+        for (frame in appliedPreRoll) {
+            active.writePreRollFrame(frame)
+        }
+        return active
     }
 
-    private fun closeCurrentTrackLocked(onSessionFinalized: ((Int) -> Unit)? = null) {
-        val fileToFinalize = currentFile
-        val enrichmentDeferred = currentEnrichmentDeferred
-        val durationTracker = currentDurationTracker
-        val bytesWritten = currentBytesWritten
-        val session = activeSession ?: lastSession
+    private fun finalizeActiveTrackNowLocked(
+        track: ActiveTrack,
+        closedAtMs: Long,
+        onSessionFinalized: ((Int) -> Unit)? = null
+    ) {
+        track.closeStream()
 
-        try {
-            currentOutputStream?.flush()
-            currentOutputStream?.close()
-        } catch (_: Exception) {
-            // Ignore close error
-        } finally {
-            currentOutputStream = null
-            currentFile = null
-            currentEnrichmentDeferred = null
-            currentEnrichmentInfoRef = null
-            currentDurationTracker = null
-            currentBytesWritten = 0L
-        }
-
-        val snapshot = if (fileToFinalize != null && fileToFinalize.exists() && session != null) {
+        val snapshot = if (track.file.exists()) {
             PendingTrackSnapshot(
-                session = session,
-                fileToFinalize = fileToFinalize,
-                enrichmentDeferred = enrichmentDeferred,
-                stationName = currentStationName,
-                streamUrl = currentStreamUrl,
-                artist = currentArtist,
-                title = currentTitle,
-                bitrate = currentBitrate,
-                ext = if (isCurrentStreamAac) "aac" else "mp3",
-                isShow = isCurrentShow,
-                isPartial = isPartialTrack,
-                trackStartTimeMs = trackStartTimeMs,
-                closedAtMs = clock(),
-                bytesWritten = bytesWritten,
-                durationTracker = durationTracker
+                session = track.session,
+                fileToFinalize = track.file,
+                enrichmentDeferred = track.enrichmentDeferred,
+                stationName = track.stationName,
+                streamUrl = track.streamUrl,
+                artist = track.artist,
+                title = track.title,
+                bitrate = track.bitrate,
+                ext = track.ext,
+                isShow = track.isShow,
+                isPartial = track.isPartial,
+                trackStartTimeMs = track.trackStartTimeMs,
+                closedAtMs = closedAtMs,
+                coreStartTimeMs = track.coreStartTimeMs,
+                coreEndTimeMs = track.coreEndTimeMs ?: closedAtMs,
+                coreBytesWritten = track.coreBytesWritten,
+                coreDurationTracker = track.coreDurationTracker,
+                totalBytesWritten = track.totalBytesWritten,
+                totalDurationTracker = track.totalDurationTracker
             )
         } else {
             null
@@ -542,7 +688,7 @@ class StreamRecordingCoordinator(
                 finalizeTrack(snapshot)
             }
             if (onSessionFinalized != null) {
-                onSessionFinalized(session?.completedCount?.get() ?: 0)
+                onSessionFinalized(track.session.completedCount.get())
             }
         }
         lastFinalizationJob = job
@@ -566,16 +712,21 @@ class StreamRecordingCoordinator(
         return if (kbps > 0L) kbps * 1000L else 0L
     }
 
-    private fun computeDurationSeconds(snapshot: PendingTrackSnapshot): Long {
-        val tracker = snapshot.durationTracker
-        if (tracker != null && tracker.validFrameCount >= 2L) {
+    private fun computeDurationSeconds(
+        tracker: AudioDurationTracker,
+        bytesWritten: Long,
+        bitrate: String?,
+        startMs: Long,
+        endMs: Long
+    ): Long {
+        if (tracker.validFrameCount >= 2L) {
             return (tracker.totalDurationMicros / 1_000_000L).coerceAtLeast(0L)
         }
-        val bitrateBps = parseBitrateBps(snapshot.bitrate)
-        if (bitrateBps > 0L && snapshot.bytesWritten > 0L) {
-            return ((snapshot.bytesWritten * 8L) / bitrateBps).coerceAtLeast(0L)
+        val bitrateBps = parseBitrateBps(bitrate)
+        if (bitrateBps > 0L && bytesWritten > 0L) {
+            return ((bytesWritten * 8L) / bitrateBps).coerceAtLeast(0L)
         }
-        return ((snapshot.closedAtMs - snapshot.trackStartTimeMs) / 1000L).coerceAtLeast(0L)
+        return ((endMs - startMs) / 1000L).coerceAtLeast(0L)
     }
 
     private suspend fun finalizeTrack(snapshot: PendingTrackSnapshot) {
@@ -584,10 +735,24 @@ class StreamRecordingCoordinator(
 
         val rootDir = baseDirProvider()
         val ext = snapshot.ext
-        val durationSec = computeDurationSeconds(snapshot)
+        val coreDurationSec = computeDurationSeconds(
+            tracker = snapshot.coreDurationTracker,
+            bytesWritten = snapshot.coreBytesWritten,
+            bitrate = snapshot.bitrate,
+            startMs = snapshot.coreStartTimeMs,
+            endMs = snapshot.coreEndTimeMs
+        )
+        val fileDurationSec = computeDurationSeconds(
+            tracker = snapshot.totalDurationTracker,
+            bytesWritten = snapshot.totalBytesWritten,
+            bitrate = snapshot.bitrate,
+            startMs = snapshot.trackStartTimeMs,
+            endMs = snapshot.closedAtMs
+        )
 
-        // Pruning filter: clips under minDurationSeconds (ads, jingles, glitches) are deleted
-        if (durationSec < minDurationSeconds) {
+        // Pruning filter evaluates core metadata duration (without overlap margins)
+        val activeMinDurationSec = currentMinDurationSeconds()
+        if (coreDurationSec < activeMinDurationSec) {
             snapshot.enrichmentDeferred?.cancel()
             val oldParent = fileToFinalize.parentFile
             fileToFinalize.delete()
@@ -595,7 +760,7 @@ class StreamRecordingCoordinator(
             return
         }
 
-        val effectiveIsShow = snapshot.isShow || durationSec > maxTrackDurationSeconds
+        val effectiveIsShow = snapshot.isShow || coreDurationSec > maxTrackDurationSeconds
         val isoTimestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date(snapshot.trackStartTimeMs))
@@ -631,7 +796,7 @@ class StreamRecordingCoordinator(
                 station = snapshot.stationName,
                 stationUrl = snapshot.streamUrl,
                 recordedAt = isoTimestamp,
-                durationSeconds = durationSec,
+                durationSeconds = fileDurationSec,
                 fileSize = targetShowFile.length(),
                 codec = ext,
                 bitrate = snapshot.bitrate,
@@ -676,8 +841,8 @@ class StreamRecordingCoordinator(
                 val existingIsPartial = existingMeta?.partial ?: false
                 val existingDurationSec = existingMeta?.durationSeconds ?: 0L
                 val newReplacesPartial = existingIsPartial && !snapshot.isPartial && (
-                    durationSec > existingDurationSec ||
-                        (durationSec == existingDurationSec && fileToFinalize.length() >= existingSongFile.length())
+                    fileDurationSec > existingDurationSec ||
+                        (fileDurationSec == existingDurationSec && fileToFinalize.length() >= existingSongFile.length())
                     )
 
                 if (newReplacesPartial) {
@@ -742,7 +907,7 @@ class StreamRecordingCoordinator(
                 station = snapshot.stationName,
                 stationUrl = snapshot.streamUrl,
                 recordedAt = isoTimestamp,
-                durationSeconds = durationSec,
+                durationSeconds = fileDurationSec,
                 fileSize = targetAudioFile.length(),
                 codec = ext,
                 bitrate = snapshot.bitrate,
