@@ -119,11 +119,11 @@ class RadioService : Service() {
                     AppConfig.Recording.MIN_DURATION_SECONDS
                 )
             },
-            overlapMarginSecondsProvider = {
-                prefs.getLong(
-                    AppConfig.Recording.PREF_OVERLAP_MARGIN_SECONDS,
-                    AppConfig.Recording.OVERLAP_MARGIN_SECONDS
-                )
+            preRollSecondsProvider = {
+                AppConfig.Recording.resolvePreRollSeconds(prefs)
+            },
+            postRollSecondsProvider = {
+                AppConfig.Recording.resolvePostRollSeconds(prefs)
             },
             metadataFetcher = { artist, title ->
                 MusicInfoRepository.fetchInfo(artist, title).lastOrNull()

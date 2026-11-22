@@ -2,20 +2,20 @@
 
 Status: accepted (asendab dokumendi [ADR-0008](0008-bulletproof-track-framing.md))
 
-Varasem `MediaCodec`-põhine akustiline piirituvastus ja vahekõllide automaatne väljalõikamine üritas leida kahe pala vahel ühe täpse lõikehetke, kuid eksis vaiksete sissejuhatuste, *crossfade*-üleminekute ja kõikuvate metainfo viivituste korral, jättes palade algused või lõpud kärbituks. Otsustasime eemaldada `MediaCodec`-tuvastuse täielikult ning asendada selle deterministliku kahepoolse ülekattega raamistamisega (**Eelvaru** + **Järelvaru**), seades **Seaded → Salvestamine** alla nii varuaja (vaikimisi `10 s`) kui ka lühiklipi miinimumkestuse (vaikimisi `15 s`).
+Varasem `MediaCodec`-põhine akustiline piirituvastus ja vahekõllide automaatne väljalõikamine üritas leida kahe pala vahel ühe täpse lõikehetke, kuid eksis vaiksete sissejuhatuste, *crossfade*-üleminekute ja kõikuvate metainfo viivituste korral, jättes palade algused või lõpud kärbituks. Otsustasime eemaldada `MediaCodec`-tuvastuse täielikult ning asendada selle deterministliku kahepoolse ülekattega raamistamisega (**Eelvaru** + **Järelvaru**), seades **Seaded → Salvestamine** alla nii eraldi algus- ja lõpuvaru (vaikimisi **Eelvaru `10 s`**, **Järelvaru `5 s`**) kui ka lühiklipi miinimumkestuse (vaikimisi `15 s`).
 
 ### Peamised disainiotsused
 
-1. **Sümmeetriline *pre-roll + post-roll* ülekate**:
-   - **Pala** avamisel kirjutatakse faili algusesse viimased `N` sekundit (**Eelvaru**, vaikimisi `10 s`) aktiivse salvestamise ajal hoitavast mäluringpuhvrist ning uued kaadrid kirjutatakse kettale kohe ilma viivituseta.
-   - **Pala** sulgumisel metainfo muutumise hetkel ei panda faili kohe kinni, vaid jätkatakse saabuvate kaadrite kirjutamist veel `N` sekundit (**Järelvaru**, vaikimisi `10 s`), toetades mitut paralleelselt lõpetavat kirjutajat, et kiired vahekõllid ei katkestaks eelmise pala lõpuvaru.
+1. **Sõltumatu asümmeetriline *pre-roll + post-roll* ülekate**:
+   - **Pala** avamisel kirjutatakse faili algusesse viimased kuni `N` sekundit (**Eelvaru**, vaikimisi `10 s`) aktiivse salvestamise ajal hoitavast mäluringpuhvrist ning uued kaadrid kirjutatakse kettale kohe ilma viivituseta.
+   - **Pala** sulgumisel metainfo muutumise hetkel ei panda faili kohe kinni, vaid jätkatakse saabuvate kaadrite kirjutamist veel `M` sekundit (**Järelvaru**, vaikimisi `5 s`), toetades mitut paralleelselt lõpetavat kirjutajat, et kiired vahekõllid ei katkestaks eelmise pala lõpuvaru.
    - Salvestuse käsitsi peatamisel (`stopRecording`), jaamavahetusel või kettamahu kaitsel suletakse käesolev pala ja kõik aktiivsed järelvarud kohe ilma ooteajata.
    - **Saated** ja **Äratuse salvestus** jäävad tükeldamata ja ilma lisavarudeta; ülekate rakendub ainult **Palade** otstel (sealhulgas `Pala ↔ Saade` üleminekutel).
 2. **Põhikestus vs faili tegelik kestus**:
-   - Miinimumkestuse (`15 s`) prügiklipi filter ja `10 minuti` (`600 s`) saateks liigitamine hindavad **põhikestust** (aeg loo metainfo algusest järgmise metainfo saabumiseni ilma eel- ja järelvaruta), et `10 s` varud ei muudaks 10-sekundilist **Vahekõlli** 30-sekundiliseks säilitatavaks palaks.
+   - Miinimumkestuse (`15 s`) prügiklipi filter ja `10 minuti` (`600 s`) saateks liigitamine hindavad **põhikestust** (aeg loo metainfo algusest järgmise metainfo saabumiseni ilma eel- ja järelvaruta), et varud ei muudaks 10-sekundilist **Vahekõlli** säilitatavaks palaks.
    - **Kõrvafaili** (`.json`) `durationSeconds` salvestab tegeliku failipikkuse koos varudega ning skeem püsib muutumatuna.
 3. **Seadistatavus, lihtsus ja taastekindlus**:
-   - **Seaded → Salvestamine** sisaldab kahte liuguriga 1-sekundilise täpsusega seadistatavat parameetrit: minimaalne pala pikkus (`0..60 s`, vaikimisi `15 s`) ja algus- ja lõpuvaru (`0..30 s`, vaikimisi `10 s`).
+   - **Seaded → Salvestamine** sisaldab kolme liuguriga 1-sekundilise täpsusega (*haptic* tagasisidega täissekundi muutumisel) seadistatavat parameetrit: minimaalne pala pikkus (`0..60 s`, vaikimisi `15 s`), pala algusvaru (**Eelvaru**, `0..30 s`, vaikimisi `10 s`) ja pala lõpuvaru (**Järelvaru**, `0..30 s`, vaikimisi `5 s`). Varasem ühisseade (`recording_overlap_margin_seconds`) migreeritakse olemasolul mõlemale uuele seadistusele.
    - Mitte-ICY (`icy-metaint <= 0`) striimid jäävad lihtsale varuteele ja kuulamisel ilma salvestamiseta passiivset ringpuhvrit ei hoita.
    - Sama jaama võrgukatkestusest taastumisel jätkatakse kirjutamist samasse faili, lähtestades ainult kaadriparsimise joondamise (`AudioFrameAccumulator`), ning käsitsi `stopRecording`-uga katkestatud viimane pala märgitakse `"partial": true`.
 

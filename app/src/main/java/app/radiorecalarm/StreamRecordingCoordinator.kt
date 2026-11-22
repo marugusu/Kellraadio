@@ -78,9 +78,11 @@ class StreamRecordingCoordinator(
     private val coverArtDownloader: CoverArtDownloader = CoverArtDownloader { _, _ -> false },
     private val minDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
     private val maxTrackDurationSeconds: Long = AppConfig.Recording.MAX_TRACK_DURATION_SECONDS,
-    private val overlapMarginSeconds: Long = AppConfig.Recording.OVERLAP_MARGIN_SECONDS,
+    private val preRollSeconds: Long = AppConfig.Recording.PRE_ROLL_SECONDS,
+    private val postRollSeconds: Long = AppConfig.Recording.POST_ROLL_SECONDS,
     private val minDurationSecondsProvider: (() -> Long)? = null,
-    private val overlapMarginSecondsProvider: (() -> Long)? = null,
+    private val preRollSecondsProvider: (() -> Long)? = null,
+    private val postRollSecondsProvider: (() -> Long)? = null,
     private val storageSpaceChecker: StorageSpaceChecker = AndroidStorageSpaceChecker(),
     private val onLowStorage: (() -> Unit)? = null
 ) {
@@ -230,8 +232,12 @@ class StreamRecordingCoordinator(
         return (minDurationSecondsProvider?.invoke() ?: minDurationSeconds).coerceAtLeast(0L)
     }
 
-    private fun currentOverlapMarginSeconds(): Long {
-        return (overlapMarginSecondsProvider?.invoke() ?: overlapMarginSeconds).coerceAtLeast(0L)
+    private fun currentPreRollSeconds(): Long {
+        return (preRollSecondsProvider?.invoke() ?: preRollSeconds).coerceAtLeast(0L)
+    }
+
+    private fun currentPostRollSeconds(): Long {
+        return (postRollSecondsProvider?.invoke() ?: postRollSeconds).coerceAtLeast(0L)
     }
 
     fun setBitrate(bitrate: String?) {
@@ -292,7 +298,7 @@ class StreamRecordingCoordinator(
 
             if (!isUnsplitShowMode) {
                 frameAccumulator = AudioFrameAccumulator(preferAac = isCurrentStreamAac)
-                preRollBuffer = PreRollFrameBuffer(maxDurationMicros = currentOverlapMarginSeconds() * 1_000_000L)
+                preRollBuffer = PreRollFrameBuffer(maxDurationMicros = currentPreRollSeconds() * 1_000_000L)
             } else {
                 frameAccumulator = null
                 preRollBuffer = null
@@ -380,14 +386,15 @@ class StreamRecordingCoordinator(
                 active?.writeCoreBytes(rawBuf, rawOff, rawLen)
             }
 
-            val overlapSeconds = currentOverlapMarginSeconds()
-            preRollBuffer?.updateCapacity(overlapSeconds * 1_000_000L)
+            val activePreRollSeconds = currentPreRollSeconds()
+            val activePostRollSeconds = currentPostRollSeconds()
+            preRollBuffer?.updateCapacity(activePreRollSeconds * 1_000_000L)
 
             val nowMs = clock()
             if (active != null) {
                 active.coreEndTimeMs = nowMs
-                if (!active.isShow && overlapSeconds > 0L) {
-                    val marginMicros = overlapSeconds * 1_000_000L
+                if (!active.isShow && activePostRollSeconds > 0L) {
+                    val marginMicros = activePostRollSeconds * 1_000_000L
                     active.postRollTotalMicros = marginMicros
                     active.postRollRemainingMicros = marginMicros
                     postRollTracks.add(active)
@@ -397,7 +404,7 @@ class StreamRecordingCoordinator(
                 currentTrack = null
             }
 
-            val preRollFrames = if (overlapSeconds > 0L) {
+            val preRollFrames = if (activePreRollSeconds > 0L) {
                 preRollBuffer?.snapshotFrames().orEmpty()
             } else {
                 emptyList()

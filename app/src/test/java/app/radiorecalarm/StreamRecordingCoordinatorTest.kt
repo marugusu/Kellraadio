@@ -24,7 +24,8 @@ class StreamRecordingCoordinatorTest {
             baseDirProvider = { baseDir },
             clock = { 1000000L },
             minDurationSeconds = 0L,
-            overlapMarginSeconds = 0L
+            preRollSeconds = 0L,
+            postRollSeconds = 0L
         )
     }
 
@@ -389,7 +390,8 @@ class StreamRecordingCoordinatorTest {
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
             clock = { currentTime },
-            overlapMarginSeconds = 0L
+            preRollSeconds = 0L,
+            postRollSeconds = 0L
         )
 
         coordinator.startRecording(
@@ -415,7 +417,8 @@ class StreamRecordingCoordinatorTest {
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
             clock = { currentTime },
-            overlapMarginSeconds = 0L
+            preRollSeconds = 0L,
+            postRollSeconds = 0L
         )
 
         coordinator.startRecording(
@@ -444,7 +447,8 @@ class StreamRecordingCoordinatorTest {
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
             clock = { currentTime },
-            overlapMarginSeconds = 0L
+            preRollSeconds = 0L,
+            postRollSeconds = 0L
         )
 
         // Mid-stream start
@@ -869,7 +873,8 @@ class StreamRecordingCoordinatorTest {
             baseDirProvider = { baseDir },
             clock = { currentTime },
             minDurationSeconds = 15L,
-            overlapMarginSeconds = 10L
+            preRollSeconds = 10L,
+            postRollSeconds = 10L
         )
 
         val frameA = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x1A)
@@ -933,7 +938,8 @@ class StreamRecordingCoordinatorTest {
             baseDirProvider = { baseDir },
             clock = { currentTime },
             minDurationSeconds = 15L,
-            overlapMarginSeconds = 10L
+            preRollSeconds = 10L,
+            postRollSeconds = 10L
         )
 
         val frameA = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x11)
@@ -985,7 +991,8 @@ class StreamRecordingCoordinatorTest {
             baseDirProvider = { baseDir },
             clock = { currentTime },
             minDurationSeconds = 15L,
-            overlapMarginSeconds = 10L
+            preRollSeconds = 10L,
+            postRollSeconds = 10L
         )
         val frame = AudioFrameAnalyzerTest.buildMp3Frame()
 
@@ -1023,7 +1030,8 @@ class StreamRecordingCoordinatorTest {
             baseDirProvider = { baseDir },
             clock = { currentTime },
             minDurationSeconds = 15L,
-            overlapMarginSeconds = 10L
+            preRollSeconds = 10L,
+            postRollSeconds = 10L
         )
         val frame = AudioFrameAnalyzerTest.buildMp3Frame()
 
@@ -1069,7 +1077,8 @@ class StreamRecordingCoordinatorTest {
             baseDirProvider = { baseDir },
             clock = { currentTime },
             minDurationSeconds = 15L,
-            overlapMarginSeconds = 10L
+            preRollSeconds = 10L,
+            postRollSeconds = 10L
         )
         val frame = AudioFrameAnalyzerTest.buildMp3Frame()
 
@@ -1094,6 +1103,99 @@ class StreamRecordingCoordinatorTest {
         assertEquals(1, files.size)
         // Exactly 800 complete frames written cleanly without the 100-byte truncated tail
         assertEquals(800L * frame.size, files.first().length())
+    }
+
+    @Test
+    fun `applies asymmetric pre-roll and post-roll durations independently`() {
+        var currentTime = 1_000_000L
+        val asymmetricCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 15L,
+            preRollSeconds = 10L,
+            postRollSeconds = 3L
+        )
+
+        val frameA = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x1A)
+        val frameB = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x2B)
+        val frameC = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x3C)
+
+        asymmetricCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Artist A - Song A"
+        )
+        // Track A: 800 frames (~20.9 s)
+        repeat(800) { asymmetricCoordinator.onStreamBytes(frameA, 0, frameA.size) }
+        currentTime += 21_000L
+
+        // Track B: 800 frames (~20.9 s)
+        asymmetricCoordinator.onMetadataChanged("Artist B - Song B")
+        repeat(800) { asymmetricCoordinator.onStreamBytes(frameB, 0, frameB.size) }
+        currentTime += 21_000L
+
+        // Track C: 300 frames (~7.8 s), enough for Track B's 3s post-roll (~115 frames)
+        asymmetricCoordinator.onMetadataChanged("Artist C - Song C")
+        repeat(300) { asymmetricCoordinator.onStreamBytes(frameC, 0, frameC.size) }
+        currentTime += 8_000L
+
+        asymmetricCoordinator.stopRecording()
+        asymmetricCoordinator.awaitPendingFinalizations()
+
+        val fileA = File(baseDir, "Music/Artist A/Unknown Album/01 - Artist A - Song A.mp3")
+        val fileB = File(baseDir, "Music/Artist B/Unknown Album/01 - Artist B - Song B.mp3")
+        assertTrue(fileA.exists())
+        assertTrue(fileB.exists())
+
+        // Track A: 800 core + ~3s post-roll (~115 frames) -> ~915 frames
+        val framesInA = (fileA.length() / frameA.size).toInt()
+        assertTrue("Expected Track A to include ~3s post-roll (~915 frames), got $framesInA", framesInA in 905..925)
+
+        // Track B: ~10s pre-roll (~383 frames) + 800 core + ~3s post-roll (~115 frames) -> ~1298 frames
+        val framesInB = (fileB.length() / frameB.size).toInt()
+        assertTrue("Expected Track B to include ~10s pre-roll + ~3s post-roll (~1298 frames), got $framesInB", framesInB in 1285..1315)
+    }
+
+    @Test
+    fun `allows pre-roll with zero post-roll without queuing trailing writer`() {
+        var currentTime = 1_000_000L
+        val preOnlyCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 15L,
+            preRollSeconds = 10L,
+            postRollSeconds = 0L
+        )
+
+        val frameA = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x1A)
+        val frameB = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x2B)
+
+        preOnlyCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Artist A - Song A"
+        )
+        repeat(800) { preOnlyCoordinator.onStreamBytes(frameA, 0, frameA.size) }
+        currentTime += 21_000L
+
+        preOnlyCoordinator.onMetadataChanged("Artist B - Song B")
+        repeat(800) { preOnlyCoordinator.onStreamBytes(frameB, 0, frameB.size) }
+        currentTime += 21_000L
+
+        preOnlyCoordinator.stopRecording()
+        preOnlyCoordinator.awaitPendingFinalizations()
+
+        val fileA = File(baseDir, "Music/Artist A/Unknown Album/01 - Artist A - Song A.mp3")
+        val fileB = File(baseDir, "Music/Artist B/Unknown Album/01 - Artist B - Song B.mp3")
+        assertTrue(fileA.exists())
+        assertTrue(fileB.exists())
+
+        // Track A closes immediately at boundary with exact 800 frames (0s post-roll)
+        assertEquals(800L * frameA.size, fileA.length())
+
+        // Track B receives ~10s pre-roll (~383 frames) + 800 core frames
+        val framesInB = (fileB.length() / frameB.size).toInt()
+        assertTrue("Expected Track B to include ~10s pre-roll (~1183 frames), got $framesInB", framesInB in 1175..1195)
     }
 }
 

@@ -182,8 +182,10 @@
     <string name="settings_continuous_recording_desc">"Tāļtõ helīvoogõ automātlizt ku stacij mäņgõb"</string>
     <string name="settings_min_track_duration">"Kõgõ līem loul pikkus"</string>
     <string name="settings_min_track_duration_desc">"Kustūb līemõd klipõd (ku kõllid ja reklām)"</string>
-    <string name="settings_overlap_margin">"Loul algõ ja loppõ varā"</string>
-    <string name="settings_overlap_margin_desc">"Üllekattimi iedõ ja perā loul vahetust, až algõ ja loppõ äb kaddõks"</string>
+    <string name="settings_pre_roll_margin">"Loul algõ varā"</string>
+    <string name="settings_pre_roll_margin_desc">"Iedõvarā iedõ loul vahetust, až loul algõ äb kaddõks"</string>
+    <string name="settings_post_roll_margin">"Loul loppõ varā"</string>
+    <string name="settings_post_roll_margin_desc">"Perāvarā perā loul vahetust, až loul loppõ äb kaddõks"</string>
     <string name="settings_seconds_value">"%1$d s"</string>
     <string name="settings_option_off">"Āndamizt (0 s)"</string>
     <string name="settings_storage_safeguard">"Pīela kaitzõmi"</string>

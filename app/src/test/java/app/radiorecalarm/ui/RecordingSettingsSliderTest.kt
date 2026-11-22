@@ -20,6 +20,75 @@ class RecordingSettingsSliderTest {
     @Test
     fun recordingSliderMaxBounds_matchConfiguredRanges() {
         assertEquals(60L, AppConfig.Recording.MIN_DURATION_MAX_SECONDS)
-        assertEquals(30L, AppConfig.Recording.OVERLAP_MARGIN_MAX_SECONDS)
+        assertEquals(30L, AppConfig.Recording.PRE_ROLL_MAX_SECONDS)
+        assertEquals(30L, AppConfig.Recording.POST_ROLL_MAX_SECONDS)
+        assertEquals(10L, AppConfig.Recording.PRE_ROLL_SECONDS)
+        assertEquals(5L, AppConfig.Recording.POST_ROLL_SECONDS)
+    }
+
+    @Test
+    fun resolveMarginSeconds_migratesLegacyPreferenceAndRespectsExplicitValues() {
+        val emptyPrefs = emptyMap<String, Long>()
+        assertEquals(
+            10L,
+            AppConfig.Recording.resolveMarginSeconds(
+                key = AppConfig.Recording.PREF_PRE_ROLL_SECONDS,
+                defaultSeconds = AppConfig.Recording.PRE_ROLL_SECONDS,
+                maxSeconds = AppConfig.Recording.PRE_ROLL_MAX_SECONDS,
+                readLongOrNull = emptyPrefs::get
+            )
+        )
+        assertEquals(
+            5L,
+            AppConfig.Recording.resolveMarginSeconds(
+                key = AppConfig.Recording.PREF_POST_ROLL_SECONDS,
+                defaultSeconds = AppConfig.Recording.POST_ROLL_SECONDS,
+                maxSeconds = AppConfig.Recording.POST_ROLL_MAX_SECONDS,
+                readLongOrNull = emptyPrefs::get
+            )
+        )
+
+        val legacyOnlyPrefs = mapOf(AppConfig.Recording.PREF_LEGACY_OVERLAP_MARGIN_SECONDS to 20L)
+        assertEquals(
+            20L,
+            AppConfig.Recording.resolveMarginSeconds(
+                key = AppConfig.Recording.PREF_PRE_ROLL_SECONDS,
+                defaultSeconds = AppConfig.Recording.PRE_ROLL_SECONDS,
+                maxSeconds = AppConfig.Recording.PRE_ROLL_MAX_SECONDS,
+                readLongOrNull = legacyOnlyPrefs::get
+            )
+        )
+        assertEquals(
+            20L,
+            AppConfig.Recording.resolveMarginSeconds(
+                key = AppConfig.Recording.PREF_POST_ROLL_SECONDS,
+                defaultSeconds = AppConfig.Recording.POST_ROLL_SECONDS,
+                maxSeconds = AppConfig.Recording.POST_ROLL_MAX_SECONDS,
+                readLongOrNull = legacyOnlyPrefs::get
+            )
+        )
+
+        val partiallyMigratedPrefs = mapOf(
+            AppConfig.Recording.PREF_LEGACY_OVERLAP_MARGIN_SECONDS to 20L,
+            AppConfig.Recording.PREF_PRE_ROLL_SECONDS to 12L
+        )
+        assertEquals(
+            12L,
+            AppConfig.Recording.resolveMarginSeconds(
+                key = AppConfig.Recording.PREF_PRE_ROLL_SECONDS,
+                defaultSeconds = AppConfig.Recording.PRE_ROLL_SECONDS,
+                maxSeconds = AppConfig.Recording.PRE_ROLL_MAX_SECONDS,
+                readLongOrNull = partiallyMigratedPrefs::get
+            )
+        )
+        assertEquals(
+            20L,
+            AppConfig.Recording.resolveMarginSeconds(
+                key = AppConfig.Recording.PREF_POST_ROLL_SECONDS,
+                defaultSeconds = AppConfig.Recording.POST_ROLL_SECONDS,
+                maxSeconds = AppConfig.Recording.POST_ROLL_MAX_SECONDS,
+                readLongOrNull = partiallyMigratedPrefs::get
+            )
+        )
     }
 }

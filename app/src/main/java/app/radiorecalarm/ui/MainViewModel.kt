@@ -333,10 +333,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 app.radiorecalarm.AppConfig.Recording.PREF_MIN_DURATION_SECONDS,
                 app.radiorecalarm.AppConfig.Recording.MIN_DURATION_SECONDS
             ),
-            overlapMarginSeconds = prefs.getLong(
-                app.radiorecalarm.AppConfig.Recording.PREF_OVERLAP_MARGIN_SECONDS,
-                app.radiorecalarm.AppConfig.Recording.OVERLAP_MARGIN_SECONDS
-            )
+            preRollSeconds = app.radiorecalarm.AppConfig.Recording.resolvePreRollSeconds(prefs),
+            postRollSeconds = app.radiorecalarm.AppConfig.Recording.resolvePostRollSeconds(prefs)
         )}
     }
 
@@ -765,10 +763,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_MIN_DURATION_SECONDS, safeSeconds).apply()
     }
 
-    fun setOverlapMarginSeconds(seconds: Long) {
-        val safeSeconds = seconds.coerceIn(0L, app.radiorecalarm.AppConfig.Recording.OVERLAP_MARGIN_MAX_SECONDS)
-        _uiState.update { it.copy(overlapMarginSeconds = safeSeconds) }
-        prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_OVERLAP_MARGIN_SECONDS, safeSeconds).apply()
+    fun setPreRollSeconds(seconds: Long) {
+        val safeSeconds = seconds.coerceIn(0L, app.radiorecalarm.AppConfig.Recording.PRE_ROLL_MAX_SECONDS)
+        _uiState.update { it.copy(preRollSeconds = safeSeconds) }
+        prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_PRE_ROLL_SECONDS, safeSeconds).apply()
+    }
+
+    fun setPostRollSeconds(seconds: Long) {
+        val safeSeconds = seconds.coerceIn(0L, app.radiorecalarm.AppConfig.Recording.POST_ROLL_MAX_SECONDS)
+        _uiState.update { it.copy(postRollSeconds = safeSeconds) }
+        prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_POST_ROLL_SECONDS, safeSeconds).apply()
     }
 
     fun clearHistory() {

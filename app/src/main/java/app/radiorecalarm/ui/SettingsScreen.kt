@@ -73,8 +73,10 @@ fun SettingsScreen(
     onToggleContinuousRecording: (Boolean) -> Unit = {},
     minTrackDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
     onMinTrackDurationChange: (Long) -> Unit = {},
-    overlapMarginSeconds: Long = AppConfig.Recording.OVERLAP_MARGIN_SECONDS,
-    onOverlapMarginChange: (Long) -> Unit = {},
+    preRollSeconds: Long = AppConfig.Recording.PRE_ROLL_SECONDS,
+    onPreRollChange: (Long) -> Unit = {},
+    postRollSeconds: Long = AppConfig.Recording.POST_ROLL_SECONDS,
+    onPostRollChange: (Long) -> Unit = {},
     onToggleShowFlags: (Boolean) -> Unit,
     onToggleHideRemoteStations: (Boolean) -> Unit,
     onColsPortraitChange: (Int) -> Unit,
@@ -100,7 +102,8 @@ fun SettingsScreen(
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showMinDurationDialog by remember { mutableStateOf(false) }
-    var showOverlapMarginDialog by remember { mutableStateOf(false) }
+    var showPreRollDialog by remember { mutableStateOf(false) }
+    var showPostRollDialog by remember { mutableStateOf(false) }
 
     var hasInstallPermission by remember {
         mutableStateOf(
@@ -333,13 +336,30 @@ fun SettingsScreen(
                 SettingsDivider()
 
                 SettingsRow(
-                    headline = stringResource(R.string.settings_overlap_margin),
-                    supporting = stringResource(R.string.settings_overlap_margin_desc),
-                    icon = Icons.Default.SwapHoriz,
-                    onClick = { showOverlapMarginDialog = true },
+                    headline = stringResource(R.string.settings_pre_roll_margin),
+                    supporting = stringResource(R.string.settings_pre_roll_margin_desc),
+                    icon = Icons.Default.FastRewind,
+                    onClick = { showPreRollDialog = true },
                     trailingContent = {
                         Text(
-                            text = formatSecondsOptionLabel(overlapMarginSeconds),
+                            text = formatSecondsOptionLabel(preRollSeconds),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    headline = stringResource(R.string.settings_post_roll_margin),
+                    supporting = stringResource(R.string.settings_post_roll_margin_desc),
+                    icon = Icons.Default.FastForward,
+                    onClick = { showPostRollDialog = true },
+                    trailingContent = {
+                        Text(
+                            text = formatSecondsOptionLabel(postRollSeconds),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
@@ -521,18 +541,33 @@ fun SettingsScreen(
         )
     }
 
-    if (showOverlapMarginDialog) {
+    if (showPreRollDialog) {
         SecondsSliderDialog(
-            title = stringResource(R.string.settings_overlap_margin),
-            description = stringResource(R.string.settings_overlap_margin_desc),
-            icon = Icons.Default.SwapHoriz,
-            initialSeconds = overlapMarginSeconds,
-            maxSeconds = AppConfig.Recording.OVERLAP_MARGIN_MAX_SECONDS,
+            title = stringResource(R.string.settings_pre_roll_margin),
+            description = stringResource(R.string.settings_pre_roll_margin_desc),
+            icon = Icons.Default.FastRewind,
+            initialSeconds = preRollSeconds,
+            maxSeconds = AppConfig.Recording.PRE_ROLL_MAX_SECONDS,
             onSave = { selected ->
-                onOverlapMarginChange(selected)
-                showOverlapMarginDialog = false
+                onPreRollChange(selected)
+                showPreRollDialog = false
             },
-            onDismiss = { showOverlapMarginDialog = false }
+            onDismiss = { showPreRollDialog = false }
+        )
+    }
+
+    if (showPostRollDialog) {
+        SecondsSliderDialog(
+            title = stringResource(R.string.settings_post_roll_margin),
+            description = stringResource(R.string.settings_post_roll_margin_desc),
+            icon = Icons.Default.FastForward,
+            initialSeconds = postRollSeconds,
+            maxSeconds = AppConfig.Recording.POST_ROLL_MAX_SECONDS,
+            onSave = { selected ->
+                onPostRollChange(selected)
+                showPostRollDialog = false
+            },
+            onDismiss = { showPostRollDialog = false }
         )
     }
 
@@ -897,7 +932,11 @@ private fun SecondsSliderDialog(
                 Slider(
                     value = selectedSeconds.toFloat(),
                     onValueChange = { raw ->
-                        selectedSeconds = clampAndRoundSeconds(raw, maxSeconds)
+                        val nextSeconds = clampAndRoundSeconds(raw, maxSeconds)
+                        if (nextSeconds != selectedSeconds) {
+                            view.performHapticTap()
+                            selectedSeconds = nextSeconds
+                        }
                     },
                     valueRange = 0f..maxSeconds.toFloat(),
                     colors = SliderDefaults.colors(
@@ -964,7 +1003,8 @@ private fun SettingsScreenPreview() {
             widgetTransparency = 0.25f,
             continuousRecording = false,
             minTrackDurationSeconds = 15L,
-            overlapMarginSeconds = 10L,
+            preRollSeconds = 10L,
+            postRollSeconds = 5L,
             onToggleShowFlags = {},
             onToggleHideRemoteStations = {},
             onColsPortraitChange = {},

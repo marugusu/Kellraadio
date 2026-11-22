@@ -46,7 +46,8 @@ data class MainUiState(
     val hideRemoteStations: Boolean = false,
     val continuousRecording: Boolean = false,
     val minTrackDurationSeconds: Long = app.radiorecalarm.AppConfig.Recording.MIN_DURATION_SECONDS,
-    val overlapMarginSeconds: Long = app.radiorecalarm.AppConfig.Recording.OVERLAP_MARGIN_SECONDS,
+    val preRollSeconds: Long = app.radiorecalarm.AppConfig.Recording.PRE_ROLL_SECONDS,
+    val postRollSeconds: Long = app.radiorecalarm.AppConfig.Recording.POST_ROLL_SECONDS,
 
     // --- NAVIGATSIOON JA VALIKUD ---
     val currentTab: Int = 0,

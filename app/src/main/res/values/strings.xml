@@ -210,8 +210,10 @@
     <string name="settings_continuous_recording_desc">Automatically record audio whenever any station is playing</string>
     <string name="settings_min_track_duration">Minimum clip length</string>
     <string name="settings_min_track_duration_desc">Delete shorter clips such as jingles and ads</string>
-    <string name="settings_overlap_margin">Track start &amp; end margin</string>
-    <string name="settings_overlap_margin_desc">Overlap added before and after track transitions so nothing gets cut</string>
+    <string name="settings_pre_roll_margin">Track start margin</string>
+    <string name="settings_pre_roll_margin_desc">Pre-roll audio buffered before track changes so delayed metadata does not cut the start</string>
+    <string name="settings_post_roll_margin">Track end margin</string>
+    <string name="settings_post_roll_margin_desc">Post-roll audio recorded after track changes so early metadata does not cut the end</string>
     <string name="settings_seconds_value">%1$d s</string>
     <string name="settings_option_off">Off (0 s)</string>
     <string name="settings_storage_safeguard">Storage safeguard</string>

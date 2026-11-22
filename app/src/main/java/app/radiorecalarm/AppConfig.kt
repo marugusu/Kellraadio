@@ -119,16 +119,48 @@ object AppConfig {
         const val MIN_DURATION_SECONDS = 15L
         const val MAX_TRACK_DURATION_SECONDS = 600L // Üle 10 min kestev salvestis liigitatakse saateks (ADR-0006)
         const val ENRICHMENT_TIMEOUT_MS = 2000L
-        const val OVERLAP_MARGIN_SECONDS = 10L
+        const val PRE_ROLL_SECONDS = 10L
+        const val POST_ROLL_SECONDS = 5L
         const val MIN_DURATION_MAX_SECONDS = 60L
-        const val OVERLAP_MARGIN_MAX_SECONDS = 30L
+        const val PRE_ROLL_MAX_SECONDS = 30L
+        const val POST_ROLL_MAX_SECONDS = 30L
         const val DIR_MUSIC = "Music"
         const val DIR_BROADCASTS = "Broadcasts"
         const val DIR_UNKNOWN_ALBUM = "Unknown Album"
         const val DEFAULT_AUDIO_DIR = "Recordings"
         const val PREF_CONTINUOUS_RECORDING = "continuous_recording"
         const val PREF_MIN_DURATION_SECONDS = "recording_min_duration_seconds"
-        const val PREF_OVERLAP_MARGIN_SECONDS = "recording_overlap_margin_seconds"
+        const val PREF_PRE_ROLL_SECONDS = "recording_pre_roll_seconds"
+        const val PREF_POST_ROLL_SECONDS = "recording_post_roll_seconds"
+        const val PREF_LEGACY_OVERLAP_MARGIN_SECONDS = "recording_overlap_margin_seconds"
         const val MIN_FREE_STORAGE_BYTES = 500L * 1024L * 1024L // 500 MB (ADR-0005)
+
+        internal fun resolveMarginSeconds(
+            key: String,
+            defaultSeconds: Long,
+            maxSeconds: Long,
+            readLongOrNull: (String) -> Long?
+        ): Long {
+            val raw = readLongOrNull(key)
+                ?: readLongOrNull(PREF_LEGACY_OVERLAP_MARGIN_SECONDS)
+                ?: defaultSeconds
+            return raw.coerceIn(0L, maxSeconds)
+        }
+
+        fun resolvePreRollSeconds(prefs: android.content.SharedPreferences): Long =
+            resolveMarginSeconds(
+                key = PREF_PRE_ROLL_SECONDS,
+                defaultSeconds = PRE_ROLL_SECONDS,
+                maxSeconds = PRE_ROLL_MAX_SECONDS,
+                readLongOrNull = { k -> if (prefs.contains(k)) prefs.getLong(k, 0L) else null }
+            )
+
+        fun resolvePostRollSeconds(prefs: android.content.SharedPreferences): Long =
+            resolveMarginSeconds(
+                key = PREF_POST_ROLL_SECONDS,
+                defaultSeconds = POST_ROLL_SECONDS,
+                maxSeconds = POST_ROLL_MAX_SECONDS,
+                readLongOrNull = { k -> if (prefs.contains(k)) prefs.getLong(k, 0L) else null }
+            )
     }
 }
