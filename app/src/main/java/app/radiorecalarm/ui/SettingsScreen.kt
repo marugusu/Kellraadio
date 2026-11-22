@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
@@ -506,11 +507,15 @@ fun SettingsScreen(
     }
 
     if (showMinDurationDialog) {
-        SecondsOptionDialog(
+        SecondsSliderDialog(
             title = stringResource(R.string.settings_min_track_duration),
-            options = AppConfig.Recording.MIN_DURATION_OPTIONS,
-            selectedSeconds = minTrackDurationSeconds,
-            onSelect = { selected ->
+            description = stringResource(R.string.settings_min_track_duration_desc),
+            icon = Icons.Default.Timer,
+            initialSeconds = minTrackDurationSeconds,
+            maxSeconds = AppConfig.Recording.MIN_DURATION_MAX_SECONDS,
+            stepSeconds = AppConfig.Recording.SLIDER_STEP_SECONDS,
+            presets = AppConfig.Recording.MIN_DURATION_PRESETS,
+            onSave = { selected ->
                 onMinTrackDurationChange(selected)
                 showMinDurationDialog = false
             },
@@ -519,11 +524,15 @@ fun SettingsScreen(
     }
 
     if (showOverlapMarginDialog) {
-        SecondsOptionDialog(
+        SecondsSliderDialog(
             title = stringResource(R.string.settings_overlap_margin),
-            options = AppConfig.Recording.OVERLAP_MARGIN_OPTIONS,
-            selectedSeconds = overlapMarginSeconds,
-            onSelect = { selected ->
+            description = stringResource(R.string.settings_overlap_margin_desc),
+            icon = Icons.Default.SwapHoriz,
+            initialSeconds = overlapMarginSeconds,
+            maxSeconds = AppConfig.Recording.OVERLAP_MARGIN_MAX_SECONDS,
+            stepSeconds = AppConfig.Recording.SLIDER_STEP_SECONDS,
+            presets = AppConfig.Recording.OVERLAP_MARGIN_PRESETS,
+            onSave = { selected ->
                 onOverlapMarginChange(selected)
                 showOverlapMarginDialog = false
             },
@@ -829,82 +838,158 @@ private fun formatSecondsOptionLabel(seconds: Long): String {
     }
 }
 
+internal fun snapSecondsToStep(
+    rawValue: Float,
+    maxSeconds: Long,
+    stepSeconds: Long
+): Long {
+    val safeMax = maxSeconds.coerceAtLeast(0L)
+    val safeStep = stepSeconds.coerceAtLeast(1L)
+    val clamped = rawValue.coerceIn(0f, safeMax.toFloat())
+    val snapped = ((clamped / safeStep.toFloat()).roundToInt().toLong()) * safeStep
+    return snapped.coerceIn(0L, safeMax)
+}
+
 /**
- * Shared single-choice dialog for numeric second thresholds in recording settings.
+ * Modal slider and preset-chip dialog for configuring recording second thresholds.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SecondsOptionDialog(
+private fun SecondsSliderDialog(
     title: String,
-    options: List<Long>,
-    selectedSeconds: Long,
-    onSelect: (Long) -> Unit,
+    description: String,
+    icon: ImageVector,
+    initialSeconds: Long,
+    maxSeconds: Long,
+    stepSeconds: Long,
+    presets: List<Long>,
+    onSave: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+    val view = LocalView.current
+    val scrollState = rememberScrollState()
+    var selectedSeconds by remember(initialSeconds, maxSeconds, stepSeconds) {
+        mutableLongStateOf(snapSecondsToStep(initialSeconds.toFloat(), maxSeconds, stepSeconds))
+    }
+    val sliderSteps = ((maxSeconds / stepSeconds).toInt() - 1).coerceAtLeast(0)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(12.dp),
+        icon = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
+        title = {
+            Text(
+                text = title,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+            ) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
+                    text = formatSecondsOptionLabel(selectedSeconds),
+                    style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
+                    color = MaterialTheme.colorScheme.primary
                 )
-
-                options.forEach { seconds ->
-                    val isSelected = seconds == selectedSeconds
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                            .border(
-                                width = 1.dp,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else Color.Transparent,
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .clickable { onSelect(seconds) }
-                            .padding(vertical = 12.dp, horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = formatSecondsOptionLabel(seconds),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                        if (isSelected) {
-                            Spacer(modifier = Modifier.weight(1f))
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Slider(
+                    value = selectedSeconds.toFloat(),
+                    onValueChange = { raw ->
+                        selectedSeconds = snapSecondsToStep(raw, maxSeconds, stepSeconds)
+                    },
+                    valueRange = 0f..maxSeconds.toFloat(),
+                    steps = sliderSteps,
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
                 Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(stringResource(R.string.action_cancel))
+                    presets.forEach { preset ->
+                        val isSelected = selectedSeconds == preset
+                        SuggestionChip(
+                            onClick = {
+                                view.performHapticTap()
+                                selectedSeconds = preset
+                            },
+                            label = {
+                                Text(stringResource(R.string.settings_seconds_value, preset.toInt()))
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            ),
+                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                labelColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                        )
                     }
                 }
             }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    view.performHapticTap()
+                    onSave(selectedSeconds)
+                },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    view.performHapticTap()
+                    onDismiss()
+                },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.action_cancel),
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
         }
+    )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun SecondsSliderDialogPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        SecondsSliderDialog(
+            title = "Minimum clip length",
+            description = "Delete shorter clips such as jingles and ads",
+            icon = Icons.Default.Timer,
+            initialSeconds = 15L,
+            maxSeconds = AppConfig.Recording.MIN_DURATION_MAX_SECONDS,
+            stepSeconds = AppConfig.Recording.SLIDER_STEP_SECONDS,
+            presets = AppConfig.Recording.MIN_DURATION_PRESETS,
+            onSave = {},
+            onDismiss = {}
+        )
     }
 }
 
