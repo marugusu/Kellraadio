@@ -15,7 +15,7 @@ Varasem `MediaCodec`-põhine akustiline piirituvastus ja vahekõllide automaatne
    - Miinimumkestuse (`15 s`) prügiklipi filter ja `10 minuti` (`600 s`) saateks liigitamine hindavad **põhikestust** (aeg loo metainfo algusest järgmise metainfo saabumiseni ilma eel- ja järelvaruta), et `10 s` varud ei muudaks 10-sekundilist **Vahekõlli** 30-sekundiliseks säilitatavaks palaks.
    - **Kõrvafaili** (`.json`) `durationSeconds` salvestab tegeliku failipikkuse koos varudega ning skeem püsib muutumatuna.
 3. **Seadistatavus, lihtsus ja taastekindlus**:
-   - **Seaded → Salvestamine** sisaldab kahte valikut: minimaalne pala pikkus (`0 s / 15 s / 30 s / 60 s`, vaikimisi `15 s`) ja algus- ja lõpuvaru (`0 s / 5 s / 10 s / 15 s / 20 s`, vaikimisi `10 s`).
+   - **Seaded → Salvestamine** sisaldab kahte liuguri ja kiirvalikutega seadistatavat parameetrit: minimaalne pala pikkus (`0..60 s`, samm `5 s`, vaikimisi `15 s`) ja algus- ja lõpuvaru (`0..30 s`, samm `5 s`, vaikimisi `10 s`).
    - Mitte-ICY (`icy-metaint <= 0`) striimid jäävad lihtsale varuteele ja kuulamisel ilma salvestamiseta passiivset ringpuhvrit ei hoita.
    - Sama jaama võrgukatkestusest taastumisel jätkatakse kirjutamist samasse faili, lähtestades ainult kaadriparsimise joondamise (`AudioFrameAccumulator`), ning käsitsi `stopRecording`-uga katkestatud viimane pala märgitakse `"partial": true`.
 

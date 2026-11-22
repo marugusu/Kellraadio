@@ -120,8 +120,11 @@ object AppConfig {
         const val MAX_TRACK_DURATION_SECONDS = 600L // Üle 10 min kestev salvestis liigitatakse saateks (ADR-0006)
         const val ENRICHMENT_TIMEOUT_MS = 2000L
         const val OVERLAP_MARGIN_SECONDS = 10L
-        val MIN_DURATION_OPTIONS = listOf(0L, 15L, 30L, 60L)
-        val OVERLAP_MARGIN_OPTIONS = listOf(0L, 5L, 10L, 15L, 20L)
+        const val SLIDER_STEP_SECONDS = 5L
+        const val MIN_DURATION_MAX_SECONDS = 60L
+        const val OVERLAP_MARGIN_MAX_SECONDS = 30L
+        val MIN_DURATION_PRESETS = listOf(0L, 15L, 30L, 45L, 60L)
+        val OVERLAP_MARGIN_PRESETS = listOf(0L, 5L, 10L, 15L, 20L, 30L)
         const val DIR_MUSIC = "Music"
         const val DIR_BROADCASTS = "Broadcasts"
         const val DIR_UNKNOWN_ALBUM = "Unknown Album"

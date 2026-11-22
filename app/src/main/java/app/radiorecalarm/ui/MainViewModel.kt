@@ -760,13 +760,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setMinTrackDurationSeconds(seconds: Long) {
-        val safeSeconds = seconds.coerceAtLeast(0L)
+        val safeSeconds = seconds.coerceIn(0L, app.radiorecalarm.AppConfig.Recording.MIN_DURATION_MAX_SECONDS)
         _uiState.update { it.copy(minTrackDurationSeconds = safeSeconds) }
         prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_MIN_DURATION_SECONDS, safeSeconds).apply()
     }
 
     fun setOverlapMarginSeconds(seconds: Long) {
-        val safeSeconds = seconds.coerceAtLeast(0L)
+        val safeSeconds = seconds.coerceIn(0L, app.radiorecalarm.AppConfig.Recording.OVERLAP_MARGIN_MAX_SECONDS)
         _uiState.update { it.copy(overlapMarginSeconds = safeSeconds) }
         prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_OVERLAP_MARGIN_SECONDS, safeSeconds).apply()
     }

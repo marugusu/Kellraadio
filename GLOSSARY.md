@@ -69,7 +69,7 @@ Lõppeva **Pala** faili lõppu pärast metainfo muutust salvestatav lühike jär
 _Avoid_: Lõpuviive, saba
 
 **Vahekõll (Interstitial Jingle)**:
-Kahe **Pala** vahel eetris kõlav lühike jaama tunnusheli või reklaamklipp, mida ei salvestata eraldiseisva failina alla miinimumkestuse lävendi, kuid mille heli võib jääda naaberpalade kattuvatesse otstesse.
+Tavasalvestuse lühike vahesegment (tunnusheli, reklaam või lühiteade), mis jääb alla miinimumkestuse lävendi ja kustutatakse sõltumata metainfo tüübist, kuigi selle heli võib jääda naaberpalade kattuvatesse otstesse (erandiks **Äratuse salvestus**).
 _Avoid_: Prügiklipp, jingle
 
 **Salvestised (Recordings)**:
