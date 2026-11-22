@@ -23,7 +23,8 @@ class StreamRecordingCoordinatorTest {
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
             clock = { 1000000L },
-            minDurationSeconds = 0L
+            minDurationSeconds = 0L,
+            overlapMarginSeconds = 0L
         )
     }
 
@@ -233,9 +234,11 @@ class StreamRecordingCoordinatorTest {
         assertTrue(jsonBefore.exists())
         assertTrue(jsonBefore.readText().contains("\"partial\": true"))
 
-        // Queen plays again at boundary (complete track)
+        // Queen plays again at boundary (complete track closed cleanly at next boundary)
         coordinator.onMetadataChanged("Queen - Bohemian Rhapsody")
         coordinator.onStreamBytes("CompleteAudio".toByteArray(), 0, 13)
+        coordinator.onMetadataChanged("ACDC - Thunderstruck")
+        coordinator.onStreamBytes("NextTrack".toByteArray(), 0, 9)
 
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
@@ -381,11 +384,12 @@ class StreamRecordingCoordinatorTest {
     }
 
     @Test
-    fun `prunes and deletes tracks lasting less than 30 seconds`() {
+    fun `prunes and deletes tracks lasting less than 15 seconds`() {
         var currentTime = 1000000L
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
-            clock = { currentTime }
+            clock = { currentTime },
+            overlapMarginSeconds = 0L
         )
 
         coordinator.startRecording(
@@ -395,7 +399,7 @@ class StreamRecordingCoordinatorTest {
         )
         coordinator.onStreamBytes("ShortJingleBytes".toByteArray(), 0, 16)
 
-        // Advance time by only 10 seconds (10s < 30s)
+        // Advance time by only 10 seconds (10s < 15s default)
         currentTime += 10000L
 
         coordinator.stopRecording()
@@ -406,11 +410,12 @@ class StreamRecordingCoordinatorTest {
     }
 
     @Test
-    fun `preserves tracks lasting 30 seconds or longer`() {
+    fun `preserves tracks lasting 15 seconds or longer`() {
         var currentTime = 1000000L
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
-            clock = { currentTime }
+            clock = { currentTime },
+            overlapMarginSeconds = 0L
         )
 
         coordinator.startRecording(
@@ -420,8 +425,8 @@ class StreamRecordingCoordinatorTest {
         )
         coordinator.onStreamBytes("AudioBytes".toByteArray(), 0, 10)
 
-        // Advance time by 35 seconds (35s >= 30s)
-        currentTime += 35000L
+        // Advance time by 20 seconds (20s >= 15s default)
+        currentTime += 20000L
 
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
@@ -430,15 +435,16 @@ class StreamRecordingCoordinatorTest {
         assertEquals(1, audioFiles.size)
         val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.toList()
         assertEquals(1, jsonFiles.size)
-        assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 35"))
+        assertTrue(jsonFiles.first().readText().contains("\"durationSeconds\": 20"))
     }
 
     @Test
-    fun `flags mid-stream started track as partial and subsequent track as non-partial`() {
+    fun `flags mid-stream start and manual stop as partial while boundary-closed middle track is complete`() {
         var currentTime = 1000000L
         coordinator = StreamRecordingCoordinator(
             baseDirProvider = { baseDir },
-            clock = { currentTime }
+            clock = { currentTime },
+            overlapMarginSeconds = 0L
         )
 
         // Mid-stream start
@@ -448,24 +454,28 @@ class StreamRecordingCoordinatorTest {
             initialRawMetadata = "Artist 1 - Track 1"
         )
         coordinator.onStreamBytes("Audio1".toByteArray(), 0, 6)
-        currentTime += 40000L // 40s duration
+        currentTime += 40000L
 
-        // Transition to next track at boundary
+        // Middle track opens and closes cleanly at metadata boundaries
         coordinator.onMetadataChanged("Artist 2 - Track 2")
         coordinator.onStreamBytes("Audio2".toByteArray(), 0, 6)
-        currentTime += 50000L // 50s duration
+        currentTime += 50000L
+
+        // Final track opened at boundary, then manually stopped before closing boundary
+        coordinator.onMetadataChanged("Artist 3 - Track 3")
+        coordinator.onStreamBytes("Audio3".toByteArray(), 0, 6)
+        currentTime += 30000L
 
         coordinator.stopRecording()
         coordinator.awaitPendingFinalizations()
 
-        val jsonFiles = baseDir.walkTopDown().filter { it.isFile && it.name.endsWith(".json") }.sortedBy { it.name }.toList()
-        assertEquals(2, jsonFiles.size)
+        val json1 = File(baseDir, "Music/Artist 1/Unknown Album/01 - Artist 1 - Track 1.json")
+        val json2 = File(baseDir, "Music/Artist 2/Unknown Album/01 - Artist 2 - Track 2.json")
+        val json3 = File(baseDir, "Music/Artist 3/Unknown Album/01 - Artist 3 - Track 3.json")
 
-        val json1 = jsonFiles[0].readText()
-        assertTrue(json1.contains("\"partial\": true"))
-
-        val json2 = jsonFiles[1].readText()
-        assertTrue(json2.contains("\"partial\": false"))
+        assertTrue(json1.readText().contains("\"partial\": true"))
+        assertTrue(json2.readText().contains("\"partial\": false"))
+        assertTrue(json3.readText().contains("\"partial\": true"))
     }
 
     @Test
@@ -769,7 +779,7 @@ class StreamRecordingCoordinatorTest {
         safeCoordinator.stopRecording()
         safeCoordinator.awaitPendingFinalizations()
 
-        // Second recording after restart: transition from another title makes it partial = false, but only 100s long
+        // Second recording after restart: transition to another title closes it as partial = false, but only 100s long
         safeCoordinator.startRecording(
             stationName = "Vikerraadio",
             streamUrl = "https://icecast.err.ee/vikerraadio.mp3",
@@ -781,6 +791,9 @@ class StreamRecordingCoordinatorTest {
         safeCoordinator.onMetadataChanged("Artist - ShowTitle")
         safeCoordinator.onStreamBytes("Short5MinContent".toByteArray(), 0, 16)
         currentTime += 100_000L
+        safeCoordinator.onMetadataChanged("Outro - End")
+        safeCoordinator.onStreamBytes("Outro".toByteArray(), 0, 5)
+        currentTime += 20_000L
         safeCoordinator.stopRecording()
         safeCoordinator.awaitPendingFinalizations()
 
@@ -830,6 +843,257 @@ class StreamRecordingCoordinatorTest {
         val showFiles = File(baseDir, "Broadcasts/Vikerraadio").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
         assertEquals(1, showFiles.size)
         assertEquals("ShowStart-MiddleSong-ShowEnd", showFiles.first().readText())
+    }
+
+    @Test
+    fun `PreRollFrameBuffer retains up to maxDurationMicros and respects capacity updates`() {
+        val frame = AudioFrame(ByteArray(100), durationMicros = 25_000L, isAac = false) // 25 ms
+        val pr = PreRollFrameBuffer(maxDurationMicros = 100_000L) // 100 ms -> max 4 frames
+        repeat(10) { pr.push(frame) }
+        assertEquals(4, pr.snapshotFrames().size)
+        assertEquals(100_000L, pr.totalDurationMicros)
+
+        pr.updateCapacity(50_000L) // 50 ms -> trims to 2 frames
+        assertEquals(2, pr.snapshotFrames().size)
+        assertEquals(50_000L, pr.totalDurationMicros)
+
+        pr.updateCapacity(0L)
+        assertEquals(0, pr.snapshotFrames().size)
+        assertEquals(0L, pr.totalDurationMicros)
+    }
+
+    @Test
+    fun `applies symmetric pre-roll and post-roll overlap frames across track boundary`() {
+        var currentTime = 1_000_000L
+        val overlapCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 15L,
+            overlapMarginSeconds = 10L
+        )
+
+        val frameA = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x1A)
+        val frameB = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x2B)
+        // ~26.122 ms per frame -> 800 frames = ~20.9 s
+        overlapCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Artist A - Song A"
+        )
+        repeat(800) {
+            overlapCoordinator.onStreamBytes(frameA, 0, frameA.size)
+        }
+        currentTime += 21_000L
+
+        overlapCoordinator.onMetadataChanged("Artist B - Song B")
+        repeat(800) {
+            overlapCoordinator.onStreamBytes(frameB, 0, frameB.size)
+        }
+        currentTime += 21_000L
+
+        // Close Track B cleanly at next transition, write 450 frames (~11.7 s) so Track B finishes its 10s post-roll
+        overlapCoordinator.onMetadataChanged("Artist C - Song C")
+        repeat(450) {
+            overlapCoordinator.onStreamBytes(frameB, 0, frameB.size)
+        }
+        currentTime += 12_000L
+
+        overlapCoordinator.stopRecording()
+        overlapCoordinator.awaitPendingFinalizations()
+
+        val fileA = File(baseDir, "Music/Artist A/Unknown Album/01 - Artist A - Song A.mp3")
+        val fileB = File(baseDir, "Music/Artist B/Unknown Album/01 - Artist B - Song B.mp3")
+        val jsonA = File(baseDir, "Music/Artist A/Unknown Album/01 - Artist A - Song A.json")
+        val jsonB = File(baseDir, "Music/Artist B/Unknown Album/01 - Artist B - Song B.json")
+
+        assertTrue(fileA.exists())
+        assertTrue(fileB.exists())
+
+        // Track A: 800 core frames + ~10s post-roll (~383 frames of B)
+        val framesInA = (fileA.length() / frameA.size).toInt()
+        assertTrue("Expected Track A to include ~10s post-roll (>1150 frames), got $framesInA", framesInA in 1170..1190)
+
+        // Track B: ~10s pre-roll (~383 frames of A) + 800 core frames + ~10s post-roll (~383 frames)
+        val framesInB = (fileB.length() / frameB.size).toInt()
+        assertTrue("Expected Track B to include pre-roll and post-roll (~1566 frames), got $framesInB", framesInB in 1550..1585)
+
+        // Verify Track B starts with frameA (pre-roll) and ends with frameB
+        val bytesB = fileB.readBytes()
+        assertEquals(0x1A.toByte(), bytesB[10])
+        assertEquals(0x2B.toByte(), bytesB[bytesB.size - 10])
+
+        assertTrue(jsonA.readText().contains("\"durationSeconds\": 30") || jsonA.readText().contains("\"durationSeconds\": 31"))
+        assertTrue(jsonB.readText().contains("\"durationSeconds\": 40") || jsonB.readText().contains("\"durationSeconds\": 41"))
+    }
+
+    @Test
+    fun `prunes short interstitial jingle by core duration even when overlap inflates file duration`() {
+        var currentTime = 1_000_000L
+        val overlapCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 15L,
+            overlapMarginSeconds = 10L
+        )
+
+        val frameA = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x11)
+        val frameJingle = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x55)
+        val frameB = AudioFrameAnalyzerTest.buildMp3Frame(fillByte = 0x22)
+
+        overlapCoordinator.startRecording(
+            stationName = "Sky Plus",
+            streamUrl = "https://stream.sky.ee/skyplus.mp3",
+            initialRawMetadata = "Artist A - Song A"
+        )
+        // Track A: 700 frames (~18.3 s core >= 15s)
+        repeat(700) { overlapCoordinator.onStreamBytes(frameA, 0, frameA.size) }
+        currentTime += 18_300L
+
+        // 10s tagged jingle: 380 frames (~9.9 s core < 15s, even though with 10s pre+10s post its file is ~30s!)
+        overlapCoordinator.onMetadataChanged("Station - Jingle")
+        repeat(380) { overlapCoordinator.onStreamBytes(frameJingle, 0, frameJingle.size) }
+        currentTime += 10_000L
+
+        // Track B: 700 frames (~18.3 s core >= 15s)
+        overlapCoordinator.onMetadataChanged("Artist B - Song B")
+        repeat(700) { overlapCoordinator.onStreamBytes(frameB, 0, frameB.size) }
+        currentTime += 18_300L
+
+        overlapCoordinator.stopRecording()
+        overlapCoordinator.awaitPendingFinalizations()
+
+        val jingleDir = File(baseDir, "Music/Station")
+        assertFalse("10s jingle must be pruned by core duration despite 30s overlapped file", jingleDir.exists())
+
+        val fileA = File(baseDir, "Music/Artist A/Unknown Album/01 - Artist A - Song A.mp3")
+        val fileB = File(baseDir, "Music/Artist B/Unknown Album/01 - Artist B - Song B.mp3")
+        assertTrue(fileA.exists())
+        assertTrue(fileB.exists())
+
+        // Concurrent post-roll ensured Track A got full ~10s past jingle boundary (380 jingle frames + >=1 frame of B)
+        val framesInA = (fileA.length() / frameA.size).toInt()
+        assertTrue("Track A should keep full ~10s post-roll across jingle (~1083 frames), got $framesInA", framesInA >= 1080)
+        // Track B got 10s pre-roll covering the entire jingle
+        val framesInB = (fileB.length() / frameB.size).toInt()
+        assertTrue("Track B should keep full ~10s pre-roll (~1083 frames), got $framesInB", framesInB >= 1080)
+    }
+
+    @Test
+    fun `keeps track under 10 minutes core duration in Music even when overlap exceeds 600s total`() {
+        var currentTime = 1_000_000L
+        val overlapCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 15L,
+            overlapMarginSeconds = 10L
+        )
+        val frame = AudioFrameAnalyzerTest.buildMp3Frame()
+
+        overlapCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Intro - Track"
+        )
+        // ~11s pre-roll source
+        repeat(420) { overlapCoordinator.onStreamBytes(frame, 0, frame.size) }
+        currentTime += 11_000L
+
+        // Track A: 22,780 frames = 595.06 s core (<= 600s), plus 10s pre-roll + 10s post-roll = ~615s total file!
+        overlapCoordinator.onMetadataChanged("Artist - Long Song")
+        repeat(22_780) { overlapCoordinator.onStreamBytes(frame, 0, frame.size) }
+        currentTime += 595_000L
+
+        overlapCoordinator.onMetadataChanged("Outro - Track")
+        repeat(420) { overlapCoordinator.onStreamBytes(frame, 0, frame.size) }
+        currentTime += 11_000L
+
+        overlapCoordinator.stopRecording()
+        overlapCoordinator.awaitPendingFinalizations()
+
+        val musicFile = File(baseDir, "Music/Artist/Unknown Album/01 - Artist - Long Song.mp3")
+        val musicJson = File(baseDir, "Music/Artist/Unknown Album/01 - Artist - Long Song.json")
+        assertTrue("595s core track must stay in Music despite >600s overlapped file", musicFile.exists())
+        assertTrue(musicJson.readText().contains("\"durationSeconds\": 615"))
+    }
+
+    @Test
+    fun `applies pre-roll and post-roll only to tracks across Track-Show-Track transitions`() {
+        var currentTime = 1_000_000L
+        val overlapCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 15L,
+            overlapMarginSeconds = 10L
+        )
+        val frame = AudioFrameAnalyzerTest.buildMp3Frame()
+
+        overlapCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Artist A - Song A"
+        )
+        // Song A: 700 frames (~18.3 s)
+        repeat(700) { overlapCoordinator.onStreamBytes(frame, 0, frame.size) }
+        currentTime += 18_300L
+
+        // Transition to Show (Uudised): 700 frames (~18.3 s), Show itself must NOT get pre-roll or post-roll
+        overlapCoordinator.onMetadataChanged("ERR - Uudised")
+        repeat(700) { overlapCoordinator.onStreamBytes(frame, 0, frame.size) }
+        currentTime += 18_300L
+
+        // Transition to Song B: 700 frames (~18.3 s), Song B MUST get ~10s pre-roll from Uudised tail
+        overlapCoordinator.onMetadataChanged("Artist B - Song B")
+        repeat(700) { overlapCoordinator.onStreamBytes(frame, 0, frame.size) }
+        currentTime += 18_300L
+
+        overlapCoordinator.stopRecording()
+        overlapCoordinator.awaitPendingFinalizations()
+
+        val fileA = File(baseDir, "Music/Artist A/Unknown Album/01 - Artist A - Song A.mp3")
+        val showFiles = File(baseDir, "Broadcasts/Raadio 2").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        val fileB = File(baseDir, "Music/Artist B/Unknown Album/01 - Artist B - Song B.mp3")
+
+        assertEquals(1, showFiles.size)
+        // Show gets exact 700 frames (no pre-roll, no post-roll)
+        assertEquals(700L * frame.size, showFiles.first().length())
+        // Song A got ~10s post-roll (~383 frames)
+        assertTrue((fileA.length() / frame.size) > 1050)
+        // Song B got ~10s pre-roll (~383 frames)
+        assertTrue((fileB.length() / frame.size) > 1050)
+    }
+
+    @Test
+    fun `resetFrameAlignment drops partial reconnect tail without splitting active track`() {
+        var currentTime = 1_000_000L
+        val reconnectCoordinator = StreamRecordingCoordinator(
+            baseDirProvider = { baseDir },
+            clock = { currentTime },
+            minDurationSeconds = 15L,
+            overlapMarginSeconds = 10L
+        )
+        val frame = AudioFrameAnalyzerTest.buildMp3Frame()
+
+        reconnectCoordinator.startRecording(
+            stationName = "Raadio 2",
+            streamUrl = "https://icecast.err.ee/raadio2.mp3",
+            initialRawMetadata = "Queen - Radio Ga Ga"
+        )
+        // Push 400 complete frames + 100 bytes of a truncated frame before socket drop
+        repeat(400) { reconnectCoordinator.onStreamBytes(frame, 0, frame.size) }
+        reconnectCoordinator.onStreamBytes(frame, 0, 100)
+
+        // Reconnect drops incomplete parser buffer without splitting the file
+        reconnectCoordinator.resetFrameAlignment()
+        repeat(400) { reconnectCoordinator.onStreamBytes(frame, 0, frame.size) }
+        currentTime += 21_000L
+
+        reconnectCoordinator.stopRecording()
+        reconnectCoordinator.awaitPendingFinalizations()
+
+        val files = File(baseDir, "Music/Queen/Unknown Album").listFiles()?.filter { it.name.endsWith(".mp3") } ?: emptyList()
+        assertEquals(1, files.size)
+        // Exactly 800 complete frames written cleanly without the 100-byte truncated tail
+        assertEquals(800L * frame.size, files.first().length())
     }
 }
 

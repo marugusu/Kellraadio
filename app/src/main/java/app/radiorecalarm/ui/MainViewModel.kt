@@ -328,7 +328,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             showFlags = prefs.getBoolean("show_flags", true),
             widgetTransparency = prefs.getFloat("widget_transparency", 0.25f),
             hideRemoteStations = prefs.getBoolean("hide_remote_stations", false),
-            continuousRecording = prefs.getBoolean(app.radiorecalarm.AppConfig.Recording.PREF_CONTINUOUS_RECORDING, false)
+            continuousRecording = prefs.getBoolean(app.radiorecalarm.AppConfig.Recording.PREF_CONTINUOUS_RECORDING, false),
+            minTrackDurationSeconds = prefs.getLong(
+                app.radiorecalarm.AppConfig.Recording.PREF_MIN_DURATION_SECONDS,
+                app.radiorecalarm.AppConfig.Recording.MIN_DURATION_SECONDS
+            ),
+            overlapMarginSeconds = prefs.getLong(
+                app.radiorecalarm.AppConfig.Recording.PREF_OVERLAP_MARGIN_SECONDS,
+                app.radiorecalarm.AppConfig.Recording.OVERLAP_MARGIN_SECONDS
+            )
         )}
     }
 
@@ -749,6 +757,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setContinuousRecording(enabled: Boolean) {
         _uiState.update { it.copy(continuousRecording = enabled) }
         prefs.edit().putBoolean(app.radiorecalarm.AppConfig.Recording.PREF_CONTINUOUS_RECORDING, enabled).apply()
+    }
+
+    fun setMinTrackDurationSeconds(seconds: Long) {
+        val safeSeconds = seconds.coerceAtLeast(0L)
+        _uiState.update { it.copy(minTrackDurationSeconds = safeSeconds) }
+        prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_MIN_DURATION_SECONDS, safeSeconds).apply()
+    }
+
+    fun setOverlapMarginSeconds(seconds: Long) {
+        val safeSeconds = seconds.coerceAtLeast(0L)
+        _uiState.update { it.copy(overlapMarginSeconds = safeSeconds) }
+        prefs.edit().putLong(app.radiorecalarm.AppConfig.Recording.PREF_OVERLAP_MARGIN_SECONDS, safeSeconds).apply()
     }
 
     fun clearHistory() {

@@ -45,6 +45,8 @@ data class MainUiState(
     val widgetTransparency: Float = 0.25f,
     val hideRemoteStations: Boolean = false,
     val continuousRecording: Boolean = false,
+    val minTrackDurationSeconds: Long = app.radiorecalarm.AppConfig.Recording.MIN_DURATION_SECONDS,
+    val overlapMarginSeconds: Long = app.radiorecalarm.AppConfig.Recording.OVERLAP_MARGIN_SECONDS,
 
     // --- NAVIGATSIOON JA VALIKUD ---
     val currentTab: Int = 0,

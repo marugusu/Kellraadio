@@ -528,3 +528,52 @@ class AudioFrameAccumulator(private val preferAac: Boolean) {
         locked = false
     }
 }
+
+/**
+ * Rolling in-memory ring buffer of complete compressed [AudioFrame]s retained during active
+ * recording so newly opened tracks can prepend a configurable pre-roll margin without losing
+ * song beginnings when ICY metadata arrives late.
+ */
+class PreRollFrameBuffer(maxDurationMicros: Long) {
+
+    var maxDurationMicros: Long = maxDurationMicros.coerceAtLeast(0L)
+        private set
+
+    private val frames = ArrayDeque<AudioFrame>()
+
+    var totalDurationMicros: Long = 0L
+        private set
+
+    fun push(frame: AudioFrame) {
+        if (maxDurationMicros <= 0L) {
+            clear()
+            return
+        }
+        frames.addLast(frame)
+        totalDurationMicros += frame.durationMicros
+        trimToCapacity()
+    }
+
+    fun updateCapacity(newMaxDurationMicros: Long) {
+        maxDurationMicros = newMaxDurationMicros.coerceAtLeast(0L)
+        trimToCapacity()
+    }
+
+    fun snapshotFrames(): List<AudioFrame> = frames.toList()
+
+    fun clear() {
+        frames.clear()
+        totalDurationMicros = 0L
+    }
+
+    private fun trimToCapacity() {
+        if (maxDurationMicros <= 0L) {
+            clear()
+            return
+        }
+        while (totalDurationMicros > maxDurationMicros && frames.size > 1) {
+            val oldest = frames.removeFirst()
+            totalDurationMicros -= oldest.durationMicros
+        }
+    }
+}

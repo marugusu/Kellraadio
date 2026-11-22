@@ -49,7 +49,7 @@ Helifailiga kaasas käiv struktureeritud `.json` metaandmefail koos kaanepildiga
 _Avoid_: Info fail, txt fail, nfo
 
 **Automaatne tükeldus (Auto-splitting)**:
-Salvestusvoo poolitamine uueks **Palaks** või **Saateks** jaama metainfo muutumisel, rakendades **Paladele** alguse ja lõpu puhast raamistamist.
+Salvestusvoo poolitamine uueks **Palaks** või **Saateks** jaama metainfo muutumisel, rakendades **Paladele** kahepoolset ülekatet (**Eelvaru** ja **Järelvaru**), et algus ega lõpp ei läheks kaduma.
 _Avoid_: Segmentimine, lõikamine
 
 **Äratuse salvestus (Alarm Recording)**:
@@ -60,16 +60,16 @@ _Avoid_: Äratusripp, automaatsalvesti äratusel
 Rakenduse üldseadistus, mille sisselülitamisel käivitub salvestus automaatselt iga jaama mängimisel; see juhib automaatset käivitust ega tähenda iseseisvalt väljundseadme kadumise eiramist (häiringukindlus kehtib igale aktiivsele salvestusele).
 _Avoid_: Taustaripp, lausripp
 
-**Viivepuhver (Lookback Buffer)**:
-Salvestamise ajal enne faili lõplikku sulgemist mälus hoitav libisev heliaken, mis võimaldab jaama metainfo hilinemise korral leida tegelikud üleminekupiirid ja jätta vahekõllid välja.
-_Avoid_: Eelpuhvri fail, ajanihe kui objekt
+**Eelvaru (Pre-roll)**:
+Salvestamise ajal mälupuhvris hoitav lühike eelnev heliaken, mis lisatakse uue **Pala** faili algusesse, et hilinenud metainfo korral algus kaduma ei läheks.
+_Avoid_: Viivepuhver, eelpuhvri fail, ajanihe kui objekt
 
-**Akustiline lõikepunkt (Acoustic Split Point)**:
-Helisignaali vaikuse, energialanguse või järsu helitugevuse tõusu põhjal tuvastatud üleminekuhetk, mille järgi eraldatakse **Pala** algus ja lõpp teistest paladest ning vahekõllidest.
-_Avoid_: Vaikusefilter, dekodeeritud lõige
+**Järelvaru (Post-roll)**:
+Lõppeva **Pala** faili lõppu pärast metainfo muutust salvestatav lühike järelaken, mis hoiab ära lõpu kadumise varajase metainfo või üleminekute korral.
+_Avoid_: Lõpuviive, saba
 
 **Vahekõll (Interstitial Jingle)**:
-Kahe **Pala** vahel eetris kõlav lühike jaama tunnusheli või reklaamklipp, mis jääb välja mõlema **Pala** salvestisest sõltumata sellest, kas jaam selle kohta metainfot saatis.
+Kahe **Pala** vahel eetris kõlav lühike jaama tunnusheli või reklaamklipp, mida ei salvestata eraldiseisva failina alla miinimumkestuse lävendi, kuid mille heli võib jääda naaberpalade kattuvatesse otstesse.
 _Avoid_: Prügiklipp, jingle
 
 **Salvestised (Recordings)**:

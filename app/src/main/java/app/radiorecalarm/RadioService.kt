@@ -113,7 +113,18 @@ class RadioService : Service() {
                 java.io.File(getExternalFilesDir(null), AppConfig.Recording.DEFAULT_AUDIO_DIR).apply { if (!exists()) mkdirs() }
             },
             metadataHelper = metadataHelper,
-            audioBoundaryDetector = MediaCodecAudioBoundaryDetector(),
+            minDurationSecondsProvider = {
+                prefs.getLong(
+                    AppConfig.Recording.PREF_MIN_DURATION_SECONDS,
+                    AppConfig.Recording.MIN_DURATION_SECONDS
+                )
+            },
+            overlapMarginSecondsProvider = {
+                prefs.getLong(
+                    AppConfig.Recording.PREF_OVERLAP_MARGIN_SECONDS,
+                    AppConfig.Recording.OVERLAP_MARGIN_SECONDS
+                )
+            },
             metadataFetcher = { artist, title ->
                 MusicInfoRepository.fetchInfo(artist, title).lastOrNull()
             },
@@ -1084,6 +1095,9 @@ class RadioService : Service() {
                 onStreamOpened = { metaInt, isAac, icyBr ->
                     latestWireMetaInt = metaInt
                     latestWireIsAac = isAac
+                    if (isRecording) {
+                        recordingCoordinator.resetFrameAlignment()
+                    }
                     if (!icyBr.isNullOrBlank()) {
                         lastBitrateInfo = "$icyBr kbps"
                         recordingCoordinator.setBitrate(lastBitrateInfo)

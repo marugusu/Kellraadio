@@ -39,7 +39,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
+import app.radiorecalarm.AppConfig
 import app.radiorecalarm.LogExporter
 import app.radiorecalarm.R
 import app.radiorecalarm.update.GitHubRelease
@@ -68,6 +70,10 @@ fun SettingsScreen(
     widgetTransparency: Float,
     continuousRecording: Boolean = false,
     onToggleContinuousRecording: (Boolean) -> Unit = {},
+    minTrackDurationSeconds: Long = AppConfig.Recording.MIN_DURATION_SECONDS,
+    onMinTrackDurationChange: (Long) -> Unit = {},
+    overlapMarginSeconds: Long = AppConfig.Recording.OVERLAP_MARGIN_SECONDS,
+    onOverlapMarginChange: (Long) -> Unit = {},
     onToggleShowFlags: (Boolean) -> Unit,
     onToggleHideRemoteStations: (Boolean) -> Unit,
     onColsPortraitChange: (Int) -> Unit,
@@ -92,6 +98,8 @@ fun SettingsScreen(
     val scrollState = rememberScrollState()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showMinDurationDialog by remember { mutableStateOf(false) }
+    var showOverlapMarginDialog by remember { mutableStateOf(false) }
 
     var hasInstallPermission by remember {
         mutableStateOf(
@@ -307,6 +315,40 @@ fun SettingsScreen(
                 SettingsDivider()
 
                 SettingsRow(
+                    headline = stringResource(R.string.settings_min_track_duration),
+                    supporting = stringResource(R.string.settings_min_track_duration_desc),
+                    icon = Icons.Default.Timer,
+                    onClick = { showMinDurationDialog = true },
+                    trailingContent = {
+                        Text(
+                            text = formatSecondsOptionLabel(minTrackDurationSeconds),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
+                    headline = stringResource(R.string.settings_overlap_margin),
+                    supporting = stringResource(R.string.settings_overlap_margin_desc),
+                    icon = Icons.Default.SwapHoriz,
+                    onClick = { showOverlapMarginDialog = true },
+                    trailingContent = {
+                        Text(
+                            text = formatSecondsOptionLabel(overlapMarginSeconds),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                )
+
+                SettingsDivider()
+
+                SettingsRow(
                     headline = stringResource(R.string.settings_storage_safeguard),
                     supporting = stringResource(R.string.settings_storage_safeguard_desc),
                     icon = Icons.Default.SdStorage,
@@ -461,6 +503,32 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showMinDurationDialog) {
+        SecondsOptionDialog(
+            title = stringResource(R.string.settings_min_track_duration),
+            options = AppConfig.Recording.MIN_DURATION_OPTIONS,
+            selectedSeconds = minTrackDurationSeconds,
+            onSelect = { selected ->
+                onMinTrackDurationChange(selected)
+                showMinDurationDialog = false
+            },
+            onDismiss = { showMinDurationDialog = false }
+        )
+    }
+
+    if (showOverlapMarginDialog) {
+        SecondsOptionDialog(
+            title = stringResource(R.string.settings_overlap_margin),
+            options = AppConfig.Recording.OVERLAP_MARGIN_OPTIONS,
+            selectedSeconds = overlapMarginSeconds,
+            onSelect = { selected ->
+                onOverlapMarginChange(selected)
+                showOverlapMarginDialog = false
+            },
+            onDismiss = { showOverlapMarginDialog = false }
+        )
     }
 
     UpdateDialog(
@@ -750,4 +818,119 @@ private fun getAppVersionName(context: Context): String {
         }
         packageInfo.versionName ?: "1.0"
     } catch (e: Exception) { "1.0" }
+}
+
+@Composable
+private fun formatSecondsOptionLabel(seconds: Long): String {
+    return if (seconds <= 0L) {
+        stringResource(R.string.settings_option_off)
+    } else {
+        stringResource(R.string.settings_seconds_value, seconds.toInt())
+    }
+}
+
+/**
+ * Shared single-choice dialog for numeric second thresholds in recording settings.
+ */
+@Composable
+private fun SecondsOptionDialog(
+    title: String,
+    options: List<Long>,
+    selectedSeconds: Long,
+    onSelect: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
+                )
+
+                options.forEach { seconds ->
+                    val isSelected = seconds == selectedSeconds
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else Color.Transparent,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .clickable { onSelect(seconds) }
+                            .padding(vertical = 12.dp, horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = formatSecondsOptionLabel(seconds),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                        if (isSelected) {
+                            Spacer(modifier = Modifier.weight(1f))
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun SettingsScreenPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        SettingsScreen(
+            isRefreshing = false,
+            colsPortrait = 3,
+            colsLandscape = 3,
+            showFlags = true,
+            hideRemoteStations = false,
+            widgetTransparency = 0.25f,
+            continuousRecording = false,
+            minTrackDurationSeconds = 15L,
+            overlapMarginSeconds = 10L,
+            onToggleShowFlags = {},
+            onToggleHideRemoteStations = {},
+            onColsPortraitChange = {},
+            onColsLandscapeChange = {},
+            onRefresh = {},
+            onResetOrder = {},
+            onWidgetTransparencyChange = {},
+            onExportData = {},
+            onImportData = {}
+        )
+    }
 }

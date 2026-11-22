@@ -208,6 +208,12 @@
     <string name="settings_group_recording">Salvestamine</string>
     <string name="settings_continuous_recording">Pidev salvestus</string>
     <string name="settings_continuous_recording_desc">Salvesta helivoogu automaatselt iga kord, kui mistahes jaam mängib</string>
+    <string name="settings_min_track_duration">Minimaalne pala pikkus</string>
+    <string name="settings_min_track_duration_desc">Kustuta lühemad klipid (nt kõllid ja reklaamid)</string>
+    <string name="settings_overlap_margin">Pala algus- ja lõpuvaru</string>
+    <string name="settings_overlap_margin_desc">Ülekate enne ja pärast loo vahetust, et algus ega lõpp ei läheks kaduma</string>
+    <string name="settings_seconds_value">%1$d s</string>
+    <string name="settings_option_off">Väljas (0 s)</string>
     <string name="settings_storage_safeguard">Kettamahu kaitse</string>
     <string name="settings_storage_safeguard_desc">Peatab salvestamise automaatselt, kui seadme vaba maht langeb alla 500 MB</string>
     <string name="settings_recording_folder">Salvestiste asukoht</string>
