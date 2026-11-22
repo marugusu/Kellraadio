@@ -14,8 +14,8 @@ android {
         applicationId = "app.radiorecalarm"
         minSdk = 26
         targetSdk = 36
-        versionCode = 38
-        versionName = "1.1.38"
+        versionCode = 39
+        versionName = "1.1.39"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
