@@ -513,8 +513,6 @@ fun SettingsScreen(
             icon = Icons.Default.Timer,
             initialSeconds = minTrackDurationSeconds,
             maxSeconds = AppConfig.Recording.MIN_DURATION_MAX_SECONDS,
-            stepSeconds = AppConfig.Recording.SLIDER_STEP_SECONDS,
-            presets = AppConfig.Recording.MIN_DURATION_PRESETS,
             onSave = { selected ->
                 onMinTrackDurationChange(selected)
                 showMinDurationDialog = false
@@ -530,8 +528,6 @@ fun SettingsScreen(
             icon = Icons.Default.SwapHoriz,
             initialSeconds = overlapMarginSeconds,
             maxSeconds = AppConfig.Recording.OVERLAP_MARGIN_MAX_SECONDS,
-            stepSeconds = AppConfig.Recording.SLIDER_STEP_SECONDS,
-            presets = AppConfig.Recording.OVERLAP_MARGIN_PRESETS,
             onSave = { selected ->
                 onOverlapMarginChange(selected)
                 showOverlapMarginDialog = false
@@ -838,22 +834,18 @@ private fun formatSecondsOptionLabel(seconds: Long): String {
     }
 }
 
-internal fun snapSecondsToStep(
+internal fun clampAndRoundSeconds(
     rawValue: Float,
-    maxSeconds: Long,
-    stepSeconds: Long
+    maxSeconds: Long
 ): Long {
     val safeMax = maxSeconds.coerceAtLeast(0L)
-    val safeStep = stepSeconds.coerceAtLeast(1L)
-    val clamped = rawValue.coerceIn(0f, safeMax.toFloat())
-    val snapped = ((clamped / safeStep.toFloat()).roundToInt().toLong()) * safeStep
-    return snapped.coerceIn(0L, safeMax)
+    if (rawValue.isNaN()) return 0L
+    return rawValue.coerceIn(0f, safeMax.toFloat()).roundToInt().toLong().coerceIn(0L, safeMax)
 }
 
 /**
- * Modal slider and preset-chip dialog for configuring recording second thresholds.
+ * Modal slider dialog for configuring recording second thresholds with 1-second precision.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SecondsSliderDialog(
     title: String,
@@ -861,17 +853,14 @@ private fun SecondsSliderDialog(
     icon: ImageVector,
     initialSeconds: Long,
     maxSeconds: Long,
-    stepSeconds: Long,
-    presets: List<Long>,
     onSave: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
     val view = LocalView.current
     val scrollState = rememberScrollState()
-    var selectedSeconds by remember(initialSeconds, maxSeconds, stepSeconds) {
-        mutableLongStateOf(snapSecondsToStep(initialSeconds.toFloat(), maxSeconds, stepSeconds))
+    var selectedSeconds by remember(initialSeconds, maxSeconds) {
+        mutableLongStateOf(clampAndRoundSeconds(initialSeconds.toFloat(), maxSeconds))
     }
-    val sliderSteps = ((maxSeconds / stepSeconds).toInt() - 1).coerceAtLeast(0)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -908,43 +897,14 @@ private fun SecondsSliderDialog(
                 Slider(
                     value = selectedSeconds.toFloat(),
                     onValueChange = { raw ->
-                        selectedSeconds = snapSecondsToStep(raw, maxSeconds, stepSeconds)
+                        selectedSeconds = clampAndRoundSeconds(raw, maxSeconds)
                     },
                     valueRange = 0f..maxSeconds.toFloat(),
-                    steps = sliderSteps,
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary
                     )
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    presets.forEach { preset ->
-                        val isSelected = selectedSeconds == preset
-                        SuggestionChip(
-                            onClick = {
-                                view.performHapticTap()
-                                selectedSeconds = preset
-                            },
-                            label = {
-                                Text(stringResource(R.string.settings_seconds_value, preset.toInt()))
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            ),
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                labelColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                    }
-                }
             }
         },
         confirmButton = {
@@ -985,8 +945,6 @@ private fun SecondsSliderDialogPreview() {
             icon = Icons.Default.Timer,
             initialSeconds = 15L,
             maxSeconds = AppConfig.Recording.MIN_DURATION_MAX_SECONDS,
-            stepSeconds = AppConfig.Recording.SLIDER_STEP_SECONDS,
-            presets = AppConfig.Recording.MIN_DURATION_PRESETS,
             onSave = {},
             onDismiss = {}
         )
