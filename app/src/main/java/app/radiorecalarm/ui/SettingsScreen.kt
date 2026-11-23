@@ -850,7 +850,7 @@ fun SettingsDivider() {
 fun PrecisionColumnSelector(
     title: String,
     selectedCount: Int,
-    options: List<Int> = listOf(2, 3, 4, 5, 6),
+    options: List<Int> = listOf(1, 2, 3, 4, 5, 6),
     onSelected: (Int) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current

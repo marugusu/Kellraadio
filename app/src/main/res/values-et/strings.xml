@@ -305,4 +305,9 @@
     <string name="spotify_toast_playlist_missing">Vali esmalt Seadetes esitusloend</string>
     <string name="spotify_toast_save_failed">Spotifysse salvestamine ebaõnnestus</string>
     <string name="spotify_refresh_playlists">Värskenda esitusloendeid</string>
+
+    <!-- Jaamavaate paigutus -->
+    <string name="view_mode_list">1 (Nimekiri)</string>
+    <string name="view_columns_option">%1$d veergu</string>
+    <string name="cd_layout_view">Vaate paigutus</string>
 </resources>

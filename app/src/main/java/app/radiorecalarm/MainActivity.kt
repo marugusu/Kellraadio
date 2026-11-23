@@ -518,27 +518,33 @@ fun ContentScreens(
         else -> StationPlaybackState.IDLE
     }
     when (state.currentTab) {
-        0 -> StationList(
-            stations = allStations,
-            filteredStations = filteredStations,
-            categories = mainCategories,
-            subCategories = subCategories,
-            selectedCategory = state.selectedCategory,
-            selectedSubCategories = state.selectedSubCategories,
-            selectedStationId = state.selectedStationId,
-            playbackState = playbackState,
-            isInitiallyLoading = state.isRefreshing,
-            hideCuratedStations = state.hideRemoteStations,
-            columnCountPortrait = state.colsPortrait,
-            columnCountLandscape = state.colsLandscape,
-            showFlags = state.showFlags,
-            onCategorySelect = viewModel::onCategorySelected,
-            onSubCategoryToggle = viewModel::toggleSubCategory,
-            onStationSelect = viewModel::onStationClicked,
-            onStationLongClick = viewModel::openStationActionSheet,
-            onAddStationClick = { viewModel.onTabSelected(3) },
-            onShowCuratedClick = { viewModel.toggleHideRemoteStations(false) }
-        )
+        0 -> {
+            val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            StationList(
+                stations = allStations,
+                filteredStations = filteredStations,
+                categories = mainCategories,
+                subCategories = subCategories,
+                selectedCategory = state.selectedCategory,
+                selectedSubCategories = state.selectedSubCategories,
+                selectedStationId = state.selectedStationId,
+                playbackState = playbackState,
+                isInitiallyLoading = state.isRefreshing,
+                hideCuratedStations = state.hideRemoteStations,
+                columnCountPortrait = state.colsPortrait,
+                columnCountLandscape = state.colsLandscape,
+                showFlags = state.showFlags,
+                onCategorySelect = viewModel::onCategorySelected,
+                onSubCategoryToggle = viewModel::toggleSubCategory,
+                onStationSelect = viewModel::onStationClicked,
+                onStationLongClick = viewModel::openStationActionSheet,
+                onAddStationClick = { viewModel.onTabSelected(3) },
+                onShowCuratedClick = { viewModel.toggleHideRemoteStations(false) },
+                onColumnCountChange = { cols ->
+                    if (isLandscape) viewModel.setColsLandscape(cols) else viewModel.setColsPortrait(cols)
+                }
+            )
+        }
         1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })
         2 -> RecordingsScreen(
             repository = viewModel.stationRepository,

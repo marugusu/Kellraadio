@@ -8,17 +8,25 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,10 +44,10 @@ import androidx.compose.ui.unit.sp
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioStation
 import app.radiorecalarm.StationListFilter
-import app.radiorecalarm.getFlagEmoji
 import app.radiorecalarm.getCachedCountryDisplayName
+import app.radiorecalarm.getFlagEmoji
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StationList(
     stations: List<RadioStation>,
@@ -60,10 +69,13 @@ fun StationList(
     onStationLongClick: (RadioStation) -> Unit,
     onAddStationClick: () -> Unit,
     onShowCuratedClick: () -> Unit,
+    onColumnCountChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val currentCols = (if (isLandscape) columnCountLandscape else columnCountPortrait).coerceIn(1, 6)
+    val view = LocalView.current
 
     val favoritesLabel = stringResource(R.string.cat_favorites)
     val myStationsLabel = stringResource(R.string.cat_my_stations)
@@ -115,7 +127,7 @@ fun StationList(
         }
     }
 
-    val topRowListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val topRowListState = rememberLazyListState()
     LaunchedEffect(selectedCategory, categories) {
         val index = categories.indexOf(selectedCategory)
         if (index >= 0) {
@@ -134,131 +146,196 @@ fun StationList(
 
     // Landscape: start = 0.dp, kuna MainActivity-s on juba end = 12.dp. Kokku 12.dp.
     val listPadding = if (isLandscape) PaddingValues(start = 0.dp, end = 12.dp) else PaddingValues(horizontal = 16.dp)
+    var showColumnMenu by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize().padding(listPadding)) {
-        // ÜLEMINE VAHE: Täpselt 12dp, et eraldada kiibid ülapaneelist
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
-            Column {
-                // RIDA 1: PEAGRUPID - Fikseeritud kõrgus 32dp
-                androidx.compose.foundation.lazy.LazyRow(
-                    state = topRowListState,
-                    modifier = Modifier.fillMaxWidth().height(32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    items(categories.size) { index ->
-                        val categoryId = categories[index]
-                        val isSelected = (selectedCategory == categoryId)
-                        val isFavoritesChip = categoryId == "Favorites"
-                        val isMyStationsChip = categoryId == "My"
-                        val isAllChip = categoryId == "All"
+        Spacer(modifier = Modifier.height(10.dp))
 
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { onCategorySelect(categoryId) },
-                            label = { 
-                                Text(
-                                    getCategoryDisplayName(categoryId),
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    letterSpacing = 0.2.sp
-                                ) 
-                            },
-                            modifier = Modifier.height(32.dp),
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                selectedContainerColor = when {
-                                    isFavoritesChip -> MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.25f)
-                                    isMyStationsChip -> MaterialTheme.colorScheme.secondaryContainer
-                                    else -> MaterialTheme.colorScheme.primaryContainer
-                                },
-                                selectedLabelColor = when {
-                                    isFavoritesChip -> MaterialTheme.colorScheme.onSecondary
-                                    isMyStationsChip -> MaterialTheme.colorScheme.secondary
-                                    else -> MaterialTheme.colorScheme.onPrimaryContainer
-                                }
-                            )
+        // RIDA 1: Ühtne tuuneri-riba (peagrupid + kiire vaate/veergude lüliti)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(34.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LazyRow(
+                state = topRowListState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(categories.size) { index ->
+                    val categoryId = categories[index]
+                    val isSelected = (selectedCategory == categoryId)
+                    TunerBandTab(
+                        label = getCategoryDisplayName(categoryId),
+                        categoryId = categoryId,
+                        isSelected = isSelected,
+                        onClick = {
+                            view.performHapticTap()
+                            onCategorySelect(categoryId)
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(18.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+
+            Box {
+                val switcherInteraction = remember { MutableInteractionSource() }
+                val switcherFocused by switcherInteraction.collectIsFocusedAsState()
+                Surface(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .focusable(interactionSource = switcherInteraction)
+                        .clickable {
+                            view.performHapticTap()
+                            showColumnMenu = true
+                        },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (switcherFocused) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (switcherFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (currentCols == 1) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                            contentDescription = stringResource(R.string.cd_layout_view),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = currentCols.toString(),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                // RIDA 2: ALAMFILTRID
-                AnimatedVisibility(
-                    visible = subCategories.isNotEmpty(),
-                    enter = expandVertically(),
-                    exit = shrinkVertically()
+                DropdownMenu(
+                    expanded = showColumnMenu,
+                    onDismissRequest = { showColumnMenu = false },
+                    containerColor = MaterialTheme.colorScheme.surface
                 ) {
-                    Column {
-                        // VAHE RIDADE VAHEL: Täpselt 12dp
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        androidx.compose.foundation.lazy.LazyRow(
-                            modifier = Modifier.fillMaxWidth().height(32.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .clickable { onCategorySelect(selectedCategory) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    val isCountryCategory = selectedCategory.length == 2
-                                    if (isCountryCategory) {
-                                        Text(text = getFlagEmoji(selectedCategory), fontSize = 16.sp)
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.FilterAlt,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-                            items(subCategories.size) { index ->
-                                val sub = subCategories[index]
-                                val isSelected = selectedSubCategories.contains(sub)
-
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { onSubCategoryToggle(sub) },
-                                    label = { Text(sub, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
-                                    modifier = Modifier.height(32.dp),
-                                    leadingIcon = if (isSelected) {
-                                        { Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp)) }
-                                    } else null,
-                                    shape = RoundedCornerShape(6.dp),
-                                    border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                )
-                            }
+                    (1..6).forEach { count ->
+                        val isOptionSelected = count == currentCols
+                        val optionText = if (count == 1) {
+                            stringResource(R.string.view_mode_list)
+                        } else {
+                            stringResource(R.string.view_columns_option, count)
                         }
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = optionText,
+                                    fontWeight = if (isOptionSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isOptionSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (count == 1) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                    contentDescription = null,
+                                    tint = if (isOptionSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            trailingIcon = if (isOptionSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null,
+                            onClick = {
+                                view.performHapticTap()
+                                onColumnCountChange(count)
+                                showColumnMenu = false
+                            }
+                        )
                     }
                 }
             }
         }
 
-        // VAHE RUUDUSTIKUNI: Täpselt 12dp
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+        )
+
+        // RIDA 2: Kerged alamfiltri kapslid (selge "Kõik" nupuga)
+        AnimatedVisibility(
+            visible = subCategories.isNotEmpty(),
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    item {
+                        val isCountryCategory = selectedCategory.length == 2
+                        val flagPrefix = if (isCountryCategory) "${getFlagEmoji(selectedCategory)} " else ""
+                        SubFilterPill(
+                            label = "$flagPrefix$allLabel",
+                            isSelected = selectedSubCategories.isEmpty(),
+                            showCheckIcon = false,
+                            onClick = {
+                                view.performHapticTap()
+                                onCategorySelect(selectedCategory)
+                            }
+                        )
+                    }
+                    items(subCategories.size) { index ->
+                        val sub = subCategories[index]
+                        SubFilterPill(
+                            label = sub,
+                            isSelected = selectedSubCategories.contains(sub),
+                            showCheckIcon = true,
+                            onClick = {
+                                view.performHapticTap()
+                                onSubCategoryToggle(sub)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth().weight(1f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
             pageSpacing = 16.dp,
             userScrollEnabled = true
         ) { pageIndex ->
@@ -311,11 +388,11 @@ fun StationList(
             } else {
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = GridCells.Fixed(if (isLandscape) columnCountLandscape else columnCountPortrait),
+                    columns = GridCells.Fixed(currentCols),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 80.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(if (currentCols == 1) 6.dp else 8.dp)
                 ) {
                     items(stationsForThisPage, key = { it.id }) { station ->
                         val isSelected = station.id == selectedStationId
@@ -329,11 +406,149 @@ fun StationList(
                             onClick = { onStationSelect(station) },
                             onLongClick = { onStationLongClick(station) },
                             showFavoriteIcon = pageCategory != StationListFilter.CATEGORY_FAVORITES,
-                            showFlag = showFlags && shouldShowFlagInThisCategory
+                            showFlag = showFlags && shouldShowFlagInThisCategory,
+                            columnCount = currentCols
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Primary tuner band selector tab with unified Titanium & Amber styling.
+ */
+@Composable
+private fun TunerBandTab(
+    label: String,
+    categoryId: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val containerColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        isFocused -> MaterialTheme.colorScheme.surfaceVariant
+        else -> Color.Transparent
+    }
+    val border = when {
+        isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f))
+        isFocused -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        else -> null
+    }
+    val textColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary
+        isFocused -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val leadingIcon = when (categoryId) {
+        StationListFilter.CATEGORY_FAVORITES -> Icons.Default.Star
+        StationListFilter.CATEGORY_MY -> Icons.Default.Bookmark
+        else -> null
+    }
+
+    Surface(
+        modifier = Modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .focusable(interactionSource = interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = containerColor,
+        border = border
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (isSelected && categoryId == StationListFilter.CATEGORY_FAVORITES) {
+                        MaterialTheme.colorScheme.onSecondary
+                    } else {
+                        textColor.copy(alpha = 0.85f)
+                    },
+                    modifier = Modifier.size(13.dp)
+                )
+            }
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                letterSpacing = 0.2.sp,
+                color = textColor,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/**
+ * Secondary pill filter visually distinct from the rectangular station preset cards below.
+ */
+@Composable
+private fun SubFilterPill(
+    label: String,
+    isSelected: Boolean,
+    showCheckIcon: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val containerColor = when {
+        isSelected -> MaterialTheme.colorScheme.secondaryContainer
+        isFocused -> MaterialTheme.colorScheme.surfaceVariant
+        else -> MaterialTheme.colorScheme.surface
+    }
+    val borderColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+        isFocused -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)
+    }
+    val textColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary
+        isFocused -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        modifier = Modifier
+            .height(28.dp)
+            .clip(CircleShape)
+            .focusable(interactionSource = interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        shape = CircleShape,
+        color = containerColor,
+        border = BorderStroke(1.dp, borderColor)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (isSelected && showCheckIcon) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = textColor,
+                maxLines = 1
+            )
         }
     }
 }
@@ -390,8 +605,8 @@ private fun StationListEmptyState(
 @Composable
 private fun StationListPreview() {
     val sampleStations = listOf(
-        RadioStation(id = 1, name = "Vikerraadio", url = "https://icecast.err.ee/vikerraadio.mp3", countryCode = "EE", category = "Jutusaated", isFavorite = true),
-        RadioStation(id = 2, name = "Rock FM", url = "https://stream.skymedia.ee/live/RockFM", countryCode = "EE", category = "Rock", isFavorite = false),
+        RadioStation(id = 1, name = "Vikerraadio", url = "https://icecast.err.ee/vikerraadio.mp3", countryCode = "EE", category = "ERR", isFavorite = true),
+        RadioStation(id = 2, name = "Rock FM", url = "https://stream.skymedia.ee/live/RockFM", countryCode = "EE", category = "Sky", isFavorite = false),
         RadioStation(id = 3, name = "Minu Raadio", url = "https://example.com/my.mp3", countryCode = "EE", isUserStation = true)
     )
     MaterialTheme(colorScheme = darkColorScheme()) {
@@ -399,7 +614,7 @@ private fun StationListPreview() {
             stations = sampleStations,
             filteredStations = sampleStations,
             categories = listOf("Favorites", "My", "EE", "All"),
-            subCategories = listOf("Jutusaated", "Rock"),
+            subCategories = listOf("ERR", "Sky"),
             selectedCategory = "EE",
             selectedSubCategories = emptySet(),
             selectedStationId = 2,

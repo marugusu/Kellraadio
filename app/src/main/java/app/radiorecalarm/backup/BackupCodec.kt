@@ -87,7 +87,7 @@ data class PendingBackupImport(
 object BackupCodec {
     const val CURRENT_SCHEMA_VERSION = 1
 
-    private const val MIN_COLS = 2
+    private const val MIN_COLS = 1
     private const val MAX_COLS = 6
     private const val DEFAULT_COLS = 3
     private const val DEFAULT_WIDGET_TRANSPARENCY = 0.25f
