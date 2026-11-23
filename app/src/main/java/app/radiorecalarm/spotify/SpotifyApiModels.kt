@@ -93,8 +93,16 @@ data class SpotifyPlaylistTracksResponse(
 
 @Serializable
 data class SpotifyPlaylistTrackEntry(
+    val item: SpotifyPlaylistTrackId? = null,
     val track: SpotifyPlaylistTrackId? = null
-)
+) {
+    fun resolveTrackId(): String? {
+        return item?.id
+            ?: track?.id
+            ?: item?.uri?.substringAfterLast(":")
+            ?: track?.uri?.substringAfterLast(":")
+    }
+}
 
 @Serializable
 data class SpotifyPlaylistTrackId(
