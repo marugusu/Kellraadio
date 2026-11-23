@@ -45,16 +45,16 @@ interface SpotifyWebApi {
         @Query("limit") limit: Int = 5
     ): SpotifySearchResponse
 
-    @GET("me/tracks/contains")
-    suspend fun checkSavedTracks(
+    @GET("me/library/contains")
+    suspend fun checkSavedLibraryItems(
         @Header("Authorization") authorization: String,
-        @Query("ids") ids: String
+        @Query("uris") uris: String
     ): List<Boolean>
 
-    @PUT("me/tracks")
-    suspend fun saveTracks(
+    @PUT("me/library")
+    suspend fun saveLibraryItems(
         @Header("Authorization") authorization: String,
-        @Query("ids") ids: String
+        @Query("uris") uris: String
     ): Response<Unit>
 
     @GET("me/playlists")
@@ -64,17 +64,16 @@ interface SpotifyWebApi {
         @Query("offset") offset: Int = 0
     ): SpotifyPlaylistsResponse
 
-    @GET("playlists/{playlist_id}/tracks")
-    suspend fun getPlaylistTracks(
+    @GET("playlists/{playlist_id}/items")
+    suspend fun getPlaylistItems(
         @Header("Authorization") authorization: String,
         @Path("playlist_id") playlistId: String,
-        @Query("fields") fields: String = "items(track(id,uri)),next",
         @Query("limit") limit: Int = 100,
         @Query("offset") offset: Int = 0
     ): SpotifyPlaylistTracksResponse
 
-    @POST("playlists/{playlist_id}/tracks")
-    suspend fun addTracksToPlaylist(
+    @POST("playlists/{playlist_id}/items")
+    suspend fun addItemsToPlaylist(
         @Header("Authorization") authorization: String,
         @Path("playlist_id") playlistId: String,
         @Body body: SpotifyAddTracksRequest

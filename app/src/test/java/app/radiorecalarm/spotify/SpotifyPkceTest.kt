@@ -119,4 +119,16 @@ class SpotifyPkceTest {
         val editable = SpotifyPkce.filterEditablePlaylists(playlists, "user1")
         assertEquals(listOf("1", "2"), editable.map { it.id })
     }
+
+    @Test
+    fun `playlist track entry resolves id from both Feb 2026 item and legacy track fields`() {
+        val modernEntry = SpotifyPlaylistTrackEntry(
+            item = SpotifyPlaylistTrackId(id = "modern123", uri = "spotify:track:modern123")
+        )
+        val legacyUriOnlyEntry = SpotifyPlaylistTrackEntry(
+            track = SpotifyPlaylistTrackId(id = null, uri = "spotify:track:legacy456")
+        )
+        assertEquals("modern123", modernEntry.resolveTrackId())
+        assertEquals("legacy456", legacyUriOnlyEntry.resolveTrackId())
+    }
 }

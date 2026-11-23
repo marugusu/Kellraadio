@@ -393,11 +393,12 @@ object SpotifyRepository {
         val store = prefsStore ?: return false
         if (!isConnected() || trackId.isBlank()) return false
 
+        val trackUri = "spotify:track:$trackId"
         return try {
             val isSaved = withAuthorizedCall(store) { authHeader ->
                 when (store.getSaveTarget()) {
                     SpotifySaveTarget.LIKED_SONGS -> {
-                        webApi.checkSavedTracks(authHeader, trackId).firstOrNull() ?: false
+                        webApi.checkSavedLibraryItems(authHeader, trackUri).firstOrNull() ?: false
                     }
                     SpotifySaveTarget.PLAYLIST -> {
                         val playlistId = store.getSelectedPlaylistId()
@@ -413,7 +414,12 @@ object SpotifyRepository {
             isSaved
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.w(TAG, "checkTrackSaved failed: ${e.message}")
+            val details = if (e is HttpException) {
+                "HTTP ${e.code()}: ${runCatching { e.response()?.errorBody()?.string() }.getOrNull()}"
+            } else {
+                e.message
+            }
+            Log.w(TAG, "checkTrackSaved failed: $details")
             false
         }
     }
@@ -422,22 +428,24 @@ object SpotifyRepository {
         val store = prefsStore ?: return SaveTrackResult.NOT_CONNECTED
         if (!isConnected() || trackId.isBlank()) return SaveTrackResult.NOT_CONNECTED
 
+        val trackUri = "spotify:track:$trackId"
         _uiState.update { it.copy(savingTrackIds = it.savingTrackIds + trackId) }
         return try {
             withAuthorizedCall(store) { authHeader ->
                 when (store.getSaveTarget()) {
                     SpotifySaveTarget.LIKED_SONGS -> {
-                        val alreadySaved = webApi.checkSavedTracks(authHeader, trackId).firstOrNull() ?: false
+                        val alreadySaved = webApi.checkSavedLibraryItems(authHeader, trackUri).firstOrNull() ?: false
                         if (alreadySaved) {
                             markTrackSaved(trackId)
                             SaveTrackResult.ALREADY_SAVED
                         } else {
-                            val response = webApi.saveTracks(authHeader, trackId)
+                            val response = webApi.saveLibraryItems(authHeader, trackUri)
                             if (response.isSuccessful) {
                                 markTrackSaved(trackId)
                                 SaveTrackResult.SAVED
                             } else {
-                                Log.w(TAG, "Spotify saveTracks failed with HTTP ${response.code()}")
+                                val errBody = runCatching { response.errorBody()?.string() }.getOrNull()
+                                Log.w(TAG, "Spotify saveLibraryItems failed with HTTP ${response.code()}: $errBody")
                                 SaveTrackResult.ERROR
                             }
                         }
@@ -452,17 +460,18 @@ object SpotifyRepository {
                                 markTrackSaved(trackId)
                                 SaveTrackResult.ALREADY_SAVED
                             } else {
-                                val response = webApi.addTracksToPlaylist(
+                                val response = webApi.addItemsToPlaylist(
                                     authorization = authHeader,
                                     playlistId = playlistId,
-                                    body = SpotifyAddTracksRequest(listOf("spotify:track:$trackId"))
+                                    body = SpotifyAddTracksRequest(listOf(trackUri))
                                 )
                                 if (response.isSuccessful) {
                                     cachedPlaylistTrackIds?.takeIf { it.first == playlistId }?.second?.add(trackId)
                                     markTrackSaved(trackId)
                                     SaveTrackResult.SAVED
                                 } else {
-                                    Log.w(TAG, "Spotify addTracksToPlaylist failed with HTTP ${response.code()}")
+                                    val errBody = runCatching { response.errorBody()?.string() }.getOrNull()
+                                    Log.w(TAG, "Spotify addItemsToPlaylist failed with HTTP ${response.code()}: $errBody")
                                     SaveTrackResult.ERROR
                                 }
                             }
@@ -472,7 +481,12 @@ object SpotifyRepository {
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.w(TAG, "saveTrack failed: ${e.message}")
+            val details = if (e is HttpException) {
+                "HTTP ${e.code()}: ${runCatching { e.response()?.errorBody()?.string() }.getOrNull()}"
+            } else {
+                e.message
+            }
+            Log.w(TAG, "saveTrack failed: $details")
             SaveTrackResult.ERROR
         } finally {
             _uiState.update { it.copy(savingTrackIds = it.savingTrackIds - trackId) }
@@ -501,14 +515,14 @@ object SpotifyRepository {
         var offset = 0
         var page = 0
         while (page < MAX_PLAYLIST_PAGES) {
-            val response = webApi.getPlaylistTracks(
+            val response = webApi.getPlaylistItems(
                 authorization = authHeader,
                 playlistId = playlistId,
                 limit = 100,
                 offset = offset
             )
             response.items.forEach { entry ->
-                val id = entry.track?.id ?: entry.track?.uri?.substringAfterLast(":")
+                val id = entry.resolveTrackId()
                 if (!id.isNullOrBlank()) {
                     trackIds.add(id)
                 }
