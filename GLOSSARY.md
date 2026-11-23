@@ -79,3 +79,7 @@ _Avoid_: Ajalugu (kui põhivaate nimi), Salvestuste ajalugu
 **Laulude ajalugu (Song History)**:
 Raadioeetris kuulatud ja metainfona tuvastatud lugude ajaline logi, mis ei sõltu helifaili salvestamisest.
 _Avoid_: Salvestiste ajalugu
+
+**Varundusfail (Backup File)**:
+Kasutaja poolt eksporditav kolimisfail, mis koondab **Minu jaamad**, **Lemmikud**, äratused ja rakenduse püsiseaded uude seadmesse või paigaldusse taastamiseks.
+_Avoid_: Täiskoopia, andmebaasitõmmis

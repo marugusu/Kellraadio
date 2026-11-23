@@ -196,13 +196,23 @@
     <!-- Backup & Restore -->
     <string name="settings_group_backup">"Tāļtõks ja koltšimi"</string>
     <string name="settings_export">"Eksporti andmõd"</string>
-    <string name="settings_export_desc">"Tāļtõ lemmigõd ja seadmi failõ"</string>
+    <string name="settings_export_desc">"Tāļtõ stacijõd, lemmigõd, seadmi ja sādimizt failõ"</string>
     <string name="settings_import">"Importi andmõd"</string>
-    <string name="settings_import_desc">"Taasta lemmigõd ja seadmi failõst"</string>
+    <string name="settings_import_desc">"Taasta stacijõd, lemmigõd, seadmi ja sādimizt failõst"</string>
     <string name="backup_success">"Andmõd õņnistud eksportõd!"</string>
     <string name="backup_failed">"Eksport äb õņnistud: %1$s"</string>
     <string name="restore_success">"Andmõd õņnistud taastõd!"</string>
+    <string name="restore_success_missing_favorites">"Andmõd taastõd! %1$d lemmigõd äb lēutõd kūožõl stacijõd nimkīerõs."</string>
     <string name="restore_failed">"Taastõks äb õņnistud: %1$s"</string>
+    <string name="restore_confirm_title">"Taasta tāļtõksõst?"</string>
+    <string name="restore_confirm_exported_at">"Eksportõd: %1$s"</string>
+    <string name="restore_confirm_custom_stations">"Min stacijõd: %1$d"</string>
+    <string name="restore_confirm_favorites">"Lemmigõd: %1$d"</string>
+    <string name="restore_confirm_alarms">"Seadmid: %1$d"</string>
+    <string name="restore_confirm_settings_included">"Äpp sādimizt: Pōlõs"</string>
+    <string name="restore_confirm_settings_none">"Äpp sādimizt: Äb ūo"</string>
+    <string name="restore_confirm_warning">"Vannõd min stacijõd, lemmigõd ja seadmid (ja sādimizt, až pōlõs) lǟbõd vahetõd."</string>
+    <string name="action_restore">"Taasta"</string>
 
     <!-- In-App Updates -->
     <string name="settings_group_updates">"Uddistimizt"</string>
