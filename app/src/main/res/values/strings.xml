@@ -305,4 +305,9 @@
     <string name="spotify_toast_playlist_missing">Choose a playlist in Settings first</string>
     <string name="spotify_toast_save_failed">Could not save to Spotify</string>
     <string name="spotify_refresh_playlists">Refresh playlists</string>
+
+    <!-- Station View / Layout -->
+    <string name="view_mode_list">1 (List)</string>
+    <string name="view_columns_option">%1$d columns</string>
+    <string name="cd_layout_view">Layout view</string>
 </resources>

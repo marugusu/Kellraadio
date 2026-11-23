@@ -277,4 +277,9 @@
     <string name="spotify_toast_playlist_missing">"Valī ežmõks Sādimizis nimkīer"</string>
     <string name="spotify_toast_save_failed">"Spotifyõ tallõmõn äb õnnõstõn"</string>
     <string name="spotify_refresh_playlists">"Ūstiz lēdõ nimkīeridi"</string>
+
+    <!-- Stacijid vaātõm -->
+    <string name="view_mode_list">"1 (Nimkēra)"</string>
+    <string name="view_columns_option">"%1$d vīrgõ"</string>
+    <string name="cd_layout_view">"Vaātõm sād"</string>
 </resources>

@@ -277,7 +277,7 @@ class BackupCodecTest {
         )
         val raw = BackupSettings(
             colsPortrait = 99,
-            colsLandscape = 1,
+            colsLandscape = 0,
             showFlags = null,
             hideRemoteStations = true,
             widgetTransparency = Float.NaN,
@@ -290,7 +290,7 @@ class BackupCodecTest {
         val sanitized = BackupCodec.sanitizeSettings(raw, fallback)
 
         assertEquals(6, sanitized.colsPortrait)
-        assertEquals(2, sanitized.colsLandscape)
+        assertEquals(1, sanitized.colsLandscape)
         assertTrue(sanitized.showFlags)
         assertTrue(sanitized.hideRemoteStations)
         assertEquals(0.25f, sanitized.widgetTransparency, 0.0001f)
