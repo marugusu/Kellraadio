@@ -15,10 +15,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +41,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
@@ -48,6 +52,9 @@ import app.radiorecalarm.R
 import app.radiorecalarm.backup.BackupData
 import app.radiorecalarm.backup.BackupSettings
 import app.radiorecalarm.backup.PendingBackupImport
+import app.radiorecalarm.spotify.SpotifyPlaylistItem
+import app.radiorecalarm.spotify.SpotifySaveTarget
+import app.radiorecalarm.spotify.SpotifyUiState
 import app.radiorecalarm.update.GitHubRelease
 import app.radiorecalarm.update.GitHubReleaseAsset
 import app.radiorecalarm.update.UpdateUiState
@@ -101,6 +108,13 @@ fun SettingsScreen(
     onDismissUpdateDialog: () -> Unit = {},
     canInstallPackages: Boolean = true,
     onRequestInstallPermission: () -> Unit = {},
+    spotifyState: SpotifyUiState = SpotifyUiState(),
+    onConnectSpotify: () -> Unit = {},
+    onDisconnectSpotify: () -> Unit = {},
+    onSpotifySaveTargetChange: (SpotifySaveTarget) -> Unit = {},
+    onSpotifyPlaylistSelect: (SpotifyPlaylistItem) -> Unit = {},
+    onRefreshSpotifyPlaylists: () -> Unit = {},
+    onSaveSpotifyClientId: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -112,6 +126,8 @@ fun SettingsScreen(
     var showMinDurationDialog by remember { mutableStateOf(false) }
     var showPreRollDialog by remember { mutableStateOf(false) }
     var showPostRollDialog by remember { mutableStateOf(false) }
+    var showSpotifyDestinationDialog by remember { mutableStateOf(false) }
+    var showSpotifyClientIdDialog by remember { mutableStateOf(false) }
 
     var hasInstallPermission by remember {
         mutableStateOf(
@@ -401,6 +417,81 @@ fun SettingsScreen(
                 )
             }
 
+            // GRUPP: SPOTIFY
+            SettingsSection(title = stringResource(R.string.settings_group_spotify)) {
+                val spotifyHeadline = when {
+                    spotifyState.isConnecting -> stringResource(R.string.spotify_connecting)
+                    spotifyState.isConnected && !spotifyState.userDisplayName.isNullOrBlank() ->
+                        stringResource(R.string.spotify_connected_as, spotifyState.userDisplayName!!)
+                    spotifyState.isConnected -> stringResource(R.string.spotify_connected)
+                    else -> stringResource(R.string.spotify_connect)
+                }
+                val spotifySupporting = when {
+                    !spotifyState.hasClientId -> stringResource(R.string.spotify_client_id_missing)
+                    spotifyState.isConnected -> null
+                    else -> stringResource(R.string.spotify_connect_desc)
+                }
+
+                SettingsRow(
+                    headline = spotifyHeadline,
+                    supporting = spotifySupporting,
+                    icon = Icons.Default.MusicNote,
+                    isLoading = spotifyState.isConnecting,
+                    onClick = {
+                        when {
+                            spotifyState.isConnected -> Unit
+                            !spotifyState.hasClientId -> showSpotifyClientIdDialog = true
+                            else -> onConnectSpotify()
+                        }
+                    },
+                    trailingContent = if (spotifyState.isConnected) {
+                        {
+                            TextButton(
+                                onClick = onDisconnectSpotify,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.spotify_disconnect),
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    } else null
+                )
+
+                if (spotifyState.isConnected) {
+                    SettingsDivider()
+                    val destinationLabel = when {
+                        spotifyState.saveTarget == SpotifySaveTarget.PLAYLIST && !spotifyState.selectedPlaylistName.isNullOrBlank() ->
+                            stringResource(R.string.spotify_playlist_selected, spotifyState.selectedPlaylistName!!)
+                        else -> stringResource(R.string.spotify_liked_songs)
+                    }
+                    SettingsRow(
+                        headline = stringResource(R.string.spotify_save_destination),
+                        supporting = destinationLabel,
+                        icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                        onClick = {
+                            if (spotifyState.playlists.isEmpty() && !spotifyState.isLoadingPlaylists) {
+                                onRefreshSpotifyPlaylists()
+                            }
+                            showSpotifyDestinationDialog = true
+                        }
+                    )
+                }
+
+                SettingsDivider()
+                SettingsRow(
+                    headline = stringResource(R.string.spotify_advanced_client_id),
+                    supporting = when {
+                        spotifyState.isUsingCustomClientId -> stringResource(R.string.spotify_custom_client_id_active)
+                        spotifyState.hasClientId -> stringResource(R.string.spotify_default_client_id_active)
+                        else -> stringResource(R.string.spotify_client_id_missing)
+                    },
+                    icon = Icons.Default.Key,
+                    onClick = { showSpotifyClientIdDialog = true }
+                )
+            }
+
             // GRUPP 4: VARUNDUS JA TAASTAMINE
             SettingsSection(title = stringResource(R.string.settings_group_backup)) {
                 SettingsRow(
@@ -576,6 +667,33 @@ fun SettingsScreen(
                 showPostRollDialog = false
             },
             onDismiss = { showPostRollDialog = false }
+        )
+    }
+
+    if (showSpotifyDestinationDialog) {
+        SpotifyDestinationDialog(
+            spotifyState = spotifyState,
+            onSelectLikedSongs = {
+                onSpotifySaveTargetChange(SpotifySaveTarget.LIKED_SONGS)
+                showSpotifyDestinationDialog = false
+            },
+            onSelectPlaylist = { playlist ->
+                onSpotifyPlaylistSelect(playlist)
+                showSpotifyDestinationDialog = false
+            },
+            onRefreshPlaylists = onRefreshSpotifyPlaylists,
+            onDismiss = { showSpotifyDestinationDialog = false }
+        )
+    }
+
+    if (showSpotifyClientIdDialog) {
+        SpotifyClientIdDialog(
+            initialClientId = spotifyState.customClientId,
+            onSave = { entered ->
+                onSaveSpotifyClientId(entered)
+                showSpotifyClientIdDialog = false
+            },
+            onDismiss = { showSpotifyClientIdDialog = false }
         )
     }
 
@@ -1146,6 +1264,243 @@ private fun SettingsScreenPreview() {
             onWidgetTransparencyChange = {},
             onExportData = {},
             onImportData = {}
+        )
+    }
+}
+
+@Composable
+private fun SpotifyDestinationDialog(
+    spotifyState: SpotifyUiState,
+    onSelectLikedSongs: () -> Unit,
+    onSelectPlaylist: (SpotifyPlaylistItem) -> Unit,
+    onRefreshPlaylists: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(R.string.spotify_choose_destination),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onRefreshPlaylists, enabled = !spotifyState.isLoadingPlaylists) {
+                        if (spotifyState.isLoadingPlaylists) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.spotify_refresh_playlists),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val likedSelected = spotifyState.saveTarget == SpotifySaveTarget.LIKED_SONGS
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (likedSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
+                        .clickable(onClick = onSelectLikedSongs)
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = likedSelected, onClick = onSelectLikedSongs)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.spotify_liked_songs),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (likedSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                if (spotifyState.isLoadingPlaylists && spotifyState.playlists.isEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(stringResource(R.string.spotify_loading_playlists), style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else if (spotifyState.playlists.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.spotify_no_editable_playlists),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 260.dp)
+                    ) {
+                        items(spotifyState.playlists, key = { it.id }) { playlist ->
+                            val isSelected = spotifyState.saveTarget == SpotifySaveTarget.PLAYLIST &&
+                                spotifyState.selectedPlaylistId == playlist.id
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
+                                    .clickable { onSelectPlaylist(playlist) }
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = isSelected, onClick = { onSelectPlaylist(playlist) })
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = playlist.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp)) {
+                        Text(stringResource(R.string.action_close))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyClientIdDialog(
+    initialClientId: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var text by remember(initialClientId) { mutableStateOf(initialClientId) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.spotify_client_id_dialog_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text(stringResource(R.string.spotify_client_id_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.spotify_redirect_uri_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = AppConfig.Api.SPOTIFY_REDIRECT_URI,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(
+                                android.content.ClipData.newPlainText(
+                                    "Spotify Redirect URI",
+                                    AppConfig.Api.SPOTIFY_REDIRECT_URI
+                                )
+                            )
+                            android.widget.Toast.makeText(
+                                context,
+                                context.getString(R.string.spotify_redirect_uri_copied),
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    ) {
+                        Text(stringResource(R.string.spotify_copy_redirect_uri))
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp)) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { onSave(text) }, shape = RoundedCornerShape(8.dp)) {
+                        Text(stringResource(R.string.action_save))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun SpotifyDestinationDialogPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        SpotifyDestinationDialog(
+            spotifyState = SpotifyUiState(
+                isConnected = true,
+                playlists = listOf(
+                    SpotifyPlaylistItem(id = "1", name = "Kellraadio leiud"),
+                    SpotifyPlaylistItem(id = "2", name = "Hommikuraadio")
+                )
+            ),
+            onSelectLikedSongs = {},
+            onSelectPlaylist = {},
+            onRefreshPlaylists = {},
+            onDismiss = {}
         )
     }
 }

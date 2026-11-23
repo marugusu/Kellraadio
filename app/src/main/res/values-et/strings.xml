@@ -271,4 +271,38 @@
     <string name="cd_move_up">Liiguta üles</string>
     <string name="cd_move_down">Liiguta alla</string>
     <string name="cd_move_bottom">Liiguta viimaseks</string>
+
+    <!-- Spotify liidestus -->
+    <string name="settings_group_spotify">Spotify</string>
+    <string name="spotify_connect">Ühenda Spotify</string>
+    <string name="spotify_connect_desc">Salvesta raadiolugusid ja leia täpsemad kaanepildid</string>
+    <string name="spotify_connecting">Ühendan Spotifyga…</string>
+    <string name="spotify_connected_as">Ühendatud: %1$s</string>
+    <string name="spotify_connected">Ühendatud</string>
+    <string name="spotify_disconnect">Katkesta</string>
+    <string name="spotify_save_destination">Salvestamise sihtkoht</string>
+    <string name="spotify_liked_songs">Liked Songs (Meeldinud lood)</string>
+    <string name="spotify_playlist_selected">Esitusloend: %1$s</string>
+    <string name="spotify_choose_destination">Vali salvestamise sihtkoht</string>
+    <string name="spotify_loading_playlists">Laen esitusloendeid…</string>
+    <string name="spotify_no_editable_playlists">Muudetavaid esitusloendeid ei leitud.</string>
+    <string name="spotify_advanced_client_id">Täpsem: oma Client ID</string>
+    <string name="spotify_custom_client_id_active">Kasutusel oma Client ID</string>
+    <string name="spotify_default_client_id_active">Kasutusel äpi vaikimisi Client ID</string>
+    <string name="spotify_client_id_missing">Client ID puudub. Sisesta oma võti siia.</string>
+    <string name="spotify_client_id_dialog_title">Spotify Client ID</string>
+    <string name="spotify_client_id_hint">Spotify Client ID</string>
+    <string name="spotify_redirect_uri_label">Redirect URI Spotify Dashboardi jaoks:</string>
+    <string name="spotify_copy_redirect_uri">Kopeeri</string>
+    <string name="spotify_redirect_uri_copied">Redirect URI kopeeritud</string>
+    <string name="spotify_auth_success">Spotify ühendatud!</string>
+    <string name="spotify_auth_failed">Spotify sisselogimine ebaõnnestus: %1$s</string>
+    <string name="spotify_missing_client_id_error">Spotify Client ID puudub</string>
+    <string name="spotify_save_action">Salvesta</string>
+    <string name="spotify_saved_action">Salvestatud</string>
+    <string name="spotify_toast_saved">Salvestatud Spotifysse!</string>
+    <string name="spotify_toast_already_saved">Juba Spotifys salvestatud</string>
+    <string name="spotify_toast_playlist_missing">Vali esmalt Seadetes esitusloend</string>
+    <string name="spotify_toast_save_failed">Spotifysse salvestamine ebaõnnestus</string>
+    <string name="spotify_refresh_playlists">Värskenda esitusloendeid</string>
 </resources>

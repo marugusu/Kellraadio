@@ -14,6 +14,11 @@ object AppConfig {
         const val LRCLIB_BASE_URL = "https://lrclib.net/"
         const val ITUNES_BASE_URL = "https://itunes.apple.com/"
         const val MUSICBRAINZ_BASE_URL = "https://musicbrainz.org/ws/2/"
+        const val SPOTIFY_ACCOUNTS_BASE_URL = "https://accounts.spotify.com/"
+        const val SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1/"
+        const val SPOTIFY_REDIRECT_URI = "kellraadio://spotify-callback"
+        const val SPOTIFY_PREFS_NAME = "SpotifyPrefs"
+        const val SPOTIFY_SCOPES = "user-library-read user-library-modify playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private"
 
         // GitHub Releases API (äpisisene uuendus)
         const val GITHUB_API_BASE_URL = "https://api.github.com/"

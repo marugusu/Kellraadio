@@ -7,4 +7,6 @@
     
     <!-- Lubame seaded (SharedPreferences), kuna need ei sisalda isikuandmeid -->
     <include domain="sharedpref" path="."/>
+    <!-- Välistame Spotify tokenid ja võtmed Androidi pilvevarundusest -->
+    <exclude domain="sharedpref" path="SpotifyPrefs.xml"/>
 </full-backup-content>

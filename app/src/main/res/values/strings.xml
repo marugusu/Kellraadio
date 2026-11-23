@@ -271,4 +271,38 @@
     <string name="cd_move_up">Move up</string>
     <string name="cd_move_down">Move down</string>
     <string name="cd_move_bottom">Move to bottom</string>
+
+    <!-- Spotify Integration -->
+    <string name="settings_group_spotify">Spotify</string>
+    <string name="spotify_connect">Connect Spotify</string>
+    <string name="spotify_connect_desc">Save radio songs and get better cover art</string>
+    <string name="spotify_connecting">Connecting to Spotify…</string>
+    <string name="spotify_connected_as">Connected as %1$s</string>
+    <string name="spotify_connected">Connected</string>
+    <string name="spotify_disconnect">Disconnect</string>
+    <string name="spotify_save_destination">Save destination</string>
+    <string name="spotify_liked_songs">Liked Songs</string>
+    <string name="spotify_playlist_selected">Playlist: %1$s</string>
+    <string name="spotify_choose_destination">Choose save destination</string>
+    <string name="spotify_loading_playlists">Loading playlists…</string>
+    <string name="spotify_no_editable_playlists">No editable playlists found.</string>
+    <string name="spotify_advanced_client_id">Advanced: custom Client ID</string>
+    <string name="spotify_custom_client_id_active">Using custom Client ID</string>
+    <string name="spotify_default_client_id_active">Using built-in app Client ID</string>
+    <string name="spotify_client_id_missing">Client ID not configured. Enter your own here.</string>
+    <string name="spotify_client_id_dialog_title">Spotify Client ID</string>
+    <string name="spotify_client_id_hint">Spotify Client ID</string>
+    <string name="spotify_redirect_uri_label">Redirect URI for Spotify Dashboard:</string>
+    <string name="spotify_copy_redirect_uri">Copy</string>
+    <string name="spotify_redirect_uri_copied">Redirect URI copied</string>
+    <string name="spotify_auth_success">Spotify connected!</string>
+    <string name="spotify_auth_failed">Spotify sign-in failed: %1$s</string>
+    <string name="spotify_missing_client_id_error">Spotify Client ID is missing</string>
+    <string name="spotify_save_action">Save</string>
+    <string name="spotify_saved_action">Saved</string>
+    <string name="spotify_toast_saved">Saved to Spotify!</string>
+    <string name="spotify_toast_already_saved">Already saved in Spotify</string>
+    <string name="spotify_toast_playlist_missing">Choose a playlist in Settings first</string>
+    <string name="spotify_toast_save_failed">Could not save to Spotify</string>
+    <string name="spotify_refresh_playlists">Refresh playlists</string>
 </resources>

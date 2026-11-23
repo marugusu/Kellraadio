@@ -30,7 +30,9 @@ data class SongAdditionalInfo(
     val year: String? = null,
     val genre: String? = null,
     val trackNumber: Int? = null,
-    val durationMs: Long? = null
+    val durationMs: Long? = null,
+    val spotifyTrackId: String? = null,
+    val spotifyTrackUri: String? = null
 )
 
 // --- 2. API VASTUSTE MUDELID ---
@@ -197,6 +199,8 @@ object MusicInfoRepository {
         var foundGenre: String? = null
         var foundTrackNumber: Int? = null
         var foundDurationMs: Long? = null
+        var foundSpotifyTrackId: String? = null
+        var foundSpotifyTrackUri: String? = null
 
         // --- 1. METAANDMED ---
         try {
@@ -218,6 +222,32 @@ object MusicInfoRepository {
                 Log.d(TAG, "ℹ️ iTunes: Tulemusi ei leitud (404)")
             } else {
                 Log.w(TAG, "⚠️ iTunes päring ebaõnnestus: ${e.message}")
+            }
+        }
+
+        // --- 1b. SPOTIFY TÄIENDUS (kui ühendatud) ---
+        if (app.radiorecalarm.spotify.SpotifyRepository.isConnected()) {
+            Log.d(TAG, "--> 1b. Küsin Spotify...")
+            val spotifyTrack = app.radiorecalarm.spotify.SpotifyRepository.searchTrack(artist, title)
+            if (spotifyTrack != null) {
+                foundSpotifyTrackId = spotifyTrack.id
+                foundSpotifyTrackUri = spotifyTrack.uri
+                if (foundCover == null) {
+                    foundCover = spotifyTrack.album?.images?.maxByOrNull { it.width ?: 0 }?.url
+                }
+                if (foundAlbum == null) {
+                    foundAlbum = spotifyTrack.album?.name
+                }
+                if (foundYear == null) {
+                    foundYear = spotifyTrack.album?.releaseDate?.take(4)
+                }
+                if (foundTrackNumber == null) {
+                    foundTrackNumber = spotifyTrack.trackNumber
+                }
+                if (foundDurationMs == null) {
+                    foundDurationMs = spotifyTrack.durationMs?.takeIf { it > 0L }
+                }
+                Log.d(TAG, "✅ Spotify: OK (trackId=$foundSpotifyTrackId, album=$foundAlbum)")
             }
         }
 
@@ -266,11 +296,13 @@ object MusicInfoRepository {
             year = foundYear,
             genre = foundGenre,
             trackNumber = foundTrackNumber,
-            durationMs = foundDurationMs
+            durationMs = foundDurationMs,
+            spotifyTrackId = foundSpotifyTrackId,
+            spotifyTrackUri = foundSpotifyTrackUri
         )
         
-        // Saada kätteolev info (pilt/album/kestus) kohe välja
-        if (foundCover != null || foundAlbum != null || foundDurationMs != null) {
+        // Saada kätteolev info (pilt/album/kestus/Spotify ID) kohe välja
+        if (foundCover != null || foundAlbum != null || foundDurationMs != null || foundSpotifyTrackId != null) {
             emit(currentInfo)
         }
 
