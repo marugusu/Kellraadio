@@ -370,9 +370,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val pendingCategory = _uiState.value.categoryToSelectOnTabChange
         if (index == 0 && pendingCategory != null) {
             onCategorySelected(pendingCategory)
-            _uiState.update { it.copy(currentTab = index, categoryToSelectOnTabChange = null) }
+            _uiState.update { it.copy(currentTab = index, categoryToSelectOnTabChange = null, isReorderMode = false) }
         } else {
-            _uiState.update { it.copy(currentTab = index) }
+            _uiState.update { it.copy(currentTab = index, isReorderMode = if (index == 0) it.isReorderMode else false) }
         }
         if (index == 4 && _uiState.value.hasAvailableUpdate && !hasShownAutoUpdatePopup && _uiState.value.updateState is UpdateUiState.Idle) {
             hasShownAutoUpdatePopup = true
@@ -385,7 +385,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onCategorySelected(category: String) {
         _uiState.update { it.copy(
             selectedCategory = category,
-            selectedSubCategories = emptySet()
+            selectedSubCategories = emptySet(),
+            isReorderMode = if (category == StationListFilter.CATEGORY_FAVORITES) it.isReorderMode else false
         )}
         prefs.edit()
             .putString("last_category", category)
@@ -579,6 +580,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val favorites = _uiState.value.stations.filter { it.isFavorite }.sortedWith(compareBy<RadioStation> { it.favoriteOrder }.thenBy { it.priority }.thenBy { it.name })
             stationRepository.moveStationToBottom(station, favorites)
+        }
+    }
+
+    fun enterReorderMode() {
+        _uiState.update {
+            it.copy(
+                selectedCategory = StationListFilter.CATEGORY_FAVORITES,
+                selectedSubCategories = emptySet(),
+                isReorderMode = true,
+                showActionSheetForStation = null
+            )
+        }
+        prefs.edit()
+            .putString("last_category", StationListFilter.CATEGORY_FAVORITES)
+            .putStringSet("last_sub_categories", emptySet())
+            .apply()
+    }
+
+    fun exitReorderMode() {
+        _uiState.update { it.copy(isReorderMode = false) }
+    }
+
+    fun saveFavoritesOrder(orderedFavorites: List<RadioStation>) {
+        viewModelScope.launch {
+            stationRepository.saveFavoritesOrder(orderedFavorites)
         }
     }
 

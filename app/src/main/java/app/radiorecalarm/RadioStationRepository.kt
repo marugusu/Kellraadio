@@ -117,13 +117,18 @@ class RadioStationRepository(
         applyFavoriteOrder(reordered)
     }
 
-    private suspend fun applyFavoriteOrder(orderedFavorites: List<RadioStation>) {
-        orderedFavorites.forEachIndexed { index, item ->
+    suspend fun saveFavoritesOrder(orderedFavorites: List<RadioStation>) {
+        val updates = orderedFavorites.mapIndexedNotNull { index, item ->
             val desiredOrder = index + 1
-            if (item.favoriteOrder != desiredOrder) {
-                stationDao.update(item.copy(favoriteOrder = desiredOrder))
-            }
+            if (item.favoriteOrder != desiredOrder) item.copy(favoriteOrder = desiredOrder) else null
         }
+        if (updates.isNotEmpty()) {
+            stationDao.updateAll(updates)
+        }
+    }
+
+    private suspend fun applyFavoriteOrder(orderedFavorites: List<RadioStation>) {
+        saveFavoritesOrder(orderedFavorites)
     }
 
     suspend fun resetFavoriteOrder() {

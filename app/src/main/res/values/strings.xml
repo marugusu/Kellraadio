@@ -310,4 +310,7 @@
     <string name="view_mode_list">1 (List)</string>
     <string name="view_columns_option">%1$d columns</string>
     <string name="cd_layout_view">Layout view</string>
+    <string name="action_reorder">Reorder favorites</string>
+    <string name="action_done">Done</string>
+    <string name="reorder_mode_hint">Drag stations to reorder</string>
 </resources>

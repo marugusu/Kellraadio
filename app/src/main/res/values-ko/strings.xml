@@ -310,4 +310,7 @@
     <string name="view_mode_list">1 (목록)</string>
     <string name="view_columns_option">%1$d열</string>
     <string name="cd_layout_view">보기 방식</string>
+    <string name="action_reorder">순서 변경</string>
+    <string name="action_done">완료</string>
+    <string name="reorder_mode_hint">드래그하여 방송국 순서를 변경하세요</string>
 </resources>

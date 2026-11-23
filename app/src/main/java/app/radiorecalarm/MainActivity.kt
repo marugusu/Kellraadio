@@ -442,7 +442,8 @@ fun RaadioEkraan(
             onMoveUp = { mainViewModel.moveStationUp(liveStation) },
             onMoveDown = { mainViewModel.moveStationDown(liveStation) },
             onMoveToTop = { mainViewModel.moveStationToTop(liveStation) },
-            onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) }
+            onMoveToBottom = { mainViewModel.moveStationToBottom(liveStation) },
+            onEnterReorderMode = mainViewModel::enterReorderMode
         )
     }
     val stationToDelete = state.stationToDelete
@@ -542,7 +543,11 @@ fun ContentScreens(
                 onShowCuratedClick = { viewModel.toggleHideRemoteStations(false) },
                 onColumnCountChange = { cols ->
                     if (isLandscape) viewModel.setColsLandscape(cols) else viewModel.setColsPortrait(cols)
-                }
+                },
+                isReorderMode = state.isReorderMode,
+                onEnterReorderMode = viewModel::enterReorderMode,
+                onExitReorderMode = viewModel::exitReorderMode,
+                onSaveFavoritesOrder = viewModel::saveFavoritesOrder
             )
         }
         1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })

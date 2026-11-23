@@ -21,6 +21,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
@@ -68,7 +69,10 @@ fun StationGridItem(
     onLongClick: () -> Unit,
     showFavoriteIcon: Boolean,
     showFlag: Boolean,
-    columnCount: Int = 3
+    columnCount: Int = 3,
+    isReorderMode: Boolean = false,
+    isDragging: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
@@ -99,6 +103,7 @@ fun StationGridItem(
     }
 
     val containerColor = when {
+        isDragging -> MaterialTheme.colorScheme.primaryContainer
         activeState == StationPlaybackState.ERROR -> MaterialTheme.colorScheme.errorContainer
         activeState == StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primaryContainer
         isFocused -> MaterialTheme.colorScheme.secondaryContainer
@@ -107,6 +112,7 @@ fun StationGridItem(
     }
 
     val contentColor = when {
+        isDragging -> MaterialTheme.colorScheme.onPrimaryContainer
         activeState == StationPlaybackState.ERROR -> MaterialTheme.colorScheme.onErrorContainer
         activeState == StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.onPrimaryContainer
         isFocused -> MaterialTheme.colorScheme.onSecondaryContainer
@@ -114,6 +120,8 @@ fun StationGridItem(
     }
 
     val borderStroke = when {
+        isDragging -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        isReorderMode -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
         activeState == StationPlaybackState.ERROR -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.error)
         activeState == StationPlaybackState.BUFFERING -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha))
         isFocused || activeState == StationPlaybackState.PLAYING -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
@@ -129,7 +137,7 @@ fun StationGridItem(
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(cardHeight)
             .clip(cardShape)
@@ -155,7 +163,7 @@ fun StationGridItem(
                 } else if (event.type == KeyEventType.KeyUp) {
                     pressJob?.cancel()
                     scope.launch { interactionSource.emit(PressInteraction.Release(PressInteraction.Press(Offset.Zero))) }
-                    if (isLongPressDetected) {
+                    if (isLongPressDetected || isReorderMode) {
                         onLongClick()
                     } else {
                         view.performHapticTap()
@@ -166,24 +174,30 @@ fun StationGridItem(
                 }
                 false
             }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLongClick()
-                    },
-                    onTap = {
-                        view.performHapticTap()
-                        onClick()
-                    },
-                    onPress = {
-                        val press = PressInteraction.Press(it)
-                        interactionSource.emit(press)
-                        tryAwaitRelease()
-                        interactionSource.emit(PressInteraction.Release(press))
+            .then(
+                if (isReorderMode) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onLongClick()
+                            },
+                            onTap = {
+                                view.performHapticTap()
+                                onClick()
+                            },
+                            onPress = {
+                                val press = PressInteraction.Press(it)
+                                interactionSource.emit(press)
+                                tryAwaitRelease()
+                                interactionSource.emit(PressInteraction.Release(press))
+                            }
+                        )
                     }
-                )
-            }
+                }
+            )
             .indication(interactionSource, androidx.compose.foundation.LocalIndication.current)
             .hoverable(interactionSource)
             .focusable(interactionSource = interactionSource),
@@ -199,6 +213,7 @@ fun StationGridItem(
                 contentColor = contentColor,
                 showFavoriteIcon = showFavoriteIcon,
                 showFlag = showFlag,
+                isReorderMode = isReorderMode,
                 onMoreClick = {
                     view.performHapticTap()
                     onLongClick()
@@ -212,7 +227,8 @@ fun StationGridItem(
                 contentColor = contentColor,
                 showFavoriteIcon = showFavoriteIcon,
                 showFlag = showFlag,
-                isCompact = isCompact
+                isCompact = isCompact,
+                isReorderMode = isReorderMode
             )
         }
     }
@@ -225,6 +241,7 @@ private fun StationListRowContent(
     contentColor: Color,
     showFavoriteIcon: Boolean,
     showFlag: Boolean,
+    isReorderMode: Boolean,
     onMoreClick: () -> Unit
 ) {
     val badgeBg = when (activeState) {
@@ -325,18 +342,32 @@ private fun StationListRowContent(
             )
         }
 
-        IconButton(
-            onClick = onMoreClick,
-            modifier = Modifier
-                .size(36.dp)
-                .focusProperties { canFocus = false }
-        ) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = stringResource(R.string.action_more),
-                tint = contentColor.copy(alpha = 0.7f),
-                modifier = Modifier.size(18.dp)
-            )
+        if (isReorderMode) {
+            Box(
+                modifier = Modifier.size(36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DragIndicator,
+                    contentDescription = stringResource(R.string.action_reorder),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        } else {
+            IconButton(
+                onClick = onMoreClick,
+                modifier = Modifier
+                    .size(36.dp)
+                    .focusProperties { canFocus = false }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(R.string.action_more),
+                    tint = contentColor.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
@@ -349,7 +380,8 @@ private fun StationGridCardContent(
     contentColor: Color,
     showFavoriteIcon: Boolean,
     showFlag: Boolean,
-    isCompact: Boolean
+    isCompact: Boolean,
+    isReorderMode: Boolean
 ) {
     val horizontalPad = if (isCompact) 6.dp else 8.dp
     val verticalPad = if (isCompact) 5.dp else 6.dp
@@ -408,7 +440,14 @@ private fun StationGridCardContent(
                 }
             }
 
-            if (station.isFavorite && showFavoriteIcon) {
+            if (isReorderMode) {
+                Icon(
+                    imageVector = Icons.Default.DragIndicator,
+                    contentDescription = stringResource(R.string.action_reorder),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(if (isCompact) 11.dp else 13.dp)
+                )
+            } else if (station.isFavorite && showFavoriteIcon) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,

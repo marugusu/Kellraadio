@@ -310,4 +310,7 @@
     <string name="view_mode_list">1 (Nimekiri)</string>
     <string name="view_columns_option">%1$d veergu</string>
     <string name="cd_layout_view">Vaate paigutus</string>
+    <string name="action_reorder">Muuda järjekorda</string>
+    <string name="action_done">Valmis</string>
+    <string name="reorder_mode_hint">Lohista jaamad soovitud järjekorda</string>
 </resources>

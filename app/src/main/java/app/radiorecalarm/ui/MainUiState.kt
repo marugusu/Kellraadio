@@ -56,6 +56,7 @@ data class MainUiState(
     val selectedSubCategories: Set<String> = emptySet(),
     val selectedStationId: Int = -1,
     val categoryToSelectOnTabChange: String? = null,
+    val isReorderMode: Boolean = false,
 
     // --- DIALOOGIDE OLEKUD ---
     val showSleepDialog: Boolean = false,

@@ -1,13 +1,16 @@
 package app.radiorecalarm.ui
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,15 +18,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioStation
+import app.radiorecalarm.isTv
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationActionSheet(
     station: RadioStation,
@@ -37,151 +47,311 @@ fun StationActionSheet(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onMoveToTop: () -> Unit,
-    onMoveToBottom: () -> Unit
+    onMoveToBottom: () -> Unit,
+    onEnterReorderMode: () -> Unit = {}
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .wrapContentHeight()
+    val configuration = LocalConfiguration.current
+    val context = LocalContext.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val useDialogFrame = isLandscape || isTv(context)
+
+    if (useDialogFrame) {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            Column {
-                // PEALKIRI
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 24.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp,
+                modifier = Modifier
+                    .widthIn(max = 460.dp)
+                    .fillMaxWidth(0.9f)
+                    .heightIn(max = (configuration.screenHeightDp * 0.9f).dp)
+            ) {
+                StationActionSheetContent(
+                    station = station,
+                    favoritePosition = favoritePosition,
+                    totalFavorites = totalFavorites,
+                    showCloseButton = true,
+                    onDismiss = onDismiss,
+                    onToggleFavorite = onToggleFavorite,
+                    onSetAlarm = onSetAlarm,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    onMoveUp = onMoveUp,
+                    onMoveDown = onMoveDown,
+                    onMoveToTop = onMoveToTop,
+                    onMoveToBottom = onMoveToBottom,
+                    onEnterReorderMode = onEnterReorderMode,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+        }
+    } else {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+            dragHandle = {
+                BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outline)
+            }
+        ) {
+            StationActionSheetContent(
+                station = station,
+                favoritePosition = favoritePosition,
+                totalFavorites = totalFavorites,
+                showCloseButton = false,
+                onDismiss = onDismiss,
+                onToggleFavorite = onToggleFavorite,
+                onSetAlarm = onSetAlarm,
+                onEdit = onEdit,
+                onDelete = onDelete,
+                onMoveUp = onMoveUp,
+                onMoveDown = onMoveDown,
+                onMoveToTop = onMoveToTop,
+                onMoveToBottom = onMoveToBottom,
+                onEnterReorderMode = onEnterReorderMode,
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StationActionSheetContent(
+    station: RadioStation,
+    favoritePosition: Int,
+    totalFavorites: Int,
+    showCloseButton: Boolean,
+    onDismiss: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onSetAlarm: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onMoveToTop: () -> Unit,
+    onMoveToBottom: () -> Unit,
+    onEnterReorderMode: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val view = LocalView.current
+    val subtitleParts = buildList {
+        if (station.countryCode.isNotBlank()) add(station.countryCode.uppercase())
+        val cat = station.category.trim()
+        if (cat.isNotBlank() && !(station.isUserStation && cat.equals("My", ignoreCase = true))) {
+            add(cat)
+        }
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        // PÄIS: jaama monogramm + nimi + kategooria
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(
+                        1.dp,
+                        if (station.isFavorite) MaterialTheme.colorScheme.primary.copy(alpha = 0.55f) else MaterialTheme.colorScheme.outline,
+                        RoundedCornerShape(10.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = StationArtworkUtils.getStationInitials(station.name),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        lineHeight = 22.sp
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (subtitleParts.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitleParts.joinToString(" • "),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (showCloseButton) {
+                IconButton(
+                    onClick = {
+                        view.performHapticTap()
+                        onDismiss()
+                    }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Radio,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = station.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.action_close),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+        }
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                // SISU
-                Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)) {
-                    // VASAK POOL: TEGEVUSED
-                    Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
-                        ActionItem(
-                            icon = if (station.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                            text = if (station.isFavorite) stringResource(R.string.action_remove_favorite) else stringResource(R.string.action_add_favorite),
-                            onClick = { onToggleFavorite(); onDismiss() }
-                        )
-
-                        ActionItem(
-                            icon = Icons.Default.Alarm,
-                            text = stringResource(R.string.action_set_alarm),
-                            onClick = { onSetAlarm(); onDismiss() }
-                        )
-
-                        if (station.isUserStation) {
-                            ActionItem(
-                                icon = Icons.Default.Edit,
-                                text = stringResource(R.string.action_edit_station),
-                                onClick = { onEdit(); onDismiss() }
-                            )
-
-                            ActionItem(
-                                icon = Icons.Default.Delete,
-                                text = stringResource(R.string.action_delete_station),
-                                textColor = MaterialTheme.colorScheme.error,
-                                iconColor = MaterialTheme.colorScheme.error,
-                                onClick = { onDelete(); onDismiss() }
-                            )
-                        }
-                    }
-
-                    // PAREM POOL: SORTEERIMISE NUPUD (Ainult lemmikute puhul)
-                    if (station.isFavorite) {
-                        val canMoveUp = favoritePosition > 1
-                        val canMoveDown = favoritePosition in 1 until totalFavorites
-                        VerticalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
-
-                        Column(
-                            modifier = Modifier
-                                .width(76.dp)
-                                .fillMaxHeight()
-                                .padding(vertical = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            SortButton(
-                                icon = Icons.Default.KeyboardDoubleArrowUp,
-                                contentDescription = stringResource(R.string.cd_move_top),
-                                enabled = canMoveUp,
-                                onClick = onMoveToTop
-                            )
-                            SortButton(
-                                icon = Icons.Default.KeyboardArrowUp,
-                                contentDescription = stringResource(R.string.cd_move_up),
-                                enabled = canMoveUp,
-                                onClick = onMoveUp
-                            )
-
-                            // JÄRJEKORRA NUMBER (X/N badge)
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 36.dp, minHeight = 28.dp)
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = if (totalFavorites > 0) "$favoritePosition/$totalFavorites" else favoritePosition.toString(),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            }
-
-                            SortButton(
-                                icon = Icons.Default.KeyboardArrowDown,
-                                contentDescription = stringResource(R.string.cd_move_down),
-                                enabled = canMoveDown,
-                                onClick = onMoveDown
-                            )
-                            SortButton(
-                                icon = Icons.Default.KeyboardDoubleArrowDown,
-                                contentDescription = stringResource(R.string.cd_move_bottom),
-                                enabled = canMoveDown,
-                                onClick = onMoveToBottom
-                            )
-                        }
-                    }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            ActionItem(
+                icon = if (station.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                text = if (station.isFavorite) stringResource(R.string.action_remove_favorite) else stringResource(R.string.action_add_favorite),
+                iconColor = if (station.isFavorite) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = {
+                    view.performHapticTap()
+                    onToggleFavorite()
+                    onDismiss()
                 }
+            )
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
+            ActionItem(
+                icon = Icons.Default.Alarm,
+                text = stringResource(R.string.action_set_alarm),
+                onClick = {
+                    view.performHapticTap()
+                    onSetAlarm()
+                    onDismiss()
+                }
+            )
 
-                // SULGE NUPP
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.End
+            if (station.isFavorite) {
+                ActionItem(
+                    icon = Icons.Default.SwapVert,
+                    text = stringResource(R.string.action_reorder),
+                    iconColor = MaterialTheme.colorScheme.primary,
+                    onClick = {
+                        view.performHapticTap()
+                        onEnterReorderMode()
+                    }
+                )
+            }
+
+            if (station.isUserStation) {
+                ActionItem(
+                    icon = Icons.Default.Edit,
+                    text = stringResource(R.string.action_edit_station),
+                    onClick = {
+                        view.performHapticTap()
+                        onEdit()
+                        onDismiss()
+                    }
+                )
+
+                ActionItem(
+                    icon = Icons.Default.Delete,
+                    text = stringResource(R.string.action_delete_station),
+                    textColor = MaterialTheme.colorScheme.error,
+                    iconColor = MaterialTheme.colorScheme.error,
+                    onClick = {
+                        view.performHapticTap()
+                        onDelete()
+                        onDismiss()
+                    }
+                )
+            }
+
+            if (station.isFavorite) {
+                val canMoveUp = favoritePosition > 1
+                val canMoveDown = favoritePosition in 1 until totalFavorites
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(
-                            text = stringResource(R.string.action_close).uppercase(), 
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SortButton(
+                            icon = Icons.Default.KeyboardDoubleArrowUp,
+                            contentDescription = stringResource(R.string.cd_move_top),
+                            enabled = canMoveUp,
+                            onClick = onMoveToTop
+                        )
+                        SortButton(
+                            icon = Icons.Default.KeyboardArrowUp,
+                            contentDescription = stringResource(R.string.cd_move_up),
+                            enabled = canMoveUp,
+                            onClick = onMoveUp
+                        )
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                            modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 28.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = if (totalFavorites > 0) "$favoritePosition / $totalFavorites" else favoritePosition.toString(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+
+                        SortButton(
+                            icon = Icons.Default.KeyboardArrowDown,
+                            contentDescription = stringResource(R.string.cd_move_down),
+                            enabled = canMoveDown,
+                            onClick = onMoveDown
+                        )
+                        SortButton(
+                            icon = Icons.Default.KeyboardDoubleArrowDown,
+                            contentDescription = stringResource(R.string.cd_move_bottom),
+                            enabled = canMoveDown,
+                            onClick = onMoveToBottom
                         )
                     }
                 }
@@ -200,13 +370,13 @@ fun SortButton(
     IconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(48.dp)
+        modifier = Modifier.size(44.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-            modifier = Modifier.size(32.dp)
+            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+            modifier = Modifier.size(26.dp)
         )
     }
 }
@@ -222,22 +392,33 @@ fun ActionItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = iconColor,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
             fontWeight = FontWeight.Medium,
-            color = textColor
+            color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -246,26 +427,31 @@ fun ActionItem(
 @Composable
 private fun StationActionSheetPreview() {
     MaterialTheme(colorScheme = darkColorScheme()) {
-        StationActionSheet(
-            station = RadioStation(
-                id = 1,
-                name = "Rock FM",
-                url = "https://stream.skymedia.ee/live/RockFM",
-                countryCode = "EE",
-                isFavorite = true,
-                isUserStation = true
-            ),
-            favoritePosition = 1,
-            totalFavorites = 6,
-            onDismiss = {},
-            onToggleFavorite = {},
-            onSetAlarm = {},
-            onEdit = {},
-            onDelete = {},
-            onMoveUp = {},
-            onMoveDown = {},
-            onMoveToTop = {},
-            onMoveToBottom = {}
-        )
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            StationActionSheetContent(
+                station = RadioStation(
+                    id = 1,
+                    name = "Rock FM",
+                    url = "https://stream.skymedia.ee/live/RockFM",
+                    countryCode = "EE",
+                    category = "Sky",
+                    isFavorite = true,
+                    isUserStation = true
+                ),
+                favoritePosition = 2,
+                totalFavorites = 12,
+                showCloseButton = true,
+                onDismiss = {},
+                onToggleFavorite = {},
+                onSetAlarm = {},
+                onEdit = {},
+                onDelete = {},
+                onMoveUp = {},
+                onMoveDown = {},
+                onMoveToTop = {},
+                onMoveToBottom = {},
+                onEnterReorderMode = {}
+            )
+        }
     }
 }

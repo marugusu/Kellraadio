@@ -36,6 +36,9 @@ interface RadioStationDao {
     @Update
     suspend fun update(station: RadioStation)
 
+    @Update
+    suspend fun updateAll(stations: List<RadioStation>)
+
     @Query("SELECT * FROM stations WHERE name = :name LIMIT 1")
     suspend fun getStationByName(name: String): RadioStation?
 
