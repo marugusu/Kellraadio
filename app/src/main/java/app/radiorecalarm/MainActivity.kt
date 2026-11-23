@@ -523,7 +523,7 @@ fun ContentScreens(
                 contract = ActivityResultContracts.OpenDocument()
             ) { uri ->
                 if (uri != null) {
-                    viewModel.importDataFromUri(uri)
+                    viewModel.prepareImportFromUri(uri)
                 }
             }
 
@@ -556,6 +556,9 @@ fun ContentScreens(
                 onImportData = {
                     importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
                 },
+                pendingBackupImport = state.pendingBackupImport,
+                onConfirmImportData = viewModel::confirmPendingImport,
+                onDismissImportData = viewModel::cancelPendingImport,
                 updateState = state.updateState,
                 onCheckForUpdates = viewModel::checkForUpdates,
                 onDownloadUpdate = viewModel::downloadUpdate,

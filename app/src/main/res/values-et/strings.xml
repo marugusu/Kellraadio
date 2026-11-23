@@ -224,13 +224,23 @@
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Varundus ja kolimine</string>
     <string name="settings_export">Eksporti andmed</string>
-    <string name="settings_export_desc">Salvesta lemmikud ja äratused faili</string>
+    <string name="settings_export_desc">Salvesta jaamad, lemmikud, äratused ja seaded faili</string>
     <string name="settings_import">Importi andmed</string>
-    <string name="settings_import_desc">Taasta lemmikud ja äratused failist</string>
+    <string name="settings_import_desc">Taasta jaamad, lemmikud, äratused ja seaded failist</string>
     <string name="backup_success">Andmed edukalt eksportitud!</string>
     <string name="backup_failed">Eksport ebaõnnestus: %1$s</string>
     <string name="restore_success">Andmed edukalt taastatud!</string>
+    <string name="restore_success_missing_favorites">Andmed taastatud! %1$d lemmikut jäi kohalikus jaamaloendis leidmata.</string>
     <string name="restore_failed">Taastamine ebaõnnestus: %1$s</string>
+    <string name="restore_confirm_title">Taasta varundusest?</string>
+    <string name="restore_confirm_exported_at">Eksporditud: %1$s</string>
+    <string name="restore_confirm_custom_stations">Minu jaamad: %1$d</string>
+    <string name="restore_confirm_favorites">Lemmikud: %1$d</string>
+    <string name="restore_confirm_alarms">Äratused: %1$d</string>
+    <string name="restore_confirm_settings_included">Rakenduse seaded: Kaasas</string>
+    <string name="restore_confirm_settings_none">Rakenduse seaded: Puuduvad</string>
+    <string name="restore_confirm_warning">Olemasolevad minu jaamad, lemmikud ja äratused (ning seaded, kui failis kaasas) asendatakse.</string>
+    <string name="action_restore">Taasta</string>
 
     <!-- In-App Updates -->
     <string name="settings_group_updates">Uuendused</string>

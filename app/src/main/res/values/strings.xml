@@ -224,13 +224,23 @@
     <!-- Backup & Restore -->
     <string name="settings_group_backup">Backup and Migration</string>
     <string name="settings_export">Export data</string>
-    <string name="settings_export_desc">Save favorites and alarms to a file</string>
+    <string name="settings_export_desc">Save stations, favorites, alarms, and settings to a file</string>
     <string name="settings_import">Import data</string>
-    <string name="settings_import_desc">Restore favorites and alarms from a file</string>
+    <string name="settings_import_desc">Restore stations, favorites, alarms, and settings from a file</string>
     <string name="backup_success">Data successfully exported!</string>
     <string name="backup_failed">Export failed: %1$s</string>
     <string name="restore_success">Data successfully restored!</string>
+    <string name="restore_success_missing_favorites">Data restored! %1$d favorite(s) were not found in the local station list.</string>
     <string name="restore_failed">Restore failed: %1$s</string>
+    <string name="restore_confirm_title">Restore from backup?</string>
+    <string name="restore_confirm_exported_at">Exported: %1$s</string>
+    <string name="restore_confirm_custom_stations">User stations: %1$d</string>
+    <string name="restore_confirm_favorites">Favorites: %1$d</string>
+    <string name="restore_confirm_alarms">Alarms: %1$d</string>
+    <string name="restore_confirm_settings_included">App settings: Included</string>
+    <string name="restore_confirm_settings_none">App settings: Not included</string>
+    <string name="restore_confirm_warning">Existing user stations, favorites, and alarms (and settings, if included) will be replaced.</string>
+    <string name="action_restore">Restore</string>
 
     <!-- In-App Updates -->
     <string name="settings_group_updates">Updates</string>

@@ -45,10 +45,15 @@ import androidx.compose.ui.window.Dialog
 import app.radiorecalarm.AppConfig
 import app.radiorecalarm.LogExporter
 import app.radiorecalarm.R
+import app.radiorecalarm.backup.BackupData
+import app.radiorecalarm.backup.BackupSettings
+import app.radiorecalarm.backup.PendingBackupImport
 import app.radiorecalarm.update.GitHubRelease
 import app.radiorecalarm.update.GitHubReleaseAsset
 import app.radiorecalarm.update.UpdateUiState
 import java.io.File
+import java.text.DateFormat
+import java.util.Date
 import kotlin.math.roundToInt
 
 data class AppLanguage(val code: String, val flag: String, val name: String)
@@ -86,6 +91,9 @@ fun SettingsScreen(
     onWidgetTransparencyChange: (Float) -> Unit,
     onExportData: () -> Unit,
     onImportData: () -> Unit,
+    pendingBackupImport: PendingBackupImport? = null,
+    onConfirmImportData: () -> Unit = {},
+    onDismissImportData: () -> Unit = {},
     updateState: UpdateUiState = UpdateUiState.Idle,
     onCheckForUpdates: (String) -> Unit = {},
     onDownloadUpdate: (GitHubRelease, GitHubReleaseAsset) -> Unit = { _, _ -> },
@@ -571,6 +579,14 @@ fun SettingsScreen(
         )
     }
 
+    if (pendingBackupImport != null) {
+        RestoreConfirmDialog(
+            pendingImport = pendingBackupImport,
+            onConfirm = onConfirmImportData,
+            onDismiss = onDismissImportData
+        )
+    }
+
     UpdateDialog(
         state = updateState,
         canInstallPackages = hasInstallPermission,
@@ -972,6 +988,122 @@ private fun SecondsSliderDialog(
             }
         }
     )
+}
+
+@Composable
+private fun RestoreConfirmDialog(
+    pendingImport: PendingBackupImport,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val view = LocalView.current
+    val scrollState = rememberScrollState()
+    val formattedDate = remember(pendingImport.exportedAt) {
+        pendingImport.exportedAt?.let { timestamp ->
+            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(timestamp))
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(12.dp),
+        icon = { Icon(Icons.Default.Restore, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
+        title = {
+            Text(
+                text = stringResource(R.string.restore_confirm_title),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (formattedDate != null) {
+                    Text(
+                        text = stringResource(R.string.restore_confirm_exported_at, formattedDate),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.restore_confirm_custom_stations, pendingImport.customStationCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.restore_confirm_favorites, pendingImport.favoriteCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.restore_confirm_alarms, pendingImport.alarmCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (pendingImport.hasSettings) {
+                        stringResource(R.string.restore_confirm_settings_included)
+                    } else {
+                        stringResource(R.string.restore_confirm_settings_none)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.restore_confirm_warning),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    view.performHapticTap()
+                    onConfirm()
+                },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.action_restore))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    view.performHapticTap()
+                    onDismiss()
+                },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.action_cancel),
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+        }
+    )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun RestoreConfirmDialogPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        RestoreConfirmDialog(
+            pendingImport = PendingBackupImport(
+                BackupData(
+                    exportedAt = 1763890000000L,
+                    settings = BackupSettings(colsPortrait = 3)
+                )
+            ),
+            onConfirm = {},
+            onDismiss = {}
+        )
+    }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0C12)

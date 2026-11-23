@@ -4,6 +4,7 @@ import app.radiorecalarm.Alarm
 import app.radiorecalarm.RadioFilterItem
 import app.radiorecalarm.RadioStation
 import app.radiorecalarm.SongAdditionalInfo
+import app.radiorecalarm.backup.PendingBackupImport
 import app.radiorecalarm.update.UpdateUiState
 
 data class MainUiState(
@@ -65,6 +66,7 @@ data class MainUiState(
     val stationToDelete: RadioStation? = null,
     val stationToEdit: RadioStation? = null,
     val showResetOrderDialog: Boolean = false,
+    val pendingBackupImport: PendingBackupImport? = null,
 
     // --- UUENDUSTE OLEK ---
     val updateState: UpdateUiState = UpdateUiState.Idle,

@@ -224,13 +224,23 @@
     <!-- Backup & Restore -->
     <string name="settings_group_backup">백업 및 마이그레이션</string>
     <string name="settings_export">데이터 내보내기</string>
-    <string name="settings_export_desc">즐겨찾기 및 알람을 파일로 저장</string>
+    <string name="settings_export_desc">방송국, 즐겨찾기, 알람 및 설정을 파일로 저장</string>
     <string name="settings_import">데이터 가져오기</string>
-    <string name="settings_import_desc">파일에서 즐겨찾기 및 알람 복원</string>
+    <string name="settings_import_desc">파일에서 방송국, 즐겨찾기, 알람 및 설정 복원</string>
     <string name="backup_success">데이터 내보내기 성공!</string>
     <string name="backup_failed">내보내기 실패: %1$s</string>
     <string name="restore_success">데이터 복원 성공!</string>
+    <string name="restore_success_missing_favorites">데이터가 복원되었습니다! %1$d개의 즐겨찾기를 로컬 방송국 목록에서 찾지 못했습니다.</string>
     <string name="restore_failed">복원 실패: %1$s</string>
+    <string name="restore_confirm_title">백업에서 복원할까요?</string>
+    <string name="restore_confirm_exported_at">내보낸 날짜: %1$s</string>
+    <string name="restore_confirm_custom_stations">내 방송국: %1$d</string>
+    <string name="restore_confirm_favorites">즐겨찾기: %1$d</string>
+    <string name="restore_confirm_alarms">알람: %1$d</string>
+    <string name="restore_confirm_settings_included">앱 설정: 포함됨</string>
+    <string name="restore_confirm_settings_none">앱 설정: 포함되지 않음</string>
+    <string name="restore_confirm_warning">기존 내 방송국, 즐겨찾기, 알람(포함된 경우 설정도)이 모두 교체됩니다.</string>
+    <string name="action_restore">복원</string>
 
     <!-- In-App Updates -->
     <string name="settings_group_updates">업데이트</string>
