@@ -37,13 +37,18 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import app.radiorecalarm.spotify.SpotifyAuthEvent
+import app.radiorecalarm.spotify.SpotifyRepository
 import app.radiorecalarm.ui.*
 import app.radiorecalarm.ui.theme.KellraadioTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         volumeControlStream = android.media.AudioManager.STREAM_MUSIC
+        SpotifyRepository.init(applicationContext)
+        SpotifyRepository.handleRedirectUri(this, intent?.data)
         setContent {
             KellraadioTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -51,6 +56,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        SpotifyRepository.handleRedirectUri(this, intent.data)
     }
 
     override fun onStop() {
@@ -83,6 +94,25 @@ fun RaadioEkraan(
     val state by mainViewModel.uiState.collectAsState()
     val songInfo by playerViewModel.songInfo.collectAsState()
     val isFetchingInfo by playerViewModel.isFetching.collectAsState()
+    val spotifyState by SpotifyRepository.uiState.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        SpotifyRepository.authEvents.collect { event ->
+            val msg = when (event) {
+                SpotifyAuthEvent.Connected -> context.getString(R.string.spotify_auth_success)
+                is SpotifyAuthEvent.Failed -> context.getString(R.string.spotify_auth_failed, event.reason)
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    LaunchedEffect(songInfo?.spotifyTrackId, spotifyState.isConnected, spotifyState.saveTarget, spotifyState.selectedPlaylistId) {
+        val trackId = songInfo?.spotifyTrackId
+        if (spotifyState.isConnected && !trackId.isNullOrBlank()) {
+            SpotifyRepository.checkTrackSaved(trackId)
+        }
+    }
 
     // **PARANDATUD LOOGIKA**
     // Teaser on nähtav, kui songInfo objektis on reaalset sisu (pilt või album)
@@ -253,7 +283,21 @@ fun RaadioEkraan(
                                     )
                                 )
                         ) {
-                            SongInfoContentLandscape(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, info = songInfo!!)
+                            val currentTrackId = songInfo?.spotifyTrackId
+                            SongInfoContentLandscape(
+                                artist = state.parsedArtist,
+                                title = state.parsedTitle,
+                                stationName = state.activeStationName,
+                                info = songInfo!!,
+                                showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
+                                isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
+                                isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
+                                onSaveToSpotify = {
+                                    coroutineScope.launch {
+                                        saveTrackToSpotifyWithFeedback(context, currentTrackId)
+                                    }
+                                }
+                            )
                         }
                     } else {
                         AnimatedVisibility(visible = !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
@@ -266,6 +310,7 @@ fun RaadioEkraan(
             Box(modifier = Modifier.weight(1f - playerWeight).fillMaxHeight()) {
                 ContentScreens(
                     state = state,
+                    spotifyState = spotifyState,
                     allStations = displayStations,
                     filteredStations = filteredStations,
                     mainCategories = mainCategories,
@@ -353,6 +398,7 @@ fun RaadioEkraan(
                     )
                     ContentScreens(
                         state = state,
+                        spotifyState = spotifyState,
                         allStations = displayStations,
                         filteredStations = filteredStations,
                         mainCategories = mainCategories,
@@ -422,12 +468,39 @@ fun RaadioEkraan(
             onSave = { newName, newUrl, newCountry, newCategory -> mainViewModel.updateUserStation(newName, newUrl, newCountry, newCategory) }
         )
     }
-    if (state.showSongInfoSheet && songInfo != null) { ModalBottomSheet(onDismissRequest = mainViewModel::closeSongInfo, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) { SongInfoSheet(artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, bitrate = state.bitrate, streamUrl = displayStations.find { it.name == state.activeStationName }?.url ?: "", info = songInfo!!, onDismiss = mainViewModel::closeSongInfo) } }
+    if (state.showSongInfoSheet && songInfo != null) {
+        val currentTrackId = songInfo?.spotifyTrackId
+        ModalBottomSheet(
+            onDismissRequest = mainViewModel::closeSongInfo,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            SongInfoSheet(
+                artist = state.parsedArtist,
+                title = state.parsedTitle,
+                stationName = state.activeStationName,
+                bitrate = state.bitrate,
+                streamUrl = displayStations.find { it.name == state.activeStationName }?.url ?: "",
+                info = songInfo!!,
+                showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
+                isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
+                isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
+                onSaveToSpotify = {
+                    coroutineScope.launch {
+                        saveTrackToSpotifyWithFeedback(context, currentTrackId)
+                    }
+                },
+                onDismiss = mainViewModel::closeSongInfo
+            )
+        }
+    }
 }
 
 @Composable
 fun ContentScreens(
     state: MainUiState,
+    spotifyState: app.radiorecalarm.spotify.SpotifyUiState,
     allStations: List<RadioStation>,
     filteredStations: List<RadioStation>,
     mainCategories: List<String>,
@@ -565,7 +638,18 @@ fun ContentScreens(
                 onInstallUpdate = viewModel::installUpdate,
                 onDismissUpdateDialog = viewModel::dismissUpdateDialog,
                 canInstallPackages = viewModel.canInstallPackages(),
-                onRequestInstallPermission = viewModel::openInstallPermissionSettings
+                onRequestInstallPermission = viewModel::openInstallPermissionSettings,
+                spotifyState = spotifyState,
+                onConnectSpotify = {
+                    if (!SpotifyRepository.startAuth(context)) {
+                        Toast.makeText(context, context.getString(R.string.spotify_missing_client_id_error), Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onDisconnectSpotify = { SpotifyRepository.disconnect(context) },
+                onSpotifySaveTargetChange = { target -> SpotifyRepository.setSaveTarget(context, target) },
+                onSpotifyPlaylistSelect = { playlist -> SpotifyRepository.selectPlaylist(context, playlist) },
+                onRefreshSpotifyPlaylists = { SpotifyRepository.refreshPlaylists() },
+                onSaveSpotifyClientId = { enteredId -> SpotifyRepository.setCustomClientId(context, enteredId) }
             )
         }
     }

@@ -271,4 +271,38 @@
     <string name="cd_move_up">위로 이동</string>
     <string name="cd_move_down">아래로 이동</string>
     <string name="cd_move_bottom">맨 아래로 이동</string>
+
+    <!-- Spotify 연동 -->
+    <string name="settings_group_spotify">Spotify</string>
+    <string name="spotify_connect">Spotify 연결</string>
+    <string name="spotify_connect_desc">라디오 곡을 저장하고 더 정확한 앨범 아트를 가져옵니다</string>
+    <string name="spotify_connecting">Spotify에 연결 중…</string>
+    <string name="spotify_connected_as">연결됨: %1$s</string>
+    <string name="spotify_connected">연결됨</string>
+    <string name="spotify_disconnect">연결 해제</string>
+    <string name="spotify_save_destination">저장 위치</string>
+    <string name="spotify_liked_songs">좋아요 표시한 곡</string>
+    <string name="spotify_playlist_selected">플레이리스트: %1$s</string>
+    <string name="spotify_choose_destination">저장 위치 선택</string>
+    <string name="spotify_loading_playlists">플레이리스트 불러오는 중…</string>
+    <string name="spotify_no_editable_playlists">편집 가능한 플레이리스트가 없습니다.</string>
+    <string name="spotify_advanced_client_id">고급: 사용자 지정 Client ID</string>
+    <string name="spotify_custom_client_id_active">사용자 지정 Client ID 사용 중</string>
+    <string name="spotify_default_client_id_active">기본 앱 Client ID 사용 중</string>
+    <string name="spotify_client_id_missing">Client ID가 설정되지 않았습니다. 여기에 입력하세요.</string>
+    <string name="spotify_client_id_dialog_title">Spotify Client ID</string>
+    <string name="spotify_client_id_hint">Spotify Client ID</string>
+    <string name="spotify_redirect_uri_label">Spotify Dashboard용 Redirect URI:</string>
+    <string name="spotify_copy_redirect_uri">복사</string>
+    <string name="spotify_redirect_uri_copied">Redirect URI가 복사되었습니다</string>
+    <string name="spotify_auth_success">Spotify가 연결되었습니다!</string>
+    <string name="spotify_auth_failed">Spotify 로그인 실패: %1$s</string>
+    <string name="spotify_missing_client_id_error">Spotify Client ID가 없습니다</string>
+    <string name="spotify_save_action">저장</string>
+    <string name="spotify_saved_action">저장됨</string>
+    <string name="spotify_toast_saved">Spotify에 저장되었습니다!</string>
+    <string name="spotify_toast_already_saved">이미 Spotify에 저장됨</string>
+    <string name="spotify_toast_playlist_missing">먼저 설정에서 플레이리스트를 선택하세요</string>
+    <string name="spotify_toast_save_failed">Spotify에 저장하지 못했습니다</string>
+    <string name="spotify_refresh_playlists">플레이리스트 새로고침</string>
 </resources>

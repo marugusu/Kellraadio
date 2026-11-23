@@ -243,4 +243,38 @@
     <string name="cd_move_up">"Līgut ülõz"</string>
     <string name="cd_move_down">"Līgut allõ"</string>
     <string name="cd_move_bottom">"Līgut viimõzõks"</string>
+
+    <!-- Spotify -->
+    <string name="settings_group_spotify">"Spotify"</string>
+    <string name="spotify_connect">"Üendõ Spotify"</string>
+    <string name="spotify_connect_desc">"Tallõ rādio loulidi ja līevõ täpsõmõd kānõpīldid"</string>
+    <string name="spotify_connecting">"Üendõb Spotifygõ…"</string>
+    <string name="spotify_connected_as">"Üendõd: %1$s"</string>
+    <string name="spotify_connected">"Üendõd"</string>
+    <string name="spotify_disconnect">"Katkõst"</string>
+    <string name="spotify_save_destination">"Tallõmiz sihtkōž"</string>
+    <string name="spotify_liked_songs">"Liked Songs (Mīeldõd lould)"</string>
+    <string name="spotify_playlist_selected">"Nimkīer: %1$s"</string>
+    <string name="spotify_choose_destination">"Valī tallõmiz sihtkōž"</string>
+    <string name="spotify_loading_playlists">"Lādõb nimkīeridi…"</string>
+    <string name="spotify_no_editable_playlists">"Mūutõbõdi nimkīeridi äb līedõ."</string>
+    <string name="spotify_advanced_client_id">"Täpsõm: umā Client ID"</string>
+    <string name="spotify_custom_client_id_active">"Kāzutõs umā Client ID"</string>
+    <string name="spotify_default_client_id_active">"Kāzutõs äpi vaigimiži Client ID"</string>
+    <string name="spotify_client_id_missing">"Client ID pūdub. Kīerõt umā võti tānõ."</string>
+    <string name="spotify_client_id_dialog_title">"Spotify Client ID"</string>
+    <string name="spotify_client_id_hint">"Spotify Client ID"</string>
+    <string name="spotify_redirect_uri_label">"Redirect URI Spotify Dashboard jāoks:"</string>
+    <string name="spotify_copy_redirect_uri">"Kopīer"</string>
+    <string name="spotify_redirect_uri_copied">"Redirect URI kopīeritõd"</string>
+    <string name="spotify_auth_success">"Spotify üendõd!"</string>
+    <string name="spotify_auth_failed">"Spotify sīžõlūgimõn äb õnnõstõn: %1$s"</string>
+    <string name="spotify_missing_client_id_error">"Spotify Client ID pūdub"</string>
+    <string name="spotify_save_action">"Tallõ"</string>
+    <string name="spotify_saved_action">"Tallõtõd"</string>
+    <string name="spotify_toast_saved">"Tallõtõd Spotifyõ!"</string>
+    <string name="spotify_toast_already_saved">"Jūba Spotifys tallõtõd"</string>
+    <string name="spotify_toast_playlist_missing">"Valī ežmõks Sādimizis nimkīer"</string>
+    <string name="spotify_toast_save_failed">"Spotifyõ tallõmõn äb õnnõstõn"</string>
+    <string name="spotify_refresh_playlists">"Ūstiz lēdõ nimkīeridi"</string>
 </resources>

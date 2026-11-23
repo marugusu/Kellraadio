@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -46,6 +47,10 @@ fun SongInfoSheet(
     streamUrl: String,    // UUS
     info: SongAdditionalInfo,
     isLoadingLyrics: Boolean = false,
+    showSpotifySaveButton: Boolean = false,
+    isSpotifyTrackSaved: Boolean = false,
+    isSpotifySaveInProgress: Boolean = false,
+    onSaveToSpotify: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val stationColor = StationArtworkUtils.getStationColor(stationName)
@@ -92,6 +97,10 @@ fun SongInfoSheet(
             streamUrl = streamUrl,
             info = info,
             isLoadingLyrics = isLoadingLyrics,
+            showSpotifySaveButton = showSpotifySaveButton,
+            isSpotifyTrackSaved = isSpotifyTrackSaved,
+            isSpotifySaveInProgress = isSpotifySaveInProgress,
+            onSaveToSpotify = onSaveToSpotify,
             onImageStateChange = { state -> imageState = state }
         )
     }
@@ -107,6 +116,10 @@ fun SongInfoContent(
     streamUrl: String,
     info: SongAdditionalInfo,
     isLoadingLyrics: Boolean = false,
+    showSpotifySaveButton: Boolean = false,
+    isSpotifyTrackSaved: Boolean = false,
+    isSpotifySaveInProgress: Boolean = false,
+    onSaveToSpotify: () -> Unit = {},
     modifier: Modifier = Modifier,
     onImageStateChange: ((AsyncImagePainter.State) -> Unit)? = null
 ) {
@@ -222,8 +235,21 @@ fun SongInfoContent(
                 icon = Icons.Default.MusicNote,
                 label = "Spotify",
                 color = Color(0xFF1DB954),
-                onClick = { openSpotifySearch(context, "$artist $title") }
+                onClick = { openSpotifyTrack(context, info.spotifyTrackId, "$artist $title") }
             )
+            if (showSpotifySaveButton) {
+                ActionButton(
+                    icon = if (isSpotifyTrackSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    label = if (isSpotifyTrackSaved) {
+                        stringResource(R.string.spotify_saved_action)
+                    } else {
+                        stringResource(R.string.spotify_save_action)
+                    },
+                    color = Color(0xFF1DB954),
+                    isLoading = isSpotifySaveInProgress,
+                    onClick = onSaveToSpotify
+                )
+            }
             ActionButton(
                 icon = Icons.Default.PlayCircleOutline,
                 label = "YouTube",
@@ -298,11 +324,12 @@ fun ActionButton(
     icon: ImageVector,
     label: String,
     color: Color,
+    isLoading: Boolean = false,
     onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier.clickable(enabled = !isLoading, onClick = onClick)
     ) {
         Surface(
             color = color.copy(alpha = 0.2f),
@@ -311,11 +338,25 @@ fun ActionButton(
             border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(imageVector = icon, contentDescription = label, tint = color, modifier = Modifier.size(20.dp))
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = color,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else {
+                    Icon(imageVector = icon, contentDescription = label, tint = color, modifier = Modifier.size(20.dp))
+                }
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -345,6 +386,10 @@ fun SongInfoContentLandscape(
     title: String,
     stationName: String,
     info: SongAdditionalInfo,
+    showSpotifySaveButton: Boolean = false,
+    isSpotifyTrackSaved: Boolean = false,
+    isSpotifySaveInProgress: Boolean = false,
+    onSaveToSpotify: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -420,16 +465,75 @@ fun SongInfoContentLandscape(
                 // Nupud, joondatud keskele
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ActionButton(Icons.Default.MusicNote, "Spotify", Color(0xFF1DB954)) { openSpotifySearch(context, "$artist $title") }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    ActionButton(Icons.Default.PlayCircleOutline, "YouTube", Color(0xFFFF0000)) { openYoutubeSearch(context, "$artist $title") }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    ActionButton(Icons.Default.Share, stringResource(R.string.action_share), MaterialTheme.colorScheme.primary) { shareSongInfo(context, artist, title, stationName, "", "", info) }
+                    ActionButton(Icons.Default.MusicNote, "Spotify", Color(0xFF1DB954)) {
+                        openSpotifyTrack(context, info.spotifyTrackId, "$artist $title")
+                    }
+                    if (showSpotifySaveButton) {
+                        ActionButton(
+                            icon = if (isSpotifyTrackSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            label = if (isSpotifyTrackSaved) {
+                                stringResource(R.string.spotify_saved_action)
+                            } else {
+                                stringResource(R.string.spotify_save_action)
+                            },
+                            color = Color(0xFF1DB954),
+                            isLoading = isSpotifySaveInProgress,
+                            onClick = onSaveToSpotify
+                        )
+                    }
+                    ActionButton(Icons.Default.PlayCircleOutline, "YouTube", Color(0xFFFF0000)) {
+                        openYoutubeSearch(context, "$artist $title")
+                    }
+                    ActionButton(Icons.Default.Share, stringResource(R.string.action_share), MaterialTheme.colorScheme.primary) {
+                        shareSongInfo(context, artist, title, stationName, "", "", info)
+                    }
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun SongInfoContentPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        SongInfoContent(
+            artist = "Curly Strings",
+            title = "Kauges külas",
+            stationName = "Raadio Elmar",
+            bitrate = "128 kbps",
+            streamUrl = "https://example.com/stream",
+            info = SongAdditionalInfo(
+                album = "Üle ilma",
+                year = "2014",
+                genre = "Folk",
+                spotifyTrackId = "12345"
+            ),
+            showSpotifySaveButton = true,
+            isSpotifyTrackSaved = false
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12, widthDp = 640, heightDp = 320)
+@Composable
+private fun SongInfoContentLandscapePreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        SongInfoContentLandscape(
+            artist = "Curly Strings",
+            title = "Kauges külas",
+            stationName = "Raadio Elmar",
+            info = SongAdditionalInfo(
+                album = "Üle ilma",
+                year = "2014",
+                genre = "Folk",
+                spotifyTrackId = "12345"
+            ),
+            showSpotifySaveButton = true,
+            isSpotifyTrackSaved = true
+        )
     }
 }

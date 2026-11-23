@@ -95,6 +95,7 @@ fun RecordingsScreen(
     modifier: Modifier = Modifier
 ) {
     val historyItems by repository.historyItems.collectAsState(initial = emptyList())
+    val spotifyState by app.radiorecalarm.spotify.SpotifyRepository.uiState.collectAsState()
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -333,7 +334,7 @@ fun RecordingsScreen(
 
                                         if (entry.kind == RecordingKind.TRACK &&
                                             entry.artist.isNotBlank() &&
-                                            (entry.lyrics.isNullOrBlank() || entry.coverArtFile == null)
+                                            (entry.lyrics.isNullOrBlank() || entry.coverArtFile == null || (spotifyState.isConnected && initialInfo.spotifyTrackId == null))
                                         ) {
                                             scope.launch {
                                                 isLyricsLoading = true
@@ -345,7 +346,10 @@ fun RecordingsScreen(
                                                             album = initialInfo.album ?: fetched.album,
                                                             year = initialInfo.year ?: fetched.year,
                                                             genre = initialInfo.genre ?: fetched.genre,
-                                                            trackNumber = initialInfo.trackNumber ?: fetched.trackNumber
+                                                            trackNumber = initialInfo.trackNumber ?: fetched.trackNumber,
+                                                            durationMs = initialInfo.durationMs ?: fetched.durationMs,
+                                                            spotifyTrackId = fetched.spotifyTrackId ?: initialInfo.spotifyTrackId,
+                                                            spotifyTrackUri = fetched.spotifyTrackUri ?: initialInfo.spotifyTrackUri
                                                         )
                                                     }
                                                 }
@@ -426,6 +430,12 @@ fun RecordingsScreen(
     }
 
     if (sheetSongInfo != null) {
+        val currentTrackId = sheetSongInfo?.spotifyTrackId
+        LaunchedEffect(currentTrackId, spotifyState.isConnected) {
+            if (spotifyState.isConnected && !currentTrackId.isNullOrBlank()) {
+                app.radiorecalarm.spotify.SpotifyRepository.checkTrackSaved(currentTrackId)
+            }
+        }
         ModalBottomSheet(
             onDismissRequest = { sheetSongInfo = null },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -440,6 +450,14 @@ fun RecordingsScreen(
                 streamUrl = "",
                 info = sheetSongInfo!!,
                 isLoadingLyrics = isLyricsLoading,
+                showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
+                isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
+                isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
+                onSaveToSpotify = {
+                    scope.launch {
+                        saveTrackToSpotifyWithFeedback(context, currentTrackId)
+                    }
+                },
                 onDismiss = { sheetSongInfo = null }
             )
         }
