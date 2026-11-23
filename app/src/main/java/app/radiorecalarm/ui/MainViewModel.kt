@@ -248,8 +248,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.Default) {
             stationRepository.allStations.collect { stations ->
                 val allCategories = stations
-                    .filter { !it.isUserStation && it.category.isNotBlank() }
-                    .map { it.category }
+                    .filter { !(it.isUserStation && it.category.trim().equals(StationListFilter.CATEGORY_MY, ignoreCase = true)) }
+                    .map { it.category.trim() }
+                    .filter { it.isNotBlank() }
                     .distinct()
                     .sorted()
                 _uiState.update { currentState ->
@@ -406,6 +407,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             currentState.copy(selectedSubCategories = newSet)
         }
         prefs.edit().putStringSet("last_sub_categories", updatedSet).apply()
+    }
+
+    fun setSubCategories(subCategories: Set<String>) {
+        if (_uiState.value.selectedSubCategories == subCategories) return
+        _uiState.update { it.copy(selectedSubCategories = subCategories) }
+        prefs.edit().putStringSet("last_sub_categories", subCategories).apply()
     }
 
     fun onStationClicked(station: RadioStation) {
@@ -707,6 +714,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val currentCat = _uiState.value.selectedCategory
             val currentSubCategories = _uiState.value.selectedSubCategories
             val staysVisibleInCurrentTab = currentCat == StationListFilter.CATEGORY_ALL ||
+                currentCat == StationListFilter.CATEGORY_MY ||
                 (trimmedCountry.isNotEmpty() && currentCat == trimmedCountry)
             val visibleUnderSubFilter = currentSubCategories.isEmpty() ||
                 (trimmedCategory.isNotEmpty() && currentSubCategories.contains(trimmedCategory))

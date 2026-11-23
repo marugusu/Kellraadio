@@ -99,7 +99,9 @@ class StationListFilterTest {
     @Test
     fun buildSubCategories_ignoresLegacyMyOnUserStationsAndRespectsCustomOrder() {
         assertTrue(StationListFilter.buildSubCategories("Favorites", sampleStations).isEmpty())
-        assertTrue(StationListFilter.buildSubCategories("My", sampleStations).isEmpty())
+        assertEquals(listOf("Jazz"), StationListFilter.buildSubCategories("My", sampleStations))
+        assertFalse(StationListFilter.isCountryCategory("My"))
+        assertTrue(StationListFilter.isCountryCategory("EE"))
 
         val eeSubs = StationListFilter.buildSubCategories("EE", sampleStations)
         assertFalse(eeSubs.contains("My"))
@@ -108,6 +110,11 @@ class StationListFilterTest {
         val allSubs = StationListFilter.buildSubCategories("All", sampleStations)
         assertFalse(allSubs.contains("My"))
         assertEquals(listOf("ERR", "Jazz", "Sky", "Uudised"), allSubs)
+
+        val userWithoutCustomSubs = sampleStations.map {
+            if (it.isUserStation) it.copy(category = "My") else it
+        }
+        assertTrue(StationListFilter.buildSubCategories("My", userWithoutCustomSubs).isEmpty())
     }
 
     @Test
@@ -127,11 +134,19 @@ class StationListFilterTest {
         )
         assertEquals(listOf(2, 5), eeFiltered.map { it.id })
 
-        val myStations = StationListFilter.filterAndSortStations(
+        val myAllStations = StationListFilter.filterAndSortStations(
             stations = sampleStations,
             category = StationListFilter.CATEGORY_MY,
-            subCategories = setOf("Jazz")
+            subCategories = emptySet()
         )
-        assertEquals(listOf(4, 5), myStations.map { it.id })
+        assertEquals(listOf(4, 5), myAllStations.map { it.id })
+
+        val myFilteredStations = StationListFilter.filterAndSortStations(
+            stations = sampleStations,
+            category = StationListFilter.CATEGORY_MY,
+            subCategories = setOf("Jazz", "Sky")
+        )
+        // Only user stations matching selected subgroup are included (curated "Sky" stays excluded)
+        assertEquals(listOf(5), myFilteredStations.map { it.id })
     }
 }
