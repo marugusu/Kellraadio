@@ -56,19 +56,23 @@ object StationListFilter {
         }
     }
 
-    private fun isCountryCategory(category: String): Boolean {
+    fun isCountryCategory(category: String): Boolean {
         return category.length == 2 && category != CATEGORY_MY
     }
 
+    private fun supportsSubCategories(category: String): Boolean {
+        return isCountryCategory(category) || category == CATEGORY_ALL || category == CATEGORY_MY
+    }
+
     fun buildSubCategories(selectedCategory: String, stations: List<RadioStation>): List<String> {
-        if (!isCountryCategory(selectedCategory) && selectedCategory != CATEGORY_ALL) {
+        if (!supportsSubCategories(selectedCategory)) {
             return emptyList()
         }
 
-        val stationsInGroup = if (selectedCategory == CATEGORY_ALL) {
-            stations
-        } else {
-            stations.filter { it.countryCode == selectedCategory }
+        val stationsInGroup = when (selectedCategory) {
+            CATEGORY_ALL -> stations
+            CATEGORY_MY -> stations.filter { it.isUserStation }
+            else -> stations.filter { it.countryCode == selectedCategory }
         }
 
         // Ignoreerime ajaloolist kunstlikku "My" väärtust kasutaja enda jaamadel,
@@ -103,8 +107,7 @@ object StationListFilter {
             else -> stations.filter { it.countryCode == category }
         }
 
-        val supportsSubCategories = isCountryCategory(category) || category == CATEGORY_ALL
-        return if (!supportsSubCategories || subCategories.isEmpty()) {
+        return if (!supportsSubCategories(category) || subCategories.isEmpty()) {
             baseList
         } else {
             baseList.filter { station -> subCategories.contains(station.category.trim()) }

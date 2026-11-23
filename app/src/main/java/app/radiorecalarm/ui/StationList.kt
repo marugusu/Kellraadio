@@ -406,7 +406,7 @@ fun StationList(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     item {
-                        val isCountryCategory = selectedCategory.length == 2
+                        val isCountryCategory = StationListFilter.isCountryCategory(selectedCategory)
                         val flagPrefix = if (isCountryCategory) "${getFlagEmoji(selectedCategory)} " else ""
                         SubFilterPill(
                             label = "$flagPrefix$allLabel",

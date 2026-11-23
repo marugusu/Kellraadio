@@ -176,6 +176,15 @@ fun RaadioEkraan(
         StationListFilter.buildSubCategories(state.selectedCategory, displayStations)
     }
 
+    LaunchedEffect(displayStations, currentSubCategories, state.selectedSubCategories) {
+        if (displayStations.isNotEmpty() && state.selectedSubCategories.isNotEmpty()) {
+            val validSubCategories = state.selectedSubCategories.intersect(currentSubCategories.toSet())
+            if (validSubCategories != state.selectedSubCategories) {
+                mainViewModel.setSubCategories(validSubCategories)
+            }
+        }
+    }
+
     val filteredStations = remember(state.selectedCategory, state.selectedSubCategories, displayStations) {
         StationListFilter.filterAndSortStations(displayStations, state.selectedCategory, state.selectedSubCategories)
     }
