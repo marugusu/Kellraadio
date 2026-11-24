@@ -47,7 +47,12 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
     val showManualDialog = _showManualDialog.asStateFlow()
 
     // UUS: Hoiab andmeid dialoogi eeltäitmiseks
-    data class ManualDialogData(val name: String = "", val url: String = "", val country: String = "")
+    data class ManualDialogData(
+        val name: String = "",
+        val url: String = "",
+        val country: String = "",
+        val iconUrl: String = ""
+    )
     private val _manualDialogInitialData = MutableStateFlow(ManualDialogData())
     val manualDialogInitialData = _manualDialogInitialData.asStateFlow()
 
@@ -127,7 +132,8 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
             _manualDialogInitialData.value = ManualDialogData(
                 name = station.name,
                 url = station.urlResolved,
-                country = station.countryCode
+                country = station.countryCode,
+                iconUrl = station.favicon
             )
         } else {
             _manualDialogInitialData.value = ManualDialogData()

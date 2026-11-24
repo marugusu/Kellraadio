@@ -160,27 +160,20 @@ private fun StationActionSheetContent(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(
-                        1.dp,
-                        if (station.isFavorite) MaterialTheme.colorScheme.primary.copy(alpha = 0.55f) else MaterialTheme.colorScheme.outline,
-                        RoundedCornerShape(10.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = StationArtworkUtils.getStationInitials(station.name),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1
-                )
-            }
+            StationLogoBadge(
+                stationName = station.name,
+                iconUrl = station.iconUrl,
+                size = 44.dp,
+                cornerRadius = 10.dp,
+                borderColor = if (station.isFavorite) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                } else {
+                    MaterialTheme.colorScheme.outline
+                },
+                fallbackBackground = MaterialTheme.colorScheme.surfaceVariant,
+                fallbackTextColor = MaterialTheme.colorScheme.primary,
+                fallbackFontSize = 12.sp
+            )
 
             Spacer(modifier = Modifier.width(14.dp))
 

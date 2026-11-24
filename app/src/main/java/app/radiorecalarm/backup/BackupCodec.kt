@@ -38,7 +38,8 @@ data class BackupStation(
     val category: String = "",
     val countryCode: String = "",
     val isFavorite: Boolean = true,
-    val favoriteOrder: Int = 0
+    val favoriteOrder: Int = 0,
+    val iconUrl: String = ""
 )
 
 @Serializable
@@ -146,7 +147,8 @@ object BackupCodec {
                 category = station.category,
                 countryCode = station.countryCode,
                 isFavorite = station.isFavorite,
-                favoriteOrder = station.favoriteOrder
+                favoriteOrder = station.favoriteOrder,
+                iconUrl = station.iconUrl
             )
         }
         val favoriteUrls = stations.filter { it.isFavorite && !it.isUserStation }.map { station ->
@@ -256,7 +258,8 @@ object BackupCodec {
                 isFavorite = station.isFavorite,
                 isUserStation = true,
                 favoriteOrder = station.favoriteOrder,
-                uuid = uuidProvider()
+                uuid = uuidProvider(),
+                iconUrl = station.iconUrl
             )
         }
     }

@@ -6,7 +6,9 @@
     "isActive": true,
     "priority": 1510,
     "category": "Folk",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "iconUrl": "file:///android_asset/logos/st_29.webp",
+    "sourceIconUrl": "https://schlagerparadies.de/images/rsp_setup/apple-icon-180x180.png"
   },
   {
     "id": 30,
@@ -15,7 +17,9 @@
     "isActive": true,
     "priority": 1520,
     "category": "Pop",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "iconUrl": "file:///android_asset/logos/st_30.webp",
+    "sourceIconUrl": "https://www.antenne.de/logos/station-antenne-bayern/apple-touch-icon.png"
   },
   {
     "id": 31,
@@ -24,7 +28,9 @@
     "isActive": true,
     "priority": 1530,
     "category": "Rock",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "iconUrl": "file:///android_asset/logos/st_31.webp",
+    "sourceIconUrl": "https://img.nm-ovp.nelonenmedia.fi/v1/novelist?src=/files/misc_images/2024-08/RadioRock_2560x2560.jpg"
   },
   {
     "id": 32,
@@ -33,7 +39,9 @@
     "isActive": true,
     "priority": 1540,
     "category": "YLE",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "iconUrl": "file:///android_asset/logos/st_32.webp",
+    "sourceIconUrl": "https://images.cdn.yle.fi/image/upload/c_scale,h_180,w_180/yle-areena-app.png"
   },
   {
     "id": 33,
@@ -42,7 +50,9 @@
     "isActive": true,
     "priority": 1550,
     "category": "YLE",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "iconUrl": "file:///android_asset/logos/st_33.webp",
+    "sourceIconUrl": "https://images.cdn.yle.fi/image/upload/c_scale,h_180,w_180/yle-areena-app.png"
   },
   {
     "id": 34,
@@ -51,7 +61,9 @@
     "isActive": true,
     "priority": 1560,
     "category": "YLE",
-    "countrycode": "FI"
+    "countrycode": "FI",
+    "iconUrl": "file:///android_asset/logos/st_34.webp",
+    "sourceIconUrl": "https://images.cdn.yle.fi/image/upload/c_scale,h_180,w_180/yle-areena-app.png"
   },
   {
     "id": 36,
@@ -60,7 +72,9 @@
     "isActive": true,
     "priority": 1580,
     "category": "BBC",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_36.webp",
+    "sourceIconUrl": "https://sounds.files.bbci.co.uk/3.12.0/networks/bbc_radio_one/blocks-colour_600x600.png"
   },
   {
     "id": 37,
@@ -69,7 +83,9 @@
     "isActive": true,
     "priority": 1590,
     "category": "BBC",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_37.webp",
+    "sourceIconUrl": "https://sounds.files.bbci.co.uk/3.12.0/networks/bbc_radio_four/blocks-colour_600x600.png"
   },
   {
     "id": 58,
@@ -78,7 +94,9 @@
     "isActive": true,
     "priority": 1640,
     "category": "Pop",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_58.webp",
+    "sourceIconUrl": "https://www.capitalfm.com/assets_v4r/capital/img/favicon-196x196.png"
   },
   {
     "id": 60,
@@ -87,7 +105,9 @@
     "isActive": true,
     "priority": 1660,
     "category": "Old",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_60.webp",
+    "sourceIconUrl": "https://rokitradio.com/images/channels/comedy_gold.jpg"
   },
   {
     "id": 61,
@@ -96,7 +116,9 @@
     "isActive": true,
     "priority": 1670,
     "category": "70s",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_61.webp",
+    "sourceIconUrl": "https://www.heart.co.uk/assets_v4r/heart/img/favicon-196x196.png"
   },
   {
     "id": 62,
@@ -105,7 +127,9 @@
     "isActive": true,
     "priority": 1680,
     "category": "80s",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_62.webp",
+    "sourceIconUrl": "https://www.heart.co.uk/assets_v4r/heart/img/favicon-196x196.png"
   },
   {
     "id": 63,
@@ -114,7 +138,9 @@
     "isActive": true,
     "priority": 1690,
     "category": "90s",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_63.webp",
+    "sourceIconUrl": "https://www.heart.co.uk/assets_v4r/heart/img/favicon-196x196.png"
   },
   {
     "id": 64,
@@ -123,7 +149,9 @@
     "isActive": true,
     "priority": 1700,
     "category": "News",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "iconUrl": "file:///android_asset/logos/st_64.webp",
+    "sourceIconUrl": "https://api.ardmediathek.de/image-service/images/urn:ard:image:b366004f6196d70c?w=512"
   },
   {
     "id": 67,
@@ -132,7 +160,9 @@
     "isActive": true,
     "priority": 1730,
     "category": "Pop",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "iconUrl": "file:///android_asset/logos/st_67.webp",
+    "sourceIconUrl": "https://www.rtlradio.de/assets/icons/icon-180x180.png"
   },
   {
     "id": 68,
@@ -141,7 +171,9 @@
     "isActive": true,
     "priority": 1740,
     "category": "News",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "iconUrl": "file:///android_asset/logos/st_68.webp",
+    "sourceIconUrl": "https://www.br.de/layout/img/wellen/br24-radio-teaser-100~_v-img__16__9__xl_-d31c35f8186ebeb80b0cd843a7c267a0e0c81647.png?version=38738"
   },
   {
     "id": 69,
@@ -150,7 +182,9 @@
     "isActive": true,
     "priority": 1750,
     "category": "Schlager",
-    "countrycode": "DE"
+    "countrycode": "DE",
+    "iconUrl": "file:///android_asset/logos/st_69.webp",
+    "sourceIconUrl": "https://www.ballermann-radio.de/wp-content/uploads/2016/05/BMR_banner300x300px.jpg"
   },
   {
     "id": 50,
@@ -159,6 +193,8 @@
     "isActive": true,
     "priority": 1770,
     "category": "Xmas",
-    "countrycode": "GB"
+    "countrycode": "GB",
+    "iconUrl": "file:///android_asset/logos/st_50.webp",
+    "sourceIconUrl": "https://www.christmasvinyls.store/cdn/shop/files/gpt-image-2_cambia_la_frase_let_it_spin_por_Christmas_Vinyls._el_bode_de_color_beige_que_rod-0-removebg-preview.png?v=1786573937&width=500"
   }
 ]

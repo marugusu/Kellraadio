@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [RadioStation::class, HistoryItem::class, Alarm::class], version = 10, exportSchema = false)
+@Database(entities = [RadioStation::class, HistoryItem::class, Alarm::class], version = 11, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -35,6 +35,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // MIGRATSIOON: Lisame jaamadele iconUrl tulba logode jaoks
+        @androidx.annotation.VisibleForTesting(otherwise = androidx.annotation.VisibleForTesting.PRIVATE)
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE stations ADD COLUMN iconUrl TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -42,7 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "raadio_database"
                 )
-                    .addMigrations(MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -93,6 +93,7 @@ class RadioService : Service() {
 
     private var metadataPushJob: kotlinx.coroutines.Job? = null
     private var pendingMetadataJob: kotlinx.coroutines.Job? = null
+    private var stationArtworkJob: kotlinx.coroutines.Job? = null
     private var bufferingWatchdogJob: kotlinx.coroutines.Job? = null
     private var idleTimeoutJob: kotlinx.coroutines.Job? = null
     private var activeDataSource: RetryingHttpDataSource? = null
@@ -1198,6 +1199,7 @@ class RadioService : Service() {
         currentArtist = lastArtist
         currentTitle = lastTitle
         currentStationBitmap = app.radiorecalarm.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+        refreshStationBitmapAsync(currentStationName, currentStreamUrl)
 
         if (currentStreamUrl.isNotEmpty()) {
             val initialMeta = metadataHelper.buildMediaMetadata(
@@ -1326,6 +1328,7 @@ class RadioService : Service() {
                     changed = true
                 }
                 if (changed) {
+                    refreshStationBitmapAsync(currentStationName, currentStreamUrl)
                     updateNotification()
                     updateExternalDevices(currentTitle, currentArtist)
                     updateWidget()
@@ -1442,6 +1445,9 @@ class RadioService : Service() {
             notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
         }
         currentStationBitmap = app.radiorecalarm.ui.StationArtworkUtils.generateDarkStationBitmap(currentStationName)
+        if (!isLocal) {
+            refreshStationBitmapAsync(currentStationName, currentStreamUrl)
+        }
 
         currentArtist = if (isLocal && trackArtistOverride != null) trackArtistOverride else getString(R.string.live_broadcast)
         currentTitle = if (isLocal && !trackTitleOverride.isNullOrBlank()) trackTitleOverride else currentStationName
@@ -1511,6 +1517,34 @@ class RadioService : Service() {
         player.prepare()
         player.play()
         updateExternalDevices(currentTitle, currentArtist)
+    }
+
+    private fun refreshStationBitmapAsync(stationName: String, streamUrl: String) {
+        if (stationName.isBlank() || PlaybackStatusSync.isLocalStreamUri(streamUrl)) return
+        stationArtworkJob?.cancel()
+        stationArtworkJob = serviceScope.launch(Dispatchers.IO) {
+            val cachedMatch = cachedStations.find {
+                (streamUrl.isNotBlank() && it.url == streamUrl) || it.name == stationName
+            }
+            val dbStation = cachedMatch ?: run {
+                val dao = AppDatabase.getDatabase(applicationContext).radioStationDao()
+                dao.getStationByName(stationName)
+                    ?: if (streamUrl.isNotBlank()) dao.getAllActiveStationsSync().find { it.url == streamUrl } else null
+            }
+            val iconUrl = dbStation?.iconUrl.orEmpty()
+            if (iconUrl.isBlank()) return@launch
+            val loadedBitmap = app.radiorecalarm.ui.StationArtworkUtils.loadStationNotificationBitmap(
+                context = applicationContext,
+                stationName = stationName,
+                iconUrl = iconUrl
+            )
+            withContext(Dispatchers.Main) {
+                if (currentStationName == stationName && currentStreamUrl == streamUrl) {
+                    currentStationBitmap = loadedBitmap
+                    updateNotification()
+                }
+            }
+        }
     }
 
     private fun updateNotification() {

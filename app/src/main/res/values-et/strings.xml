@@ -313,4 +313,5 @@
     <string name="action_reorder">Muuda järjekorda</string>
     <string name="action_done">Valmis</string>
     <string name="reorder_mode_hint">Lohista jaamad soovitud järjekorda</string>
+    <string name="station_icon_url">Logo URL (valikuline)</string>
 </resources>

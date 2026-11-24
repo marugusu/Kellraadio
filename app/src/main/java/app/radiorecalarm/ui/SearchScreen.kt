@@ -38,7 +38,7 @@ fun SearchScreen(
     activeUrl: String,
     isPlayerPlaying: Boolean,
     onPlayTest: (String, String, Boolean) -> Unit,
-    onSaveStation: (String, String, String, String) -> Unit,
+    onSaveStation: (String, String, String, String, String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(repository))
 ) {
@@ -270,12 +270,13 @@ fun SearchScreen(
             initialUrl = manualDialogInitialData.url,
             initialCountryCode = manualDialogInitialData.country,
             initialSubgroup = "",
+            initialIconUrl = manualDialogInitialData.iconUrl,
             allCountries = viewModel.countryListForManual(),
             allSubgroups = allCategories,
             onDismiss = { viewModel.closeManualAddDialog() },
             onTest = { name, url -> onPlayTest(name.ifBlank { unknownName }, url, false) },
-            onSave = { name, url, country, category ->
-                onSaveStation(name, url, country, category)
+            onSave = { name, url, country, category, iconUrl ->
+                onSaveStation(name, url, country, category, iconUrl)
                 viewModel.closeManualAddDialog()
             }
         )
@@ -301,23 +302,23 @@ fun SearchResultItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onPlay,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (isPlaying) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = if (isPlaying) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Icon(
-                    // MUUDATUS: Stop -> Pause
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    null
-                )
-            }
+            StationLogoBadge(
+                stationName = station.name,
+                iconUrl = station.favicon,
+                size = 40.dp,
+                cornerRadius = 8.dp,
+                borderColor = if (isPlaying) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outline
+                },
+                fallbackBackground = MaterialTheme.colorScheme.surface,
+                fallbackTextColor = if (isPlaying) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -334,6 +335,23 @@ fun SearchResultItem(
                 }
                 Text(text = infoText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            IconButton(
+                onClick = onPlay,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = if (isPlaying) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = if (isPlaying) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    null
+                )
+            }
+            Spacer(modifier = Modifier.width(4.dp))
             IconButton(
                 onClick = {
                     if (!isSaved) {

@@ -152,6 +152,14 @@ fun RaadioEkraan(
     val displayStations = remember(state.stations, state.hideRemoteStations) {
         StationListFilter.visibleStations(state.stations, state.hideRemoteStations)
     }
+    val activeStationIconUrl = remember(displayStations, state.selectedStationId, state.activeStationName, state.activeStreamUrl) {
+        displayStations.find { it.id == state.selectedStationId }?.iconUrl
+            ?: displayStations.find {
+                (state.activeStreamUrl.isNotEmpty() && it.url == state.activeStreamUrl) ||
+                    (state.activeStationName.isNotEmpty() && it.name == state.activeStationName)
+            }?.iconUrl
+            ?: ""
+    }
 
     val favoriteStations = remember(displayStations) {
         StationListFilter.filterAndSortStations(displayStations, StationListFilter.CATEGORY_FAVORITES)
@@ -297,6 +305,7 @@ fun RaadioEkraan(
                                 artist = state.parsedArtist,
                                 title = state.parsedTitle,
                                 stationName = state.activeStationName,
+                                stationIconUrl = activeStationIconUrl,
                                 info = songInfo!!,
                                 showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
                                 isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
@@ -310,7 +319,7 @@ fun RaadioEkraan(
                         }
                     } else {
                         AnimatedVisibility(visible = !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                            SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.background)))
+                            SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, stationIconUrl = activeStationIconUrl, onClick = mainViewModel::openSongInfo, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp), backgroundBrush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.background)))
                         }
                     }
                 }
@@ -335,7 +344,7 @@ fun RaadioEkraan(
             bottomBar = {
                 Column(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
                     AnimatedVisibility(visible = state.currentTab == 0 && showTeaser && !state.showSongInfoSheet, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                        SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, onClick = mainViewModel::openSongInfo)
+                        SongInfoTeaser(info = songInfo, isLoading = isFetchingInfo, artist = state.parsedArtist, title = state.parsedTitle, stationName = state.activeStationName, stationIconUrl = activeStationIconUrl, onClick = mainViewModel::openSongInfo)
                     }
                     if (state.currentTab == 0 && showTeaser && !state.showSongInfoSheet) {
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(brush = Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), Color.Transparent))))
@@ -471,11 +480,12 @@ fun RaadioEkraan(
             initialUrl = stationToEdit.url,
             initialCountryCode = stationToEdit.countryCode,
             initialSubgroup = initialSubgroup,
+            initialIconUrl = stationToEdit.iconUrl,
             allCountries = state.countries,
             allSubgroups = state.allCategories,
             onDismiss = mainViewModel::closeEditStationDialog,
             onTest = { name, url -> mainViewModel.playTestStation("$name (${context.getString(R.string.action_test)})", url) },
-            onSave = { newName, newUrl, newCountry, newCategory -> mainViewModel.updateUserStation(newName, newUrl, newCountry, newCategory) }
+            onSave = { newName, newUrl, newCountry, newCategory, newIconUrl -> mainViewModel.updateUserStation(newName, newUrl, newCountry, newCategory, newIconUrl) }
         )
     }
     if (state.showSongInfoSheet && songInfo != null) {
@@ -490,6 +500,7 @@ fun RaadioEkraan(
                 artist = state.parsedArtist,
                 title = state.parsedTitle,
                 stationName = state.activeStationName,
+                stationIconUrl = activeStationIconUrl,
                 bitrate = state.bitrate,
                 streamUrl = displayStations.find { it.name == state.activeStationName }?.url ?: "",
                 info = songInfo!!,
@@ -601,7 +612,7 @@ fun ContentScreens(
                     viewModel.playTestStation(displayName, url)
                 }
             },
-            onSaveStation = { name, url, country, category -> viewModel.saveUserStation(name, url, country, category) },
+            onSaveStation = { name, url, country, category, iconUrl -> viewModel.saveUserStation(name, url, country, category, iconUrl) },
             viewModel = searchViewModel
         )
         4 -> {

@@ -117,19 +117,48 @@ fun PlayerControls(
                 modifier = Modifier.padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                if (parsedTitle.isNotBlank()) {
-                    Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
-                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val activeIconUrl = selectedStation?.iconUrl.orEmpty()
+                    if (selectedStation != null || activeStationName.isNotEmpty()) {
+                        StationLogoBadge(
+                            stationName = activeStationName.ifEmpty { selectedStation?.name.orEmpty() },
+                            iconUrl = activeIconUrl,
+                            size = 40.dp,
+                            cornerRadius = 8.dp,
+                            borderColor = if (isPlaying) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                            } else {
+                                MaterialTheme.colorScheme.outline
+                            },
+                            fallbackBackground = MaterialTheme.colorScheme.surfaceVariant,
+                            fallbackTextColor = if (isPlaying) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
 
-                val displayName = if (parsedArtist.isNotBlank()) parsedArtist
-                else if (parsedTitle.isNotBlank()) stringResource(R.string.live_broadcast)
-                else if (activeStationName.isNotEmpty()) activeStationName
-                else selectedStation?.name ?: stringResource(R.string.select_station)
+                    Column(modifier = Modifier.weight(1f)) {
+                        if (parsedTitle.isNotBlank()) {
+                            Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
+                        }
 
-                Text(text = displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = artistColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
+                        val displayName = if (parsedArtist.isNotBlank()) parsedArtist
+                        else if (parsedTitle.isNotBlank()) stringResource(R.string.live_broadcast)
+                        else if (activeStationName.isNotEmpty()) activeStationName
+                        else selectedStation?.name ?: stringResource(R.string.select_station)
 
-                if (parsedExtra.isNotBlank()) {
-                    Text(text = parsedExtra, style = MaterialTheme.typography.titleMedium, color = extraColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
+                        Text(text = displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = artistColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
+
+                        if (parsedExtra.isNotBlank()) {
+                            Text(text = parsedExtra, style = MaterialTheme.typography.titleMedium, color = extraColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(2.dp))

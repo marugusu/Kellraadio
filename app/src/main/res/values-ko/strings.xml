@@ -313,4 +313,5 @@
     <string name="action_reorder">순서 변경</string>
     <string name="action_done">완료</string>
     <string name="reorder_mode_hint">드래그하여 방송국 순서를 변경하세요</string>
+    <string name="station_icon_url">로고 URL (선택 사항)</string>
 </resources>

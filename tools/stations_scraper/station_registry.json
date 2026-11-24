@@ -5,7 +5,8 @@
     "category": "ERR",
     "priority": 1010,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/vikerraadiokorge.mp3"
+    "fallback_url": "https://icecast.err.ee/vikerraadiokorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_vikerraadio.webp"
   },
   "raadio_2": {
     "id": 2,
@@ -13,7 +14,8 @@
     "category": "ERR",
     "priority": 1020,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/raadio2korge.mp3"
+    "fallback_url": "https://icecast.err.ee/raadio2korge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_raadio_2.webp"
   },
   "klassikaraadio": {
     "id": 3,
@@ -21,7 +23,8 @@
     "category": "ERR",
     "priority": 1030,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/klassikaraadiokorge.mp3"
+    "fallback_url": "https://icecast.err.ee/klassikaraadiokorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_klassikaraadio.webp"
   },
   "klara_klassika": {
     "id": 4,
@@ -29,7 +32,8 @@
     "category": "ERR",
     "priority": 1040,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/klaraklassikakorge.mp3"
+    "fallback_url": "https://icecast.err.ee/klaraklassikakorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_klara_klassika.webp"
   },
   "klara_nostalgia": {
     "id": 5,
@@ -37,7 +41,8 @@
     "category": "ERR",
     "priority": 1050,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/klaranostalgiakorge.mp3"
+    "fallback_url": "https://icecast.err.ee/klaranostalgiakorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_klara_nostalgia.webp"
   },
   "klara_meditatsioon": {
     "id": 27,
@@ -45,7 +50,8 @@
     "category": "ERR",
     "priority": 1060,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/klarameditatsioonkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/klarameditatsioonkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_klara_meditatsioon.webp"
   },
   "klara_jazz": {
     "id": 6,
@@ -53,7 +59,8 @@
     "category": "ERR",
     "priority": 1070,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/klarajazzkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/klarajazzkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_klara_jazz.webp"
   },
   "r2_chill": {
     "id": 21,
@@ -61,7 +68,8 @@
     "category": "ERR",
     "priority": 1080,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/r2chillkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/r2chillkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_r2_chill.webp"
   },
   "r2_rock": {
     "id": 20,
@@ -69,7 +77,8 @@
     "category": "ERR",
     "priority": 1090,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/r2rockkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/r2rockkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_r2_rock.webp"
   },
   "r2_eesti": {
     "id": 22,
@@ -77,7 +86,8 @@
     "category": "ERR",
     "priority": 1100,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/r2eestikorge.mp3"
+    "fallback_url": "https://icecast.err.ee/r2eestikorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_r2_eesti.webp"
   },
   "r2_music": {
     "id": 23,
@@ -85,7 +95,8 @@
     "category": "ERR",
     "priority": 1110,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/r2musickorge.mp3"
+    "fallback_url": "https://icecast.err.ee/r2musickorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_r2_music.webp"
   },
   "r2_rap": {
     "id": 24,
@@ -93,7 +104,8 @@
     "category": "ERR",
     "priority": 1120,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/r2pkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/r2pkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_r2_rap.webp"
   },
   "r2_pop": {
     "id": 25,
@@ -101,7 +113,8 @@
     "category": "ERR",
     "priority": 1130,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/r2popkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/r2popkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_r2_pop.webp"
   },
   "r2_alternatiiv": {
     "id": 26,
@@ -109,7 +122,8 @@
     "category": "ERR",
     "priority": 1140,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/r2alternatiivkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/r2alternatiivkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_r2_alternatiiv.webp"
   },
   "raadio_tallinn": {
     "id": 28,
@@ -117,7 +131,8 @@
     "category": "ERR",
     "priority": 1150,
     "countrycode": "EE",
-    "fallback_url": "https://icecast.err.ee/raadiotallinnkorge.mp3"
+    "fallback_url": "https://icecast.err.ee/raadiotallinnkorge.mp3",
+    "iconUrl": "file:///android_asset/logos/err_raadio_tallinn.webp"
   },
   "elmar": {
     "id": 13,
@@ -125,15 +140,19 @@
     "category": "Duo",
     "priority": 1160,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmar.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmar.aac",
+    "iconUrl": "file:///android_asset/logos/st_13_elmar.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2022/09/elmar-logo-360x360px.jpg"
   },
   "elmar_kuld": {
     "id": 14,
-    "name": "Elmar Kuld",
+    "name": "Elmari Kuld",
     "category": "Duo",
     "priority": 1170,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmarikuld.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmarikuld.aac",
+    "iconUrl": "file:///android_asset/logos/st_14_elmar_kuld.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/09/elmari-kuld.png"
   },
   "elmari_ballaadid": {
     "id": 15,
@@ -141,7 +160,9 @@
     "category": "Duo",
     "priority": 1180,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/EB_elmariballaadid.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/EB_elmariballaadid.aac",
+    "iconUrl": "file:///android_asset/logos/st_15_elmari_ballaadid.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/07/elmari-ballaadid-3000x3000px.png"
   },
   "kuku": {
     "id": 16,
@@ -149,15 +170,29 @@
     "category": "Duo",
     "priority": 1190,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kuku_high.mp3"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kuku_high.mp3",
+    "iconUrl": "file:///android_asset/logos/st_16_kuku.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2022/07/kuku-360x360.png"
   },
-  "duo_rock": {
+  "raadio_duo": {
+    "id": 115,
+    "name": "Raadio Duo",
+    "category": "Duo",
+    "priority": 1195,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/radioduo.aac",
+    "iconUrl": "file:///android_asset/logos/st_115_raadio_duo.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2022/09/raadioduo-logo-360x360px.jpg"
+  },
+  "myhits_rock": {
     "id": 9,
-    "name": "Duo Rock",
+    "name": "MyHits Rock",
     "category": "Duo",
     "priority": 1200,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/rokk.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/MHR_myhitsrock.aac",
+    "iconUrl": "file:///android_asset/logos/st_9_myhits_rock.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/06/myhits-rock-logo.png"
   },
   "duo_country": {
     "id": 12,
@@ -165,7 +200,9 @@
     "category": "Duo",
     "priority": 1210,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/dc_duocountry.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/dc_duocountry.aac",
+    "iconUrl": "file:///android_asset/logos/st_12_duo_country.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/11/duo-country.png"
   },
   "duo_gold": {
     "id": 51,
@@ -173,7 +210,9 @@
     "category": "Duo",
     "priority": 1220,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kuld.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kuld.aac",
+    "iconUrl": "file:///android_asset/logos/st_51_duo_gold.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/09/duo-gold.png"
   },
   "duo_softmix": {
     "id": 52,
@@ -181,7 +220,9 @@
     "category": "Duo",
     "priority": 1230,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/DS_softmix.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/DS_softmix.aac",
+    "iconUrl": "file:///android_asset/logos/st_52_duo_softmix.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/11/duo-softmix.png"
   },
   "duo_party": {
     "id": 53,
@@ -189,7 +230,9 @@
     "category": "Duo",
     "priority": 1240,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/duodance.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/duodance.aac",
+    "iconUrl": "file:///android_asset/logos/st_53_duo_party.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/09/duo-party.png"
   },
   "elmari_tantsuohtu": {
     "id": 54,
@@ -197,7 +240,9 @@
     "category": "Duo",
     "priority": 1250,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmaritantsuohtu.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/elmaritantsuohtu.aac",
+    "iconUrl": "file:///android_asset/logos/st_54_elmari_tantsuohtu.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/09/elmari-tantsu-htu.png"
   },
   "duo_hitmix": {
     "id": 55,
@@ -205,15 +250,19 @@
     "category": "Duo",
     "priority": 1260,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/DHM_hitmix.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/DHM_hitmix.aac",
+    "iconUrl": "file:///android_asset/logos/st_55_duo_hitmix.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/11/duo-logod-1-.png"
   },
-  "duo_dance": {
+  "myhits_dance": {
     "id": 56,
-    "name": "Duo Dance",
+    "name": "MyHits Dance",
     "category": "Duo",
     "priority": 1270,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/md_mhdance.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/md_mhdance.aac",
+    "iconUrl": "file:///android_asset/logos/st_56_myhits_dance.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/06/myhits-dance-logo.png"
   },
   "myhits": {
     "id": 42,
@@ -221,7 +270,19 @@
     "category": "Duo",
     "priority": 1280,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/myhits.mp3"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/myhits.mp3",
+    "iconUrl": "file:///android_asset/logos/st_42_myhits.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/06/myhits-logo.png"
+  },
+  "myhits_kpop": {
+    "id": 116,
+    "name": "MyHits K-Pop",
+    "category": "Duo",
+    "priority": 1285,
+    "countrycode": "EE",
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/MHKPop.aac",
+    "iconUrl": "file:///android_asset/logos/st_116_myhits_kpop.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2026/10/myhits-k-pop.png"
   },
   "duo_christmas": {
     "id": 49,
@@ -229,7 +290,9 @@
     "category": "Duo",
     "priority": 1290,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/christmas.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/christmas.aac",
+    "iconUrl": "file:///android_asset/logos/st_49_duo_christmas.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/10/duo-christmas.png"
   },
   "rock_fm": {
     "id": 7,
@@ -237,7 +300,9 @@
     "category": "Sky",
     "priority": 1300,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/rck"
+    "fallback_url": "https://stream.skymedia.ee/live/rck",
+    "iconUrl": "file:///android_asset/logos/st_7_rock_fm.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Rock-FM.png"
   },
   "retro_fm": {
     "id": 10,
@@ -245,7 +310,9 @@
     "category": "Sky",
     "priority": 1310,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/RETRO"
+    "fallback_url": "https://stream.skymedia.ee/live/RETRO",
+    "iconUrl": "file:///android_asset/logos/st_10_retro_fm.webp",
+    "sourceIconUrl": "https://retrofm.sky.ee/apple-touch-icon.png"
   },
   "retro_fm_eesti": {
     "id": 11,
@@ -253,7 +320,9 @@
     "category": "Sky",
     "priority": 1320,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/retro2.mp3"
+    "fallback_url": "https://stream.skymedia.ee/live/retro2.mp3",
+    "iconUrl": "file:///android_asset/logos/st_11_retro_fm_eesti.webp",
+    "sourceIconUrl": "https://retrofm.sky.ee/apple-touch-icon.png"
   },
   "rock_fm_metal": {
     "id": 8,
@@ -261,7 +330,9 @@
     "category": "Sky",
     "priority": 1330,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/rckmetal"
+    "fallback_url": "https://stream.skymedia.ee/live/rckmetal",
+    "iconUrl": "file:///android_asset/logos/st_8_rock_fm_metal.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Rock-FM.png"
   },
   "legendaarne": {
     "id": 19,
@@ -269,7 +340,9 @@
     "category": "Sky",
     "priority": 1340,
     "countrycode": "EE",
-    "fallback_url": "https://streaming.radio.co/s36a57fb00/listen"
+    "fallback_url": "https://streaming.radio.co/s36a57fb00/listen",
+    "iconUrl": "file:///android_asset/logos/st_19_legendaarne.webp",
+    "sourceIconUrl": "https://sky.ee/apple-touch-icon.png"
   },
   "relax_fm": {
     "id": 57,
@@ -277,7 +350,9 @@
     "category": "Sky",
     "priority": 1350,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/relax"
+    "fallback_url": "https://stream.skymedia.ee/live/relax",
+    "iconUrl": "file:///android_asset/logos/st_57_relax_fm.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Relax-FM-1.png"
   },
   "kiss_fm": {
     "id": 45,
@@ -285,7 +360,9 @@
     "category": "Sky",
     "priority": 1360,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/KISS_AAC"
+    "fallback_url": "https://stream.skymedia.ee/live/KISS_AAC",
+    "iconUrl": "file:///android_asset/logos/st_45_kiss_fm.webp",
+    "sourceIconUrl": "https://kissfm.sky.ee/apple-touch-icon.png"
   },
   "sky_plus": {
     "id": 46,
@@ -293,7 +370,9 @@
     "category": "Sky",
     "priority": 1370,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/SKYPLUS"
+    "fallback_url": "https://stream.skymedia.ee/live/SKYPLUS",
+    "iconUrl": "file:///android_asset/logos/st_46_sky_plus.webp",
+    "sourceIconUrl": "https://skyplus.sky.ee/apple-touch-icon.png"
   },
   "retro_love": {
     "id": 48,
@@ -301,7 +380,9 @@
     "category": "Sky",
     "priority": 1380,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/RetroJ6ulud"
+    "fallback_url": "https://stream.skymedia.ee/live/RetroJ6ulud",
+    "iconUrl": "file:///android_asset/logos/st_48_retro_love.webp",
+    "sourceIconUrl": "https://retrofm.sky.ee/apple-touch-icon.png"
   },
   "retro_disco": {
     "id": 77,
@@ -309,7 +390,9 @@
     "category": "Sky",
     "priority": 1390,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/retro1.mp3"
+    "fallback_url": "https://stream.skymedia.ee/live/retro1.mp3",
+    "iconUrl": "file:///android_asset/logos/st_77_retro_disco.webp",
+    "sourceIconUrl": "https://retrofm.sky.ee/apple-touch-icon.png"
   },
   "big_fm": {
     "id": 78,
@@ -317,7 +400,9 @@
     "category": "Muud",
     "priority": 1400,
     "countrycode": "EE",
-    "fallback_url": "https://sc2.flamebox.org/bigfm-hd"
+    "fallback_url": "https://sc2.flamebox.org/bigfm-hd",
+    "iconUrl": "file:///android_asset/logos/st_78_big_fm.webp",
+    "sourceIconUrl": "https://bigfm.ee/wp-content/uploads/2026/05/BIGfm-Uudiskirja-pais-Facebook-Cover-6.png"
   },
   "raadio_kadi": {
     "id": 17,
@@ -325,7 +410,9 @@
     "category": "Muud",
     "priority": 1401,
     "countrycode": "EE",
-    "fallback_url": "https://edge06.cdn.bitflip.ee:8888/kadi"
+    "fallback_url": "https://edge06.cdn.bitflip.ee:8888/kadi",
+    "iconUrl": "file:///android_asset/logos/st_17_raadio_kadi.webp",
+    "sourceIconUrl": "https://kadi.ee/wp-content/uploads/2022/01/logo-og-1.jpg"
   },
   "aripaev": {
     "id": 18,
@@ -333,7 +420,9 @@
     "category": "Muud",
     "priority": 1410,
     "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/aripaev320-mp3"
+    "fallback_url": "https://ice.leviracloud.eu/aripaev320-mp3",
+    "iconUrl": "file:///android_asset/logos/st_18_aripaev.webp",
+    "sourceIconUrl": "https://www.aripaev.ee/favicons/aripaev/apple-touch-icon-180x180.png"
   },
   "ida": {
     "id": 70,
@@ -341,7 +430,9 @@
     "category": "Muud",
     "priority": 1420,
     "countrycode": "EE",
-    "fallback_url": "https://broadcast.idaidaida.net:8000/stream"
+    "fallback_url": "https://broadcast.idaidaida.net:8000/stream",
+    "iconUrl": "file:///android_asset/logos/st_70_ida.webp",
+    "sourceIconUrl": "https://idaidaida.net/favicons/dark.ico"
   },
   "kaguraadio": {
     "id": 71,
@@ -349,7 +440,9 @@
     "category": "Muud",
     "priority": 1430,
     "countrycode": "EE",
-    "fallback_url": "https://radio.vlevelscdn.net/radio/kaguraadio.stream/playlist.m3u8"
+    "fallback_url": "https://radio.vlevelscdn.net/radio/kaguraadio.stream/playlist.m3u8",
+    "iconUrl": "file:///android_asset/logos/st_71_kaguraadio.webp",
+    "sourceIconUrl": "https://kaguraadio.ee/wp-content/uploads/2019/11/cropped-Kaguraadio-logo4-180x180.jpg"
   },
   "meie_raadio": {
     "id": 72,
@@ -357,7 +450,9 @@
     "category": "Muud",
     "priority": 1440,
     "countrycode": "EE",
-    "fallback_url": "http://78.28.64.87:8000/meieraadio.mp3"
+    "fallback_url": "http://78.28.64.87:8000/meieraadio.mp3",
+    "iconUrl": "file:///android_asset/logos/st_72_meie_raadio.webp",
+    "sourceIconUrl": "https://meieraadio.ee/MRlogo.jpg"
   },
   "raadio_x": {
     "id": 76,
@@ -365,7 +460,9 @@
     "category": "Muud",
     "priority": 1450,
     "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/raadioX320-mp3"
+    "fallback_url": "https://ice.leviracloud.eu/raadioX320-mp3",
+    "iconUrl": "file:///android_asset/logos/st_76_raadio_x.webp",
+    "sourceIconUrl": "https://raadio1.ee/wp-content/themes/raadio1-modern/assets/apple-touch-icon.png?v=1.2.0"
   },
   "xfm": {
     "id": 79,
@@ -373,7 +470,9 @@
     "category": "Muud",
     "priority": 1450,
     "countrycode": "EE",
-    "fallback_url": "https://stream1.rcast.net/73328"
+    "fallback_url": "https://stream1.rcast.net/73328",
+    "iconUrl": "file:///android_asset/logos/st_79_xfm.webp",
+    "sourceIconUrl": "https://xfm.ee/wp-content/uploads/2026/06/facebook-preview-xfm-raadio-compressed.jpg"
   },
   "star_fm": {
     "id": 44,
@@ -381,7 +480,9 @@
     "category": "TV3",
     "priority": 1460,
     "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/star320-mp3"
+    "fallback_url": "https://ice.leviracloud.eu/star320-mp3",
+    "iconUrl": "file:///android_asset/logos/st_44_star_fm.webp",
+    "sourceIconUrl": "https://raadiod.tv3.ee/wp-content/themes/tv3-raadiod/assets/favicons/star-fm/favicon-196x196.png"
   },
   "star_fm_eesti": {
     "id": 73,
@@ -389,7 +490,9 @@
     "category": "TV3",
     "priority": 1470,
     "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/starFMEesti320-mp3"
+    "fallback_url": "https://ice.leviracloud.eu/starFMEesti320-mp3",
+    "iconUrl": "file:///android_asset/logos/st_73_star_fm_eesti.webp",
+    "sourceIconUrl": "https://raadiod.tv3.ee/wp-content/themes/tv3-raadiod/assets/favicons/star-fm/favicon-196x196.png"
   },
   "star_fm_80s": {
     "id": 74,
@@ -397,7 +500,9 @@
     "category": "TV3",
     "priority": 1480,
     "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/StarFM80s"
+    "fallback_url": "https://ice.leviracloud.eu/StarFM80s",
+    "iconUrl": "file:///android_asset/logos/st_74_star_fm_80s.webp",
+    "sourceIconUrl": "https://raadiod.tv3.ee/wp-content/themes/tv3-raadiod/assets/favicons/star-fm/favicon-196x196.png"
   },
   "star_fm_90s": {
     "id": 75,
@@ -405,7 +510,9 @@
     "category": "TV3",
     "priority": 1490,
     "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/StarFM90s"
+    "fallback_url": "https://ice.leviracloud.eu/StarFM90s",
+    "iconUrl": "file:///android_asset/logos/st_75_star_fm_90s.webp",
+    "sourceIconUrl": "https://raadiod.tv3.ee/wp-content/themes/tv3-raadiod/assets/favicons/star-fm/favicon-196x196.png"
   },
   "power_hit_radio": {
     "id": 43,
@@ -413,7 +520,9 @@
     "category": "TV3",
     "priority": 1500,
     "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/phr96-aac?"
+    "fallback_url": "https://ice.leviracloud.eu/phr96-aac?",
+    "iconUrl": "file:///android_asset/logos/st_43_power_hit_radio.webp",
+    "sourceIconUrl": "https://raadiod.tv3.ee/wp-content/themes/tv3-raadiod/assets/favicons/power/favicon-196x196.png"
   },
   "finest_fm": {
     "id": 35,
@@ -421,7 +530,9 @@
     "category": "Muud",
     "priority": 1570,
     "countrycode": "EE",
-    "fallback_url": "https://s2.radio.co/sadb37cbdb/listen"
+    "fallback_url": "https://s2.radio.co/sadb37cbdb/listen",
+    "iconUrl": "file:///android_asset/logos/st_35_finest_fm.webp",
+    "sourceIconUrl": "https://finestfm.fi/upload/623c699818c312.68089185.ico"
   },
   "rock_fm_classic": {
     "id": 107,
@@ -429,7 +540,9 @@
     "category": "Sky",
     "priority": 1382,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/rckclassic"
+    "fallback_url": "https://stream.skymedia.ee/live/rckclassic",
+    "iconUrl": "file:///android_asset/logos/st_107_rock_fm_classic.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Rock-FM.png"
   },
   "nrj": {
     "id": 108,
@@ -437,7 +550,9 @@
     "category": "Sky",
     "priority": 1385,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/NRJ"
+    "fallback_url": "https://stream.skymedia.ee/live/NRJ",
+    "iconUrl": "file:///android_asset/logos/st_108_nrj.webp",
+    "sourceIconUrl": "https://nrj.sky.ee/apple-touch-icon.png"
   },
   "nrj_dnb": {
     "id": 109,
@@ -445,7 +560,9 @@
     "category": "Sky",
     "priority": 1386,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/NRJdnb"
+    "fallback_url": "https://stream.skymedia.ee/live/NRJdnb",
+    "iconUrl": "file:///android_asset/logos/st_109_nrj_dnb.webp",
+    "sourceIconUrl": "https://nrj.sky.ee/apple-touch-icon.png"
   },
   "relax_cafe": {
     "id": 110,
@@ -453,7 +570,9 @@
     "category": "Sky",
     "priority": 1396,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/cafe"
+    "fallback_url": "https://stream.skymedia.ee/live/cafe",
+    "iconUrl": "file:///android_asset/logos/st_110_relax_cafe.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Relax-FM-1.png"
   },
   "relax_instrumental": {
     "id": 111,
@@ -461,7 +580,9 @@
     "category": "Sky",
     "priority": 1397,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/instrumental"
+    "fallback_url": "https://stream.skymedia.ee/live/instrumental",
+    "iconUrl": "file:///android_asset/logos/st_111_relax_instrumental.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Relax-FM-1.png"
   },
   "relax_international": {
     "id": 112,
@@ -469,7 +590,9 @@
     "category": "Sky",
     "priority": 1398,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/international"
+    "fallback_url": "https://stream.skymedia.ee/live/international",
+    "iconUrl": "file:///android_asset/logos/st_112_relax_international.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Relax-FM-1.png"
   },
   "relax_spa": {
     "id": 113,
@@ -477,7 +600,9 @@
     "category": "Sky",
     "priority": 1399,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/spa"
+    "fallback_url": "https://stream.skymedia.ee/live/spa",
+    "iconUrl": "file:///android_asset/logos/st_113_relax_spa.webp",
+    "sourceIconUrl": "https://sky.ee/storage/radio-stations/2025/12/Relax-FM-1.png"
   },
   "raadio_7": {
     "id": 114,
@@ -485,7 +610,9 @@
     "category": "Sky",
     "priority": 1405,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/R7"
+    "fallback_url": "https://stream.skymedia.ee/live/R7",
+    "iconUrl": "file:///android_asset/logos/st_114_raadio_7.webp",
+    "sourceIconUrl": "https://raadio7.ee/static/2013/06/cropped-stp-toeta-180x180.jpg"
   },
   "raadio_kidzone": {
     "id": 59,
@@ -493,6 +620,8 @@
     "category": "Duo",
     "priority": 1280,
     "countrycode": "EE",
-    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kidzone.aac"
+    "fallback_url": "https://router.euddn.net/8103046e16b71d15d692b57c187875c7/kidzone.aac",
+    "iconUrl": "file:///android_asset/logos/st_59_raadio_kidzone.webp",
+    "sourceIconUrl": "https://f303.pmo.ee/media/2025/09/kidzone-logo.png"
   }
 }

@@ -22,7 +22,8 @@ data class RadioBrowserStation(
     val language: String,
     val bitrate: Int,
     val votes: Int,
-    val clickcount: Int
+    val clickcount: Int,
+    val favicon: String = ""
 )
 
 interface RadioBrowserApiService {

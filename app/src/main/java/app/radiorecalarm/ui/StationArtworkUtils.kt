@@ -1,13 +1,18 @@
 package app.radiorecalarm.ui
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import app.radiorecalarm.AppConfig
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 object StationArtworkUtils {
 
@@ -124,6 +129,72 @@ object StationArtworkUtils {
         canvas.drawText(initials, x, y, paint)
 
         return bitmap
+    }
+
+    /**
+     * Laeb jaama logo (kui olemas) 512x512 meediateavituse bitmapiks ühtse plaatina-kiibi sees.
+     * Vea või puuduva URL-i korral tagastab tumeda initsiaalibitmapi.
+     */
+    suspend fun loadStationNotificationBitmap(
+        context: Context,
+        stationName: String,
+        iconUrl: String?
+    ): Bitmap {
+        val cleanUrl = iconUrl?.trim().orEmpty()
+        if (cleanUrl.isEmpty()) return generateDarkStationBitmap(stationName)
+
+        return try {
+            val loader = StationImageLoader.get(context)
+            val request = ImageRequest.Builder(context.applicationContext)
+                .data(cleanUrl)
+                .size(512)
+                .allowHardware(false)
+                .build()
+            val result = loader.execute(request) as? SuccessResult
+                ?: return generateDarkStationBitmap(stationName)
+            val drawable = result.drawable
+
+            val size = 512
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+
+            if (isFullBleedStationLogo(cleanUrl)) {
+                drawable.setBounds(0, 0, size, size)
+                drawable.draw(canvas)
+                return bitmap
+            }
+
+            val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0xFF181B26.toInt()
+                style = Paint.Style.FILL
+            }
+            canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(), bgPaint)
+
+            val plateMargin = 48f
+            val plateRect = RectF(plateMargin, plateMargin, size - plateMargin, size - plateMargin)
+            val platePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0xFFE2E8F0.toInt()
+                style = Paint.Style.FILL
+            }
+            canvas.drawRoundRect(plateRect, 48f, 48f, platePaint)
+
+            val innerPad = 36f
+            val availW = plateRect.width() - innerPad * 2
+            val availH = plateRect.height() - innerPad * 2
+            val dw = drawable.intrinsicWidth.takeIf { it > 0 } ?: availW.roundToInt()
+            val dh = drawable.intrinsicHeight.takeIf { it > 0 } ?: availH.roundToInt()
+            val scale = minOf(availW / dw.toFloat(), availH / dh.toFloat())
+            val drawW = (dw * scale).roundToInt().coerceAtLeast(1)
+            val drawH = (dh * scale).roundToInt().coerceAtLeast(1)
+            val left = ((size - drawW) / 2f).roundToInt()
+            val top = ((size - drawH) / 2f).roundToInt()
+
+            drawable.setBounds(left, top, left + drawW, top + drawH)
+            drawable.draw(canvas)
+            bitmap
+        } catch (_: Exception) {
+            generateDarkStationBitmap(stationName)
+        }
     }
 
     fun getStationColor(stationName: String): Color {
