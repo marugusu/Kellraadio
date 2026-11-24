@@ -183,12 +183,16 @@ fun PlayerControls(
                             iconUrl = activeIconUrl,
                             size = 20.dp,
                             cornerRadius = 4.dp,
-                            innerPadding = 1.dp,
                             borderWidth = 0.5.dp,
                             borderColor = if (isPlaying) {
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
                             } else {
                                 MaterialTheme.colorScheme.outline
+                            },
+                            loadedBorderColor = if (isPlaying) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                            } else {
+                                Color.Transparent
                             },
                             fallbackBackground = MaterialTheme.colorScheme.surfaceVariant,
                             fallbackTextColor = if (isPlaying) {

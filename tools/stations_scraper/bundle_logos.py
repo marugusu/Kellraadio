@@ -269,17 +269,54 @@ def render_err_badge(slug: str, sel: str, bg_hex: str, fg_hex: str, is_core: boo
     out_img.save(out_path, format="WEBP", quality=92, method=6)
 
 
-def bundle_remote_logo(url: str, out_path: str) -> Tuple[bool, str]:
+def _normalize_remote_image(im: Image.Image, needs_light_bg: bool = False) -> Image.Image:
+    """Tagab, et laiadele ristkülikutele ja tumeda tekstiga läbipaistvatele logodele
+    (nt Kuku) küpsetatakse puhas ruut-taust, samas kui tavalised värvilised/ruudukujulised
+    logod jäävad puhtaks ilma halli raamita."""
+    im = im.convert("RGBA")
+    max_side = 192
+    w, h = im.size
+    ratio = max(w / h, h / w)
+
+    if needs_light_bg:
+        canvas = Image.new("RGBA", (max_side, max_side), (248, 250, 252, 255))
+        pad = 14
+        im_fit = im.copy()
+        im_fit.thumbnail((max_side - 2 * pad, max_side - 2 * pad), Image.Resampling.LANCZOS)
+        ox = (max_side - im_fit.width) // 2
+        oy = (max_side - im_fit.height) // 2
+        canvas.paste(im_fit, (ox, oy), im_fit)
+        return canvas
+
+    if ratio > 1.25:
+        # Lai logo (nt BR24, Big FM, XFM): täida ruut logo enda nurgavärviga
+        corners = [
+            im.getpixel((0, 0)),
+            im.getpixel((w - 1, 0)),
+            im.getpixel((0, h - 1)),
+            im.getpixel((w - 1, h - 1)),
+        ]
+        opaque_corners = [c for c in corners if c[3] >= 230]
+        bg_col = opaque_corners[0] if opaque_corners else (248, 250, 252, 255)
+        canvas = Image.new("RGBA", (max_side, max_side), bg_col)
+        im_fit = im.copy()
+        im_fit.thumbnail((max_side - 16, max_side - 16), Image.Resampling.LANCZOS)
+        ox = (max_side - im_fit.width) // 2
+        oy = (max_side - im_fit.height) // 2
+        canvas.paste(im_fit, (ox, oy), im_fit)
+        return canvas
+
+    if w > max_side or h > max_side:
+        im.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+    return im
+
+
+def bundle_remote_logo(url: str, out_path: str, needs_light_bg: bool = False) -> Tuple[bool, str]:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=12) as resp:
         data = resp.read(3 * 1024 * 1024)
     im = Image.open(io.BytesIO(data))
-    # ICO puhul vali suurim kaader kui võimalik
-    im = im.convert("RGBA")
-    # Kui on suur, vähenda max 192x192 säilitades proportsiooni
-    max_side = 192
-    if im.width > max_side or im.height > max_side:
-        im.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+    im = _normalize_remote_image(im, needs_light_bg=needs_light_bg)
     im.save(out_path, format="WEBP", quality=90, method=6)
     return True, f"{im.width}x{im.height}"
 
@@ -290,10 +327,9 @@ def render_preview_html(entries: List[Dict]) -> str:
         name_esc = e["name"]
         cat_esc = f"{e['countrycode']} • {e['category']}"
         rel_img = "../../../app/src/main/assets/logos/" + e["filename"]
-        chip_cls = "chip-full" if e["is_err"] else "chip-light"
         cards.append(f"""
         <div class="card ok">
-          <div class="chip {chip_cls}">
+          <div class="chip">
             <img src="{rel_img}" alt="{name_esc}" />
           </div>
           <div class="info">
@@ -315,11 +351,8 @@ def render_preview_html(entries: List[Dict]) -> str:
   p.summary {{ color: #94A3B8; margin-top: 0; }}
   .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; margin-top: 20px; }}
   .card {{ background: #181B26; border: 1px solid #242938; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; }}
-  .chip {{ width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; border: 1px solid #242938; overflow: hidden; }}
-  .chip-light {{ background: #E2E8F0; padding: 4px; }}
-  .chip-full {{ background: transparent; padding: 0; }}
+  .chip {{ width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: transparent; padding: 0; border: none; }}
   .chip img {{ width: 100%; height: 100%; object-fit: contain; display: block; }}
-  .chip-full img {{ object-fit: cover; }}
   .info {{ min-width: 0; flex: 1; }}
   .title {{ font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
   .sub {{ font-size: 11px; color: #94A3B8; }}
@@ -328,8 +361,8 @@ def render_preview_html(entries: List[Dict]) -> str:
 </style>
 </head>
 <body>
-  <h1>Kellraadio — Pakitud WebP logode eelvaade</h1>
-  <p class="summary">Kõik {len(entries)} jaama logo on pakitud otse äpi `assets/logos/` kausta (100% offline).</p>
+  <h1>Kellraadio — Pakitud WebP logode eelvaade (ilma halli raamita)</h1>
+  <p class="summary">Kõik {len(entries)} jaama logo on pakitud otse äpi `assets/logos/` kausta (100% offline, ilma halli äärejooneta).</p>
   <div class="grid">
     {''.join(cards)}
   </div>
@@ -380,7 +413,7 @@ def main():
                 meta["sourceIconUrl"] = src_url
             fname = f"st_{meta['id']}_{slug}.webp"
             out_path = os.path.join(LOGOS_DIR, fname)
-            ok, dims = bundle_remote_logo(meta["sourceIconUrl"], out_path)
+            ok, dims = bundle_remote_logo(meta["sourceIconUrl"], out_path, needs_light_bg=(slug == "kuku"))
             sz = os.path.getsize(out_path)
             total_bytes += sz
             asset_uri = f"file:///android_asset/logos/{fname}"
@@ -404,7 +437,7 @@ def main():
             st["sourceIconUrl"] = src_url
         fname = f"st_{st['id']}.webp"
         out_path = os.path.join(LOGOS_DIR, fname)
-        ok, dims = bundle_remote_logo(st["sourceIconUrl"], out_path)
+        ok, dims = bundle_remote_logo(st["sourceIconUrl"], out_path, needs_light_bg=False)
         sz = os.path.getsize(out_path)
         total_bytes += sz
         asset_uri = f"file:///android_asset/logos/{fname}"

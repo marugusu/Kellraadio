@@ -312,6 +312,11 @@ fun SearchResultItem(
                 } else {
                     MaterialTheme.colorScheme.outline
                 },
+                loadedBorderColor = if (isPlaying) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    Color.Transparent
+                },
                 fallbackBackground = MaterialTheme.colorScheme.surface,
                 fallbackTextColor = if (isPlaying) {
                     MaterialTheme.colorScheme.primary

@@ -170,6 +170,11 @@ private fun StationActionSheetContent(
                 } else {
                     MaterialTheme.colorScheme.outline
                 },
+                loadedBorderColor = if (station.isFavorite) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                } else {
+                    Color.Transparent
+                },
                 fallbackBackground = MaterialTheme.colorScheme.surfaceVariant,
                 fallbackTextColor = MaterialTheme.colorScheme.primary,
                 fallbackFontSize = 12.sp

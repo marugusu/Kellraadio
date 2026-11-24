@@ -257,6 +257,11 @@ private fun StationListRowContent(
         StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
         else -> MaterialTheme.colorScheme.outline
     }
+    val loadedBadgeBorder = when (activeState) {
+        StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+        else -> Color.Transparent
+    }
     val subtitleParts = buildList {
         if (showFlag && station.countryCode.isNotEmpty()) {
             add(station.countryCode.uppercase())
@@ -271,7 +276,6 @@ private fun StationListRowContent(
     val endPadding = if (isTwoColumn) 2.dp else 6.dp
     val logoSize = if (isTwoColumn) 36.dp else 40.dp
     val logoCornerRadius = if (isTwoColumn) 7.dp else 8.dp
-    val logoInnerPadding = if (isTwoColumn) 3.dp else 4.dp
     val logoSpacer = if (isTwoColumn) 8.dp else 12.dp
     val actionSlotWidth = if (isTwoColumn) 28.dp else 36.dp
 
@@ -286,8 +290,8 @@ private fun StationListRowContent(
             iconUrl = station.iconUrl,
             size = logoSize,
             cornerRadius = logoCornerRadius,
-            innerPadding = logoInnerPadding,
             borderColor = badgeBorder,
+            loadedBorderColor = loadedBadgeBorder,
             fallbackBackground = badgeBg,
             fallbackTextColor = if (activeState == StationPlaybackState.PLAYING) {
                 MaterialTheme.colorScheme.primary

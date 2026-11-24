@@ -68,16 +68,14 @@ object StationImageLoader {
     }
 }
 
-val StationLogoPlateColor = Color(0xFFE2E8F0)
-
 fun isFullBleedStationLogo(iconUrl: String): Boolean {
     val trimmed = iconUrl.trim()
     return trimmed.contains("/err_")
 }
 
 /**
- * Kuvab raadiojaama logo ühtse plaatina-heleda ümara kiibi sees (Titanium & Amber)
- * või täis-taustaga brändimärgina (`err_*.webp`), langedes puuduva/vigase allika korral
+ * Kuvab raadiojaama logo puhta raamita brändimärgina (nii pakitud `file:///android_asset/logos/...`
+ * kui ka väliste `https://...` URL-ide korral), langedes puuduva/vigase allika korral
  * sujuvalt initsiaalimärgile.
  */
 @Composable
@@ -87,8 +85,9 @@ fun StationLogoBadge(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     cornerRadius: Dp = 8.dp,
-    innerPadding: Dp = 4.dp,
+    innerPadding: Dp = 0.dp,
     borderColor: Color = MaterialTheme.colorScheme.outline,
+    loadedBorderColor: Color = Color.Transparent,
     borderWidth: Dp = 1.dp,
     fallbackBackground: Color = MaterialTheme.colorScheme.surface,
     fallbackTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -103,19 +102,20 @@ fun StationLogoBadge(
         mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
     }
     val isLogoReady = trimmedUrl.isNotEmpty() && imageState is AsyncImagePainter.State.Success
+    val effectiveBorderColor = if (isLogoReady) loadedBorderColor else borderColor
 
     Box(
         modifier = modifier
             .size(size)
             .clip(shape)
-            .background(
-                when {
-                    isLogoReady && fullBleed -> Color.Transparent
-                    isLogoReady -> StationLogoPlateColor
-                    else -> fallbackBackground
+            .background(if (isLogoReady) Color.Transparent else fallbackBackground)
+            .then(
+                if (borderWidth > 0.dp && effectiveBorderColor != Color.Transparent) {
+                    Modifier.border(borderWidth, effectiveBorderColor, shape)
+                } else {
+                    Modifier
                 }
-            )
-            .border(borderWidth, borderColor, shape),
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (!isLogoReady) {
@@ -142,12 +142,12 @@ fun StationLogoBadge(
                 contentDescription = null,
                 contentScale = if (fullBleed) ContentScale.Crop else ContentScale.Fit,
                 onState = { imageState = it },
-                modifier = if (fullBleed) {
-                    Modifier.fillMaxSize()
-                } else {
+                modifier = if (innerPadding > 0.dp && !fullBleed) {
                     Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
+                } else {
+                    Modifier.fillMaxSize()
                 }
             )
         }

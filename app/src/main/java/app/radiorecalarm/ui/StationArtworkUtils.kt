@@ -170,20 +170,10 @@ object StationArtworkUtils {
             }
             canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(), bgPaint)
 
-            val plateMargin = 48f
-            val plateRect = RectF(plateMargin, plateMargin, size - plateMargin, size - plateMargin)
-            val platePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = 0xFFE2E8F0.toInt()
-                style = Paint.Style.FILL
-            }
-            canvas.drawRoundRect(plateRect, 48f, 48f, platePaint)
-
-            val innerPad = 36f
-            val availW = plateRect.width() - innerPad * 2
-            val availH = plateRect.height() - innerPad * 2
-            val dw = drawable.intrinsicWidth.takeIf { it > 0 } ?: availW.roundToInt()
-            val dh = drawable.intrinsicHeight.takeIf { it > 0 } ?: availH.roundToInt()
-            val scale = minOf(availW / dw.toFloat(), availH / dh.toFloat())
+            val availSize = size.toFloat()
+            val dw = drawable.intrinsicWidth.takeIf { it > 0 } ?: size
+            val dh = drawable.intrinsicHeight.takeIf { it > 0 } ?: size
+            val scale = minOf(availSize / dw.toFloat(), availSize / dh.toFloat())
             val drawW = (dw * scale).roundToInt().coerceAtLeast(1)
             val drawH = (dh * scale).roundToInt().coerceAtLeast(1)
             val left = ((size - drawW) / 2f).roundToInt()

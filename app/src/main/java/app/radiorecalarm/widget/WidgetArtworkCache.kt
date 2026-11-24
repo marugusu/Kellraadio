@@ -29,9 +29,9 @@ object WidgetArtworkCache {
     ): String {
         val normalizedStation = stationName.trim().ifBlank { "Radio" }
         val key = if (isLocalStream) {
-            "local|$normalizedStation"
+            "v2|local|$normalizedStation"
         } else {
-            "$normalizedStation|${streamUrl.trim()}"
+            "v2|$normalizedStation|${streamUrl.trim()}"
         }
 
         if (cachedKey == key && cachedBitmap != null) {
