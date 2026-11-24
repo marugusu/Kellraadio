@@ -95,6 +95,10 @@
     <string name="settings_show_flags_desc">방송국 카드 모서리에 국가 코드 표시</string>
     <string name="settings_widget_transparency">위젯 투명도</string>
     <string name="settings_widget_transparency_desc">홈 화면 위젯 배경 투명도 조절</string>
+    <string name="widget_classic_name">Kellraadio (클래식)</string>
+    <string name="widget_classic_desc">재생, 곡 정보 및 다음 알람이 표시되는 클래식 위젯</string>
+    <string name="widget_compact_name">Kellraadio (컴팩트)</string>
+    <string name="widget_compact_desc">방송국 로고와 컨트롤을 지원하는 2×1+ 반응형 라디오 위젯</string>
     
     <string name="settings_group_general">일반</string>
     <string name="settings_language">언어 / Language</string>

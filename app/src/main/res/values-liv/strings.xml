@@ -80,6 +80,10 @@
 <string name="settings_show_flags_desc">"Näut stacij kaard pǟl mō tunnustõ"</string>
 <string name="settings_widget_transparency">"Vidin läbipaistvūz"</string>
 <string name="settings_widget_transparency_desc">"Mūot ežmi ekrān vidin taust läbipaistvūz"</string>
+<string name="widget_classic_name">"Kellraadio (Klasīk)"</string>
+<string name="widget_classic_desc">"Klasīk vidin mäņgõmiz, loul tiedõ ja tuoiz āratõmizõks"</string>
+<string name="widget_compact_name">"Kellraadio (Kompakt)"</string>
+<string name="widget_compact_desc">"2×1+ adaptīvliz rādijmäņgõj vidin stacij kūva ja nuppõdõks"</string>
 <string name="settings_group_general">"Īldõz"</string>
 <string name="settings_language">"Kēļ"</string>
 <string name="settings_language_desc">"Vaļī kēļ"</string>

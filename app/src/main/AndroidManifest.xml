@@ -95,6 +95,7 @@
 
         <receiver
             android:name="app.radiorecalarm.widget.HomeWidgetReceiver"
+            android:label="@string/widget_classic_name"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -102,6 +103,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/home_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name="app.radiorecalarm.widget.CompactWidgetReceiver"
+            android:label="@string/widget_compact_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/compact_widget_info" />
         </receiver>
 
     </application>

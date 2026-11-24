@@ -100,6 +100,10 @@
     <string name="settings_show_flags_desc">Kuva kanali kaardi nurgas riigitunnust</string>
     <string name="settings_widget_transparency">Vidina läbipaistvus</string>
     <string name="settings_widget_transparency_desc">Muuda koduekraani vidina tausta</string>
+    <string name="widget_classic_name">Kellraadio (Klassikaline)</string>
+    <string name="widget_classic_desc">Klassikaline vidin esituse, loo info ja järgmise äratusega</string>
+    <string name="widget_compact_name">Kellraadio (Kompaktne)</string>
+    <string name="widget_compact_desc">Adaptiivne 2×1+ raadiomängija vidin jaama logo ja juhtnuppudega</string>
     
     <string name="settings_group_general">Üldine</string>
     <string name="settings_language">Keel / Language</string>

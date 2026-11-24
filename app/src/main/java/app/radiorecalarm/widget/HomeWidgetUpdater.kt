@@ -6,6 +6,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import app.radiorecalarm.AlarmUtils
 import app.radiorecalarm.AppDatabase
+import app.radiorecalarm.PlaybackStatusSync
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioService
 
@@ -19,7 +20,10 @@ object HomeWidgetUpdater {
         artist: String? = null,
         extra: String? = null,
         bitrate: String? = null,
-        isPlaying: Boolean? = null
+        isPlaying: Boolean? = null,
+        isRecording: Boolean? = null,
+        isLocalStream: Boolean? = null,
+        streamUrl: String? = null
     ) {
         val prefs = context.getSharedPreferences("RaadioPrefs", Context.MODE_PRIVATE)
         val bgTransparency = prefs.getFloat("widget_transparency", 0.25f)
@@ -30,6 +34,10 @@ object HomeWidgetUpdater {
         val resolvedExtra = extra ?: ""
         val resolvedBitrate = bitrate ?: ""
         val resolvedIsPlaying = isPlaying ?: RadioService.isCurrentlyPlaying
+        val resolvedIsRecording = isRecording ?: RadioService.isCurrentlyRecording
+        val resolvedStreamUrl = streamUrl
+            ?: RadioService.currentActiveStreamUrl.ifBlank { prefs.getString("last_url", "") ?: "" }
+        val resolvedIsLocal = isLocalStream ?: PlaybackStatusSync.isLocalStreamUri(resolvedStreamUrl)
 
         var nextAlarmString = ""
         try {
@@ -49,25 +57,58 @@ object HomeWidgetUpdater {
             Log.e(TAG, "Äratuse lugemise viga vidina jaoks: ${e.message}")
         }
 
+        val statusText = if (resolvedIsPlaying) {
+            context.getString(R.string.status_playing)
+        } else {
+            context.getString(R.string.status_stopped)
+        }
+
         try {
             val manager = GlanceAppWidgetManager(context)
-            val widget = HomeWidget()
-            val glanceIds = manager.getGlanceIds(widget.javaClass)
+            val homeWidget = HomeWidget()
+            val homeGlanceIds = manager.getGlanceIds(homeWidget.javaClass)
 
-            glanceIds.forEach { glanceId ->
+            homeGlanceIds.forEach { glanceId ->
                 updateAppWidgetState(context, glanceId) { glancePrefs ->
                     glancePrefs[HomeWidget.Prefs.stationName] = resolvedStationName
                     glancePrefs[HomeWidget.Prefs.title] = resolvedTitle
                     glancePrefs[HomeWidget.Prefs.artist] = resolvedArtist
                     glancePrefs[HomeWidget.Prefs.bitrate] = resolvedBitrate
-                    val statusText = if (resolvedIsPlaying) context.getString(R.string.status_playing) else context.getString(R.string.status_stopped)
                     val extraInfo = if (resolvedExtra.isNotBlank()) "$resolvedExtra • $statusText" else statusText
                     glancePrefs[HomeWidget.Prefs.status] = extraInfo
                     glancePrefs[HomeWidget.Prefs.alarm] = nextAlarmString
                     glancePrefs[HomeWidget.Prefs.isPlaying] = resolvedIsPlaying
                     glancePrefs[HomeWidget.Prefs.bgTransparency] = bgTransparency
                 }
-                widget.update(context, glanceId)
+                homeWidget.update(context, glanceId)
+            }
+
+            val compactWidget = CompactWidget()
+            val compactGlanceIds = manager.getGlanceIds(compactWidget.javaClass)
+            if (compactGlanceIds.isNotEmpty()) {
+                val artworkKey = WidgetArtworkCache.prepareArtwork(
+                    context = context,
+                    stationName = resolvedStationName,
+                    streamUrl = resolvedStreamUrl,
+                    isLocalStream = resolvedIsLocal
+                )
+                compactGlanceIds.forEach { glanceId ->
+                    updateAppWidgetState(context, glanceId) { glancePrefs ->
+                        glancePrefs[CompactWidget.Prefs.stationName] = resolvedStationName
+                        glancePrefs[CompactWidget.Prefs.title] = resolvedTitle
+                        glancePrefs[CompactWidget.Prefs.artist] = resolvedArtist
+                        glancePrefs[CompactWidget.Prefs.extra] = resolvedExtra
+                        glancePrefs[CompactWidget.Prefs.status] = statusText
+                        glancePrefs[CompactWidget.Prefs.bitrate] = resolvedBitrate
+                        glancePrefs[CompactWidget.Prefs.alarm] = nextAlarmString
+                        glancePrefs[CompactWidget.Prefs.isPlaying] = resolvedIsPlaying
+                        glancePrefs[CompactWidget.Prefs.isRecording] = resolvedIsRecording
+                        glancePrefs[CompactWidget.Prefs.isLocalStream] = resolvedIsLocal
+                        glancePrefs[CompactWidget.Prefs.bgTransparency] = bgTransparency
+                        glancePrefs[CompactWidget.Prefs.artworkKey] = artworkKey
+                    }
+                    compactWidget.update(context, glanceId)
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Vidinat ei saanud uuendada: ${e.message}")
