@@ -24,18 +24,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.radiorecalarm.AlarmUtils
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioStation
 import app.radiorecalarm.SongAdditionalInfo
+import app.radiorecalarm.ui.theme.KellraadioTheme
 import java.util.Calendar
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -79,7 +84,7 @@ fun PlayerControls(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 130.dp)
+                .heightIn(min = 104.dp)
                 .animateContentSize()
                 .clip(RoundedCornerShape(8.dp))
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
@@ -115,53 +120,46 @@ fun PlayerControls(
 
             Column(
                 modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val activeIconUrl = selectedStation?.iconUrl.orEmpty()
-                    if (selectedStation != null || activeStationName.isNotEmpty()) {
-                        StationLogoBadge(
-                            stationName = activeStationName.ifEmpty { selectedStation?.name.orEmpty() },
-                            iconUrl = activeIconUrl,
-                            size = 40.dp,
-                            cornerRadius = 8.dp,
-                            borderColor = if (isPlaying) {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
-                            } else {
-                                MaterialTheme.colorScheme.outline
-                            },
-                            fallbackBackground = MaterialTheme.colorScheme.surfaceVariant,
-                            fallbackTextColor = if (isPlaying) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (parsedTitle.isNotBlank()) {
+                        Text(
+                            text = parsedTitle,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = titleColor,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 24.sp
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
                     }
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        if (parsedTitle.isNotBlank()) {
-                            Text(text = parsedTitle, style = MaterialTheme.typography.titleLarge, color = titleColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
-                        }
+                    val displayName = if (parsedArtist.isNotBlank()) parsedArtist
+                    else if (parsedTitle.isNotBlank()) stringResource(R.string.live_broadcast)
+                    else if (activeStationName.isNotEmpty()) activeStationName
+                    else selectedStation?.name ?: stringResource(R.string.select_station)
 
-                        val displayName = if (parsedArtist.isNotBlank()) parsedArtist
-                        else if (parsedTitle.isNotBlank()) stringResource(R.string.live_broadcast)
-                        else if (activeStationName.isNotEmpty()) activeStationName
-                        else selectedStation?.name ?: stringResource(R.string.select_station)
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = artistColor,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 24.sp
+                    )
 
-                        Text(text = displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = artistColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
-
-                        if (parsedExtra.isNotBlank()) {
-                            Text(text = parsedExtra, style = MaterialTheme.typography.titleMedium, color = extraColor, maxLines = 4, overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
-                        }
+                    if (parsedExtra.isNotBlank()) {
+                        Text(
+                            text = parsedExtra,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = extraColor,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 24.sp
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(2.dp))
 
                 val stationPrefix = if (activeStationName.isNotEmpty()) "$activeStationName • " else ""
                 var statusText = "$stationPrefix$playerStatus" + if (bitrateInfo.isNotBlank()) " • $bitrateInfo" else ""
@@ -174,7 +172,34 @@ fun PlayerControls(
                     statusText += " • REC $recTimeStr$countSuffix"
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val activeIconUrl = selectedStation?.iconUrl.orEmpty()
+                    if (selectedStation != null || activeStationName.isNotEmpty()) {
+                        StationLogoBadge(
+                            stationName = activeStationName.ifEmpty { selectedStation?.name.orEmpty() },
+                            iconUrl = activeIconUrl,
+                            size = 20.dp,
+                            cornerRadius = 4.dp,
+                            innerPadding = 1.dp,
+                            borderWidth = 0.5.dp,
+                            borderColor = if (isPlaying) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                            } else {
+                                MaterialTheme.colorScheme.outline
+                            },
+                            fallbackBackground = MaterialTheme.colorScheme.surfaceVariant,
+                            fallbackTextColor = if (isPlaying) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            fallbackFontSize = 7.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                     if (isRecording) {
                         val infiniteTransition = rememberInfiniteTransition(label = "rec_dot")
                         val alpha by infiniteTransition.animateFloat(
@@ -194,7 +219,23 @@ fun PlayerControls(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                     }
-                    Text(text = statusText, style = MaterialTheme.typography.labelLarge, color = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (songInfo != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
 
@@ -233,85 +274,241 @@ fun PlayerControls(
 
         // Gap 1: Nüüd täpselt 12dp
         Spacer(modifier = Modifier.height(12.dp))
-        val buttonShape = RoundedCornerShape(8.dp)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val baseButtonModifier = Modifier
-                .weight(1f)
-                .height(64.dp)
-                .clip(buttonShape)
+        val buttonShape = RoundedCornerShape(12.dp)
+        val buttonHeight = 54.dp
+        val isTimerSet = sleepTimerMillis > 0
+        val isAlarmSet = alarmInfo != null
 
-            if (isPlaying) {
-                FilledIconButton(
-                    onClick = { view.performHapticTap(); onPlayPause() },
-                    modifier = baseButtonModifier.border(1.5.dp, MaterialTheme.colorScheme.primary, buttonShape),
-                    shape = buttonShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.Black)
-                ) { Icon(Icons.Default.Pause, stringResource(R.string.action_pause), modifier = Modifier.size(32.dp)) }
-            } else {
-                FilledTonalIconButton(
-                    onClick = { view.performHapticTap(); selectedStation?.let { onPlayStation(it) } },
-                    enabled = selectedStation != null,
-                    modifier = baseButtonModifier.border(1.dp, MaterialTheme.colorScheme.outline, buttonShape),
-                    shape = buttonShape
-                ) { Icon(Icons.Default.PlayArrow, stringResource(R.string.action_play), modifier = Modifier.size(32.dp)) }
-            }
-            FilledTonalIconButton(
-                onClick = { view.performHapticTap(); onToggleFavorite() },
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 1. Favorite (vasakul)
+            PlayerActionTile(
+                icon = if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder,
+                contentDescription = null,
                 enabled = selectedStation != null,
-                modifier = baseButtonModifier.border(if (isFavorite) 1.5.dp else 1.dp, if (isFavorite) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.outline, buttonShape),
+                isActive = isFavorite,
+                activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                activeContentColor = MaterialTheme.colorScheme.onSecondary,
+                activeBorderColor = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.65f),
                 shape = buttonShape,
-                colors = if (isFavorite) {
-                    IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.onSecondary, contentColor = Color.Black)
-                } else {
-                    IconButtonDefaults.filledTonalIconButtonColors()
-                }
-            ) { Icon(if (isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder, null, modifier = Modifier.size(28.dp)) }
-            FilledTonalIconButton(
-                onClick = { view.performHapticTap(); onRecordClick() },
+                modifier = Modifier.weight(1f).height(buttonHeight),
+                onClick = { view.performHapticTap(); onToggleFavorite() }
+            )
+
+            // 2. Record (Play kõrval vasakul)
+            PlayerActionTile(
+                icon = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                contentDescription = stringResource(R.string.action_record),
                 enabled = isPlaying && selectedStation != null,
-                modifier = baseButtonModifier.border(if (isRecording) 1.5.dp else 1.dp, if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline, buttonShape),
+                isActive = isRecording,
+                activeContainerColor = MaterialTheme.colorScheme.error,
+                activeContentColor = Color.White,
+                activeBorderColor = MaterialTheme.colorScheme.error,
+                inactiveContentColor = MaterialTheme.colorScheme.error,
                 shape = buttonShape,
-                colors = if (isRecording) {
-                    IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = Color.White)
-                } else {
-                    IconButtonDefaults.filledTonalIconButtonColors()
+                modifier = Modifier.weight(1f).height(buttonHeight),
+                onClick = { view.performHapticTap(); onRecordClick() }
+            )
+
+            // 3. Play / Pause (keskmine laiem põhinupp)
+            PlayerActionTile(
+                icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = stringResource(if (isPlaying) R.string.action_pause else R.string.action_play),
+                enabled = isPlaying || selectedStation != null,
+                isActive = isPlaying,
+                activeContainerColor = MaterialTheme.colorScheme.primary,
+                activeContentColor = Color.Black,
+                activeBorderColor = MaterialTheme.colorScheme.primary,
+                inactiveContentColor = MaterialTheme.colorScheme.primary,
+                inactiveBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                inactiveBorderWidth = 1.5.dp,
+                iconSize = 30.dp,
+                shape = buttonShape,
+                modifier = Modifier.weight(1.4f).height(buttonHeight),
+                onClick = {
+                    view.performHapticTap()
+                    if (isPlaying) onPlayPause() else selectedStation?.let { onPlayStation(it) }
                 }
-            ) {
-                Icon(
-                    imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
-                    contentDescription = stringResource(R.string.action_record),
-                    tint = if (isRecording) Color.White else if (isPlaying) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            val isTimerSet = sleepTimerMillis > 0
-            FilledTonalIconButton(
-                onClick = { view.performHapticTap(); onSleepClick() },
+            )
+
+            // 4. Sleep timer (paremal)
+            PlayerActionTile(
+                icon = Icons.Default.Bedtime,
+                contentDescription = stringResource(R.string.timer_dialog_title),
                 enabled = isPlaying || isTimerSet,
-                modifier = baseButtonModifier.border(if (isTimerSet) 1.5.dp else 1.dp, if (isTimerSet) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline, buttonShape),
+                isActive = isTimerSet,
+                activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                activeContentColor = MaterialTheme.colorScheme.secondary,
+                activeBorderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.65f),
                 shape = buttonShape,
-                colors = if (isTimerSet) IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = Color.Black) else IconButtonDefaults.filledTonalIconButtonColors()
-            ) { Icon(Icons.Default.Bedtime, stringResource(R.string.timer_dialog_title), modifier = Modifier.size(28.dp)) }
-            val isAlarmSet = alarmInfo != null
-            val interactionSource = remember { MutableInteractionSource() }
-            Surface(
-                modifier = baseButtonModifier
-                    .combinedClickable(
-                        interactionSource = interactionSource,
-                        indication = LocalIndication.current,
-                        onClick = { view.performHapticTap(); onAlarmClick() },
-                        onLongClick = {
-                            if (isAlarmSet) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress); onAlarmLongClick()
-                            }
-                        }),
+                modifier = Modifier.weight(1f).height(buttonHeight),
+                onClick = { view.performHapticTap(); onSleepClick() }
+            )
+
+            // 5. Alarm (äärmine parem)
+            PlayerActionTile(
+                icon = if (isAlarmSet) Icons.Default.AlarmOn else Icons.Default.AlarmAdd,
+                contentDescription = stringResource(R.string.alarm_title),
+                enabled = true,
+                isActive = isAlarmSet,
+                activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                activeContentColor = MaterialTheme.colorScheme.tertiary,
+                activeBorderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.65f),
                 shape = buttonShape,
-                border = BorderStroke(if (isAlarmSet) 1.5.dp else 1.dp, if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline),
-                color = if (isAlarmSet) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = if (isAlarmSet) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onSurfaceVariant
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) { Icon(if (isAlarmSet) Icons.Default.AlarmOn else Icons.Default.AlarmAdd, contentDescription = stringResource(R.string.alarm_title), modifier = Modifier.size(28.dp)) }
-            }
+                modifier = Modifier.weight(1f).height(buttonHeight),
+                onClick = { view.performHapticTap(); onAlarmClick() },
+                onLongClick = if (isAlarmSet) {
+                    {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onAlarmLongClick()
+                    }
+                } else null
+            )
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PlayerActionTile(
+    icon: ImageVector,
+    contentDescription: String?,
+    enabled: Boolean,
+    isActive: Boolean,
+    activeContainerColor: Color,
+    activeContentColor: Color,
+    activeBorderColor: Color,
+    shape: Shape,
+    modifier: Modifier = Modifier,
+    inactiveContainerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    inactiveContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    inactiveBorderColor: Color = MaterialTheme.colorScheme.outline,
+    inactiveBorderWidth: Dp = 1.dp,
+    iconSize: Dp = 26.dp,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
+) {
+    val containerColor = when {
+        isActive -> activeContainerColor
+        enabled -> inactiveContainerColor
+        else -> inactiveContainerColor.copy(alpha = 0.5f)
+    }
+    val contentColor = when {
+        isActive -> activeContentColor
+        enabled -> inactiveContentColor
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+    }
+    val borderColor = when {
+        isActive -> activeBorderColor
+        enabled -> inactiveBorderColor
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+    }
+    val borderWidth = if (isActive) 1.5.dp else if (enabled) inactiveBorderWidth else 1.dp
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Surface(
+        modifier = modifier
+            .clip(shape)
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                enabled = enabled,
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        shape = shape,
+        border = BorderStroke(borderWidth, borderColor),
+        color = containerColor,
+        contentColor = contentColor
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C10)
+@Composable
+private fun PlayerControlsPlayingPreview() {
+    KellraadioTheme {
+        PlayerControls(
+            selectedStation = RadioStation(
+                id = 1,
+                name = "Vikerraadio",
+                url = "",
+                countryCode = "EE",
+                category = "ERR",
+                isFavorite = true
+            ),
+            activeStationName = "Vikerraadio",
+            isPlaying = true,
+            parsedTitle = "Mirko Ojakivi, Arp Müller",
+            parsedArtist = "Stuudios on peaminister",
+            parsedExtra = "",
+            playerStatus = "Playing",
+            bitrateInfo = "320 kbps",
+            alarmInfo = System.currentTimeMillis() to "Vikerraadio",
+            alarmDays = setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY),
+            sleepTimerMillis = 0L,
+            isFavorite = true,
+            songInfo = SongAdditionalInfo(),
+            isRecording = false,
+            recordingDuration = 0L,
+            onInfoClick = {},
+            onPlayPause = {},
+            onPlayStation = {},
+            onSleepClick = {},
+            onAlarmClick = {},
+            onAlarmLongClick = {},
+            onToggleFavorite = {},
+            onRecordClick = {},
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C10)
+@Composable
+private fun PlayerControlsPausedPreview() {
+    KellraadioTheme {
+        PlayerControls(
+            selectedStation = RadioStation(
+                id = 1,
+                name = "Rock FM",
+                url = "",
+                countryCode = "EE",
+                category = "Sky"
+            ),
+            activeStationName = "Rock FM",
+            isPlaying = false,
+            parsedTitle = "",
+            parsedArtist = "",
+            parsedExtra = "",
+            playerStatus = "Paused",
+            bitrateInfo = "",
+            alarmInfo = null,
+            alarmDays = emptySet(),
+            sleepTimerMillis = 0L,
+            isFavorite = false,
+            songInfo = null,
+            isRecording = false,
+            recordingDuration = 0L,
+            onInfoClick = {},
+            onPlayPause = {},
+            onPlayStation = {},
+            onSleepClick = {},
+            onAlarmClick = {},
+            onAlarmLongClick = {},
+            onToggleFavorite = {},
+            onRecordClick = {},
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }
