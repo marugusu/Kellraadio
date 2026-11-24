@@ -45,6 +45,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.extractor.metadata.icy.IcyHeaders
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.CommandButton
+import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
@@ -75,6 +76,7 @@ class RadioService : Service() {
     private lateinit var player: SkodaAwarePlayer
 
     private var mediaSession: MediaSession? = null
+    private var notificationControllerFuture: ListenableFuture<MediaController>? = null
     private var currentStationName: String = "Radio"
     private var currentStationBitmap: android.graphics.Bitmap? = null
 
@@ -227,6 +229,7 @@ class RadioService : Service() {
         const val ACTION_STOP_RECORDING = "app.radiorecalarm.ACTION_STOP_RECORDING"
         const val ACTION_TOGGLE_RECORDING = "app.radiorecalarm.ACTION_TOGGLE_RECORDING"
         const val ACTION_CYCLE_SLEEP_TIMER = "app.radiorecalarm.ACTION_CYCLE_SLEEP_TIMER"
+        private const val MEDIA_NOTIFICATION_CONTROLLER_HINT = "androidx.media3.session.MediaNotificationManager"
         const val ACTION_RECORDING_STATUS = "app.radiorecalarm.RECORDING_STATUS"
         const val ACTION_PAUSE = "app.radiorecalarm.ACTION_PAUSE"
         const val ACTION_RESUME = "app.radiorecalarm.ACTION_RESUME"
@@ -265,6 +268,13 @@ class RadioService : Service() {
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(sessionCommands)
                 .build()
+        }
+
+        @OptIn(UnstableApi::class)
+        override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            if (session.isMediaNotificationController(controller)) {
+                updateMediaSessionCustomLayout()
+            }
         }
 
         override fun onCustomCommand(
@@ -1181,6 +1191,11 @@ class RadioService : Service() {
             onSkipPrevious = { changeStation(-1) }
         }
         mediaSession = MediaSession.Builder(this, player).setSessionActivity(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)).setCallback(mediaSessionCallback).build()
+        notificationControllerFuture = MediaController.Builder(this, mediaSession!!.token)
+            .setConnectionHints(Bundle().apply {
+                putBoolean(MEDIA_NOTIFICATION_CONTROLLER_HINT, true)
+            })
+            .buildAsync()
         LocalBroadcastManager.getInstance(this).registerReceiver(statusReceiver, IntentFilter(ACTION_GET_STATUS))
         val powerManager = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
         wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "kellraadio::RadioWakeLock")
@@ -1646,9 +1661,14 @@ class RadioService : Service() {
         }
     }
 
+    @OptIn(UnstableApi::class)
     private fun updateMediaSessionCustomLayout() {
         val session = mediaSession ?: return
-        session.setCustomLayout(buildMediaSessionCustomLayout())
+        val layout = buildMediaSessionCustomLayout()
+        session.setCustomLayout(layout)
+        session.mediaNotificationControllerInfo?.let { controller ->
+            session.setCustomLayout(controller, layout)
+        }
     }
 
     private fun buildCurrentNotification(playWhenReadyOverride: Boolean? = null): android.app.Notification {
@@ -1824,6 +1844,8 @@ class RadioService : Service() {
         abandonAudioFocus()
         stopRecording()
         activeDataSource = null
+        notificationControllerFuture?.let { MediaController.releaseFuture(it) }
+        notificationControllerFuture = null
         player.release(); mediaSession?.release(); super.onDestroy()
     }
     override fun onBind(intent: Intent?): IBinder? = null
