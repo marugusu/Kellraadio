@@ -56,8 +56,11 @@ class RadioNotificationManager(private val context: Context) {
         bitmap: Bitmap?,
         isAlarmMode: Boolean,
         isPlaying: Boolean,
+        playWhenReady: Boolean = isPlaying,
+        isLocalStream: Boolean = false,
         isRecording: Boolean = false,
-        isMutedRecording: Boolean = false
+        isMutedRecording: Boolean = false,
+        sleepTimerRemainingMinutes: Int = 0
     ): Notification {
 
         // 1. Luua Intentid nuppude jaoks
@@ -65,6 +68,8 @@ class RadioNotificationManager(private val context: Context) {
         val pauseIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_PAUSE }
         val playIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }
         val stopRecordingIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP_RECORDING }
+        val toggleRecordingIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_TOGGLE_RECORDING }
+        val cycleSleepTimerIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_CYCLE_SLEEP_TIMER }
         val nextIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_SKIP_NEXT }
         val prevIntent = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_SKIP_PREVIOUS }
 
@@ -75,6 +80,8 @@ class RadioNotificationManager(private val context: Context) {
         val nextPending = PendingIntent.getService(context, 13, nextIntent, PendingIntent.FLAG_IMMUTABLE)
         val prevPending = PendingIntent.getService(context, 14, prevIntent, PendingIntent.FLAG_IMMUTABLE)
         val stopRecordingPending = PendingIntent.getService(context, 15, stopRecordingIntent, PendingIntent.FLAG_IMMUTABLE)
+        val toggleRecordingPending = PendingIntent.getService(context, 16, toggleRecordingIntent, PendingIntent.FLAG_IMMUTABLE)
+        val cycleSleepTimerPending = PendingIntent.getService(context, 17, cycleSleepTimerIntent, PendingIntent.FLAG_IMMUTABLE)
 
         // 3. Keskmise nupu loogika (Play vs Pause)
         val middleActionIcon: Int
@@ -141,6 +148,47 @@ class RadioNotificationManager(private val context: Context) {
                 .addAction(R.drawable.ic_skip_previous, "Previous", prevPending)
                 .addAction(middleActionIcon, middleActionTitle, middleActionIntent)
                 .addAction(R.drawable.ic_skip_next, "Next", nextPending)
+
+            val customActions = MediaCardControlPolicy.resolveCustomActions(
+                isAlarmMode = isAlarmMode,
+                isMutedRecording = isMutedRecording,
+                isPlaying = isPlaying,
+                playWhenReady = playWhenReady,
+                isLocalStream = isLocalStream,
+                isRecording = isRecording
+            )
+            customActions.forEach { action ->
+                when (action) {
+                    MediaCardAction.RECORD_START -> builder.addAction(
+                        R.drawable.ic_record_start,
+                        context.getString(R.string.action_record),
+                        toggleRecordingPending
+                    )
+                    MediaCardAction.RECORD_STOP -> builder.addAction(
+                        R.drawable.ic_record_stop,
+                        context.getString(R.string.action_stop_recording),
+                        toggleRecordingPending
+                    )
+                    MediaCardAction.SLEEP_TIMER -> {
+                        val timerIcon = if (sleepTimerRemainingMinutes > 0) {
+                            R.drawable.ic_sleep_timer_active
+                        } else {
+                            R.drawable.ic_sleep_timer
+                        }
+                        val timerLabel = if (sleepTimerRemainingMinutes > 0) {
+                            context.getString(R.string.action_sleep_timer_active, sleepTimerRemainingMinutes)
+                        } else {
+                            context.getString(R.string.timer_dialog_title)
+                        }
+                        builder.addAction(timerIcon, timerLabel, cycleSleepTimerPending)
+                    }
+                    MediaCardAction.STOP_CLOSE -> builder.addAction(
+                        R.drawable.ic_close,
+                        context.getString(R.string.action_close),
+                        stopPending
+                    )
+                }
+            }
         }
 
         return builder.build()

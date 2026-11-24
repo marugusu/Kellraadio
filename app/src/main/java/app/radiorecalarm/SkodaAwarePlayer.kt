@@ -33,7 +33,11 @@ import java.util.concurrent.CopyOnWriteArraySet
 @OptIn(UnstableApi::class)
 class SkodaAwarePlayer(
     player: Player,
-    private val internalListeners: CopyOnWriteArraySet<Player.Listener> = CopyOnWriteArraySet()
+    private val internalListeners: CopyOnWriteArraySet<Player.Listener> = CopyOnWriteArraySet(),
+    private val isLocalPlaybackProvider: (Player) -> Boolean = { delegate ->
+        val scheme = delegate.currentMediaItem?.localConfiguration?.uri?.scheme
+        scheme == "file" || scheme == "content"
+    }
 ) : ForwardingPlayer(player) {
 
     private var positionAtPause: Long = 0L
@@ -59,7 +63,7 @@ class SkodaAwarePlayer(
     }
 
     override fun getAvailableCommands(): Player.Commands {
-        return super.getAvailableCommands().buildUpon()
+        val builder = super.getAvailableCommands().buildUpon()
             // Eemaldame GET_TIMELINE, et MediaSession ei looks vale Queue'd,
             // mis viib Androidi Bluetooth AVRCP pinus 2-sekundilise viivituseni.
             .remove(Player.COMMAND_GET_TIMELINE)
@@ -68,18 +72,51 @@ class SkodaAwarePlayer(
             .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
             .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
             .add(Player.COMMAND_PLAY_PAUSE)
-            .build()
+        if (!isLocalPlayback()) {
+            builder
+                .remove(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                .remove(Player.COMMAND_SEEK_BACK)
+                .remove(Player.COMMAND_SEEK_FORWARD)
+        }
+        return builder.build()
     }
 
     override fun isCommandAvailable(command: Int): Boolean {
         return when (command) {
             Player.COMMAND_GET_TIMELINE -> false
+            Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+            Player.COMMAND_SEEK_BACK,
+            Player.COMMAND_SEEK_FORWARD -> isLocalPlayback() && super.isCommandAvailable(command)
             Player.COMMAND_SEEK_TO_NEXT,
             Player.COMMAND_SEEK_TO_PREVIOUS,
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
             Player.COMMAND_PLAY_PAUSE -> true
             else -> super.isCommandAvailable(command)
+        }
+    }
+
+    override fun seekTo(positionMs: Long) {
+        if (isLocalPlayback()) {
+            super.seekTo(positionMs)
+        }
+    }
+
+    override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
+        if (isLocalPlayback()) {
+            super.seekTo(mediaItemIndex, positionMs)
+        }
+    }
+
+    override fun seekBack() {
+        if (isLocalPlayback()) {
+            super.seekBack()
+        }
+    }
+
+    override fun seekForward() {
+        if (isLocalPlayback()) {
+            super.seekForward()
         }
     }
 
@@ -136,10 +173,7 @@ class SkodaAwarePlayer(
         return positionAtPause
     }
 
-    private fun isLocalPlayback(): Boolean {
-        val uri = super.getCurrentMediaItem()?.localConfiguration?.uri ?: return false
-        return uri.scheme == "file" || uri.scheme == "content"
-    }
+    private fun isLocalPlayback(): Boolean = isLocalPlaybackProvider(wrappedPlayer)
 
     private var currentTrackMetadata: MediaMetadata? = null
 

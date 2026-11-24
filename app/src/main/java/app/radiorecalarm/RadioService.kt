@@ -12,6 +12,7 @@ import android.media.AudioAttributes as PlatformAudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -43,8 +44,12 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.extractor.metadata.icy.IcyHeaders
 import androidx.media3.extractor.metadata.icy.IcyInfo
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -220,6 +225,8 @@ class RadioService : Service() {
         const val ACTION_STATION_SELECTED_BY_SERVICE = "app.radiorecalarm.STATION_SELECTED"
         const val ACTION_START_RECORDING = "app.radiorecalarm.ACTION_START_RECORDING"
         const val ACTION_STOP_RECORDING = "app.radiorecalarm.ACTION_STOP_RECORDING"
+        const val ACTION_TOGGLE_RECORDING = "app.radiorecalarm.ACTION_TOGGLE_RECORDING"
+        const val ACTION_CYCLE_SLEEP_TIMER = "app.radiorecalarm.ACTION_CYCLE_SLEEP_TIMER"
         const val ACTION_RECORDING_STATUS = "app.radiorecalarm.RECORDING_STATUS"
         const val ACTION_PAUSE = "app.radiorecalarm.ACTION_PAUSE"
         const val ACTION_RESUME = "app.radiorecalarm.ACTION_RESUME"
@@ -250,11 +257,40 @@ class RadioService : Service() {
     private val mediaSessionCallback = object : MediaSession.Callback {
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
             Log.d(TAG, "onConnect: Kontroller ühendus (${controller.packageName})")
-            return MediaSession.ConnectionResult.AcceptedResultBuilder(session).build()
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .add(SessionCommand(ACTION_TOGGLE_RECORDING, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_CYCLE_SLEEP_TIMER, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_STOP, Bundle.EMPTY))
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands)
+                .build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                ACTION_TOGGLE_RECORDING -> toggleRecordingFromMediaCard()
+                ACTION_CYCLE_SLEEP_TIMER -> cycleSleepTimerFromMediaCard()
+                ACTION_STOP -> stopRadio()
+                else -> return super.onCustomCommand(session, controller, customCommand, args)
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
         override fun onPlayerCommandRequest(session: MediaSession, controller: MediaSession.ControllerInfo, playerCommand: Int): Int {
             when (playerCommand) {
+                Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+                Player.COMMAND_SEEK_BACK,
+                Player.COMMAND_SEEK_FORWARD -> {
+                    if (!PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)) {
+                        return SessionResult.RESULT_INFO_SKIPPED
+                    }
+                }
                 Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
                     changeStation(1)
                     return SessionResult.RESULT_INFO_SKIPPED
@@ -595,17 +631,8 @@ class RadioService : Service() {
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (playWhenReady) {
                 cancelIdleTimeout()
-                val notification = notificationManager.buildNotification(
-                    mediaSession = mediaSession!!,
-                    stationName = currentStationName,
-                    trackTitle = currentTitle,
-                    trackArtist = currentArtist,
-                    bitmap = currentStationBitmap,
-                    isAlarmMode = isAlarmMode,
-                    isPlaying = player.isPlaying,
-                    isRecording = isRecording,
-                    isMutedRecording = interruptionPolicy.isMutedRecording
-                )
+                updateMediaSessionCustomLayout()
+                val notification = buildCurrentNotification(playWhenReadyOverride = true)
                 if (Build.VERSION.SDK_INT >= 34) {
                     startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
                 } else {
@@ -1252,6 +1279,14 @@ class RadioService : Service() {
                 stopRecording()
                 return START_STICKY
             }
+            ACTION_TOGGLE_RECORDING -> {
+                toggleRecordingFromMediaCard()
+                return START_STICKY
+            }
+            ACTION_CYCLE_SLEEP_TIMER -> {
+                cycleSleepTimerFromMediaCard()
+                return START_STICKY
+            }
             ACTION_PAUSE -> {
                 autoRecordArmedForStreamUrl = null
                 unsplitShowModeForCurrentRecording = false
@@ -1547,13 +1582,77 @@ class RadioService : Service() {
         }
     }
 
-    private fun updateNotification() {
-        if (!::player.isInitialized || mediaSession == null) return
-        val isSuppressed = player.playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE
-        val shouldKeepForeground = player.isPlaying || isAlarmMode || isChangingStation || isRecording ||
-            (player.playWhenReady && (isSuppressed || interruptionPolicy.wasSuppressedByTransientLoss))
+    private fun toggleRecordingFromMediaCard() {
+        if (PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)) return
+        if (isRecording) {
+            userManuallyStoppedRecordingForCurrentStation = true
+            pendingAutoRecord = false
+            autoRecordArmedForStreamUrl = null
+            stopRecording()
+        } else {
+            userManuallyStoppedRecordingForCurrentStation = false
+            startRecording()
+        }
+    }
 
-        val notification = notificationManager.buildNotification(
+    private fun cycleSleepTimerFromMediaCard() {
+        val nextMinutes = MediaCardControlPolicy.nextSleepTimerMinutes(sleepTimerRemainingMillis)
+        startSleepTimer(nextMinutes)
+    }
+
+    private fun buildMediaSessionCustomLayout(): List<CommandButton> {
+        if (!::player.isInitialized) return emptyList()
+        val isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)
+        val actions = MediaCardControlPolicy.resolveCustomActions(
+            isAlarmMode = isAlarmMode,
+            isMutedRecording = isRecording && interruptionPolicy.isMutedRecording,
+            isPlaying = player.isPlaying,
+            playWhenReady = player.playWhenReady,
+            isLocalStream = isLocal,
+            isRecording = isRecording
+        )
+        return actions.map { action ->
+            when (action) {
+                MediaCardAction.RECORD_START -> CommandButton.Builder()
+                    .setDisplayName(getString(R.string.action_record))
+                    .setIconResId(R.drawable.ic_record_start)
+                    .setSessionCommand(SessionCommand(ACTION_TOGGLE_RECORDING, Bundle.EMPTY))
+                    .build()
+                MediaCardAction.RECORD_STOP -> CommandButton.Builder()
+                    .setDisplayName(getString(R.string.action_stop_recording))
+                    .setIconResId(R.drawable.ic_record_stop)
+                    .setSessionCommand(SessionCommand(ACTION_TOGGLE_RECORDING, Bundle.EMPTY))
+                    .build()
+                MediaCardAction.SLEEP_TIMER -> {
+                    val remMinutes = MediaCardControlPolicy.remainingSleepTimerMinutesCeil(sleepTimerRemainingMillis)
+                    val label = if (remMinutes > 0) {
+                        getString(R.string.action_sleep_timer_active, remMinutes)
+                    } else {
+                        getString(R.string.timer_dialog_title)
+                    }
+                    val icon = if (remMinutes > 0) R.drawable.ic_sleep_timer_active else R.drawable.ic_sleep_timer
+                    CommandButton.Builder()
+                        .setDisplayName(label)
+                        .setIconResId(icon)
+                        .setSessionCommand(SessionCommand(ACTION_CYCLE_SLEEP_TIMER, Bundle.EMPTY))
+                        .build()
+                }
+                MediaCardAction.STOP_CLOSE -> CommandButton.Builder()
+                    .setDisplayName(getString(R.string.action_close))
+                    .setIconResId(R.drawable.ic_close)
+                    .setSessionCommand(SessionCommand(ACTION_STOP, Bundle.EMPTY))
+                    .build()
+            }
+        }
+    }
+
+    private fun updateMediaSessionCustomLayout() {
+        val session = mediaSession ?: return
+        session.setCustomLayout(buildMediaSessionCustomLayout())
+    }
+
+    private fun buildCurrentNotification(playWhenReadyOverride: Boolean? = null): android.app.Notification {
+        return notificationManager.buildNotification(
             mediaSession = mediaSession!!,
             stationName = currentStationName,
             trackTitle = currentTitle,
@@ -1561,9 +1660,22 @@ class RadioService : Service() {
             bitmap = currentStationBitmap,
             isAlarmMode = isAlarmMode,
             isPlaying = player.isPlaying,
+            playWhenReady = playWhenReadyOverride ?: player.playWhenReady,
+            isLocalStream = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl),
             isRecording = isRecording,
-            isMutedRecording = isRecording && interruptionPolicy.isMutedRecording
+            isMutedRecording = isRecording && interruptionPolicy.isMutedRecording,
+            sleepTimerRemainingMinutes = MediaCardControlPolicy.remainingSleepTimerMinutesCeil(sleepTimerRemainingMillis)
         )
+    }
+
+    private fun updateNotification() {
+        if (!::player.isInitialized || mediaSession == null) return
+        updateMediaSessionCustomLayout()
+        val isSuppressed = player.playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE
+        val shouldKeepForeground = player.isPlaying || isAlarmMode || isChangingStation || isRecording ||
+            (player.playWhenReady && (isSuppressed || interruptionPolicy.wasSuppressedByTransientLoss))
+
+        val notification = buildCurrentNotification()
         if (shouldKeepForeground) {
             if (Build.VERSION.SDK_INT >= 34) {
                 startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
@@ -1627,11 +1739,22 @@ class RadioService : Service() {
 
     private fun startSleepTimer(minutes: Int) {
         stopSleepTimer()
-        if (minutes <= 0) { sendTimerTick(0); return }
+        if (minutes <= 0) {
+            sendTimerTick(0)
+            updateNotification()
+            return
+        }
         sleepTimerRemainingMillis = minutes * 60 * 1000L
+        updateNotification()
         sleepTimerJob = serviceScope.launch(Dispatchers.Main) {
+            var lastNotifiedMinutes = MediaCardControlPolicy.remainingSleepTimerMinutesCeil(sleepTimerRemainingMillis)
             while (sleepTimerRemainingMillis > 0) {
                 sendTimerTick(sleepTimerRemainingMillis)
+                val currentMinutes = MediaCardControlPolicy.remainingSleepTimerMinutesCeil(sleepTimerRemainingMillis)
+                if (currentMinutes != lastNotifiedMinutes) {
+                    lastNotifiedMinutes = currentMinutes
+                    updateNotification()
+                }
                 delay(1000)
                 sleepTimerRemainingMillis -= 1000
             }

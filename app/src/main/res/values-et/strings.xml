@@ -52,6 +52,7 @@
     <string name="timer_minutes">%1$d minutit</string>
     <string name="timer_until">Mängib kuni kella %1$s-ni</string>
     <string name="timer_start">Käivita</string>
+    <string name="action_sleep_timer_active">Unetaimer (%1$d min)</string>
 
     <!-- Recordings & History -->
     <string name="recordings_title">Salvestised</string>

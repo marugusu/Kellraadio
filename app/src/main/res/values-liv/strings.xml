@@ -39,6 +39,7 @@
 <string name="timer_minutes">"%1$d minūtõd"</string>
 <string name="timer_until">"Mäņgõb saņi kell %1$s"</string>
 <string name="timer_start">"Käivitõ"</string>
+<string name="action_sleep_timer_active">"Magāntaimer (%1$d min)"</string>
 <string name="recordings_title">"Tāļtõmizt"</string>
 <string name="history_empty">"Aig um tījā"</string>
 <string name="history_empty_day">"Säl pǟval äb ūo kūldtõd"</string>

@@ -52,6 +52,7 @@
     <string name="timer_minutes">%1$d minutes</string>
     <string name="timer_until">Plays until %1$s</string>
     <string name="timer_start">Start</string>
+    <string name="action_sleep_timer_active">Sleep (%1$d min)</string>
 
     <!-- Recordings & History -->
     <string name="recordings_title">Recordings</string>
