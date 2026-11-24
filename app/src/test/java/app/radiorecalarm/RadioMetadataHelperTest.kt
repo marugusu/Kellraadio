@@ -107,4 +107,48 @@ class RadioMetadataHelperTest {
         assertTrue(result.extra.contains("Bebe Rexha"))
         assertTrue(result.extra.contains("Blue"))
     }
+
+    @Test
+    fun testIHeartSpotBlockEndReturnsLiveBroadcast() {
+        val raw = """ - text="Spot Block End" amgTrackId="9876543" length="00:00:00""""
+        val result = helper.parse(raw, "102.7 KIIS FM")
+        assertEquals("Otseeeter", result.artist)
+        assertEquals("102.7 KIIS FM", result.title)
+        assertEquals("", helper.sanitizeRawInput(raw))
+    }
+
+    @Test
+    fun testIHeartTalkSpotReturnsLiveBroadcast() {
+        val raw = """NY's #1 Hit Music Station - text="Z100" song_spot="T" MediaBaseId="0" itunesTrackId="0" amgTrackId="0" length="00:00:00""""
+        val result = helper.parse(raw, "Z100 New York")
+        assertEquals("Otseeeter", result.artist)
+        assertEquals("Z100 New York", result.title)
+        assertEquals("", helper.sanitizeRawInput(raw))
+    }
+
+    @Test
+    fun testIHeartStructuredSongMetadataExtractsArtistAndTitle() {
+        val raw = """title="One More Night",artist="MAROON 5",url="song_spot="F" MediaBaseId="0" itunesTrackId="0" amgTrackId="-1" length="00:03:38""""
+        val result = helper.parse(raw, "102.7 KIIS FM")
+        assertEquals("MAROON 5", result.artist)
+        assertEquals("One More Night", result.title)
+        assertEquals("MAROON 5 - One More Night", helper.sanitizeRawInput(raw))
+    }
+
+    @Test
+    fun testIHeartStructuredSongWithCommaInTitle() {
+        val raw = """title="Hello, Goodbye",artist="The Beatles",url="song_spot="M" amgTrackId="123" length="00:03:27""""
+        val result = helper.parse(raw, "Z100 New York")
+        assertEquals("The Beatles", result.artist)
+        assertEquals("Hello, Goodbye", result.title)
+    }
+
+    @Test
+    fun testIHeartDashTextMusicMetadataExtractsArtistAndTitle() {
+        val raw = """MAROON 5 - text="One More Night" song_spot="M" MediaBaseId="123" length="00:03:38""""
+        val result = helper.parse(raw, "102.7 KIIS FM")
+        assertEquals("MAROON 5", result.artist)
+        assertEquals("One More Night", result.title)
+        assertEquals("MAROON 5 - One More Night", helper.sanitizeRawInput(raw))
+    }
 }
