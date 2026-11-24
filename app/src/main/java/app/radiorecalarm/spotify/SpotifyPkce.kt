@@ -1,5 +1,6 @@
 package app.radiorecalarm.spotify
 
+import app.radiorecalarm.MetadataTrackMatcher
 import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -104,24 +105,14 @@ object SpotifyPkce {
         artist: String,
         title: String
     ): SpotifyTrack? {
-        if (items.isEmpty()) return null
-        val normArtist = normalizeForMatch(artist)
-        val normTitle = normalizeForMatch(title)
-
-        return items.maxByOrNull { track ->
-            var score = 0
-            val trackTitle = normalizeForMatch(track.name)
-            val trackArtists = track.artists.map { normalizeForMatch(it.name) }
-
-            if (trackTitle == normTitle) score += 100
-            else if (trackTitle.contains(normTitle) || normTitle.contains(trackTitle)) score += 45
-
-            if (trackArtists.any { it == normArtist }) score += 100
-            else if (trackArtists.any { it.contains(normArtist) || normArtist.contains(it) }) score += 45
-
-            if (!track.album?.images.isNullOrEmpty()) score += 5
-            score
-        }
+        return MetadataTrackMatcher.selectBest(
+            items = items,
+            queryArtist = artist,
+            queryTitle = title,
+            candidateArtists = { track -> track.artists.map { it.name } },
+            candidateTitle = { track -> track.name },
+            tieBreaker = { track -> if (!track.album?.images.isNullOrEmpty()) 5 else 0 }
+        )
     }
 
     fun filterEditablePlaylists(
@@ -146,12 +137,5 @@ object SpotifyPkce {
                 key to value
             }
             .toMap()
-    }
-
-    private fun normalizeForMatch(value: String): String {
-        return value.lowercase()
-            .replace(Regex("\\([^)]*\\)|\\[[^]]*]"), " ")
-            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-            .trim()
     }
 }

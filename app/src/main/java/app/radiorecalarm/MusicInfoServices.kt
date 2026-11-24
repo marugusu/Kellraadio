@@ -49,6 +49,8 @@ data class ItunesResponse(
 
 @Serializable
 data class ItunesResult(
+    val artistName: String? = null,
+    val trackName: String? = null,
     @SerialName("artworkUrl100") val artworkUrl100: String? = null,
     val collectionName: String? = null,
     val releaseDate: String? = null,
@@ -65,8 +67,22 @@ data class MbResponse(
 @Serializable
 data class MbRecording(
     val id: String,
+    val score: Int? = null,
+    val title: String? = null,
     val length: Long? = null,
+    @SerialName("artist-credit") val artistCredit: List<MbArtistCredit> = emptyList(),
     val releases: List<MbRelease> = emptyList()
+)
+
+@Serializable
+data class MbArtistCredit(
+    val name: String? = null,
+    val artist: MbArtist? = null
+)
+
+@Serializable
+data class MbArtist(
+    val name: String? = null
 )
 
 @Serializable
@@ -106,7 +122,7 @@ interface ItunesApi {
         @Query("term") term: String,
         @Query("media") media: String = "music",
         @Query("entity") entity: String = "song",
-        @Query("limit") limit: Int = 1
+        @Query("limit") limit: Int = 5
     ): ItunesResponse
 }
 
@@ -206,8 +222,8 @@ object MusicInfoRepository {
         try {
             Log.d(TAG, "--> 1. Küsin iTunes...")
             val response = itunesApi.search("$artist $title")
-            if (response.results.isNotEmpty()) {
-                val item = response.results[0]
+            val item = selectBestItunesResult(response.results, artist, title)
+            if (item != null) {
                 foundCover = item.artworkUrl100?.replace("100x100bb", "600x600bb")
                 foundAlbum = item.collectionName
                 foundGenre = item.primaryGenreName
@@ -215,6 +231,8 @@ object MusicInfoRepository {
                 foundTrackNumber = item.trackNumber
                 foundDurationMs = item.trackTimeMillis?.takeIf { it > 0L }
                 Log.d(TAG, "✅ iTunes: OK (album=$foundAlbum, track=$foundTrackNumber, durationMs=$foundDurationMs)")
+            } else if (response.results.isNotEmpty()) {
+                Log.d(TAG, "ℹ️ iTunes: Tulemused ei vastanud artistile/pealkirjale")
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -256,8 +274,8 @@ object MusicInfoRepository {
                 Log.d(TAG, "--> 2. Küsin MusicBrainz...")
                 val query = "artist:\"$artist\" AND recording:\"$title\""
                 val mbResponse = mbApi.searchRecording(query)
-                if (mbResponse.recordings.isNotEmpty()) {
-                    val recording = mbResponse.recordings[0]
+                val recording = selectBestMusicBrainzRecording(mbResponse.recordings, artist, title)
+                if (recording != null) {
                     if (foundDurationMs == null) {
                         foundDurationMs = recording.length?.takeIf { it > 0L }
                     }
@@ -278,6 +296,8 @@ object MusicInfoRepository {
                         }
                         Log.d(TAG, "✅ MusicBrainz: OK (album=$foundAlbum, track=$foundTrackNumber, durationMs=$foundDurationMs)")
                     }
+                } else if (mbResponse.recordings.isNotEmpty()) {
+                    Log.d(TAG, "ℹ️ MusicBrainz: Tulemused ei vastanud artistile/pealkirjale")
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -331,5 +351,42 @@ object MusicInfoRepository {
                 if (lrcAttempt < 2) delay(1000) // Ootame sekund enne uut katset
             }
         }
+    }
+
+    internal fun selectBestItunesResult(
+        results: List<ItunesResult>,
+        artist: String,
+        title: String
+    ): ItunesResult? {
+        return MetadataTrackMatcher.selectBest(
+            items = results,
+            queryArtist = artist,
+            queryTitle = title,
+            candidateArtists = { result -> listOfNotNull(result.artistName) },
+            candidateTitle = { result -> result.trackName.orEmpty() },
+            tieBreaker = { result -> if (!result.artworkUrl100.isNullOrBlank()) 5 else 0 }
+        )
+    }
+
+    internal fun selectBestMusicBrainzRecording(
+        recordings: List<MbRecording>,
+        artist: String,
+        title: String
+    ): MbRecording? {
+        val eligible = recordings.filter { it.score == null || it.score >= 60 }
+        return MetadataTrackMatcher.selectBest(
+            items = eligible,
+            queryArtist = artist,
+            queryTitle = title,
+            candidateArtists = { rec ->
+                rec.artistCredit.mapNotNull { credit ->
+                    credit.name?.takeIf { it.isNotBlank() } ?: credit.artist?.name
+                }
+            },
+            candidateTitle = { rec -> rec.title.orEmpty() },
+            tieBreaker = { rec ->
+                if (rec.releases.any { it.status == "Official" }) 5 else 0
+            }
+        )
     }
 }

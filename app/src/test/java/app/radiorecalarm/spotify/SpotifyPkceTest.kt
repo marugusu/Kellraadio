@@ -109,6 +109,28 @@ class SpotifyPkceTest {
     }
 
     @Test
+    fun `selectBestTrack rejects unrelated fallback candidates even when they have cover images`() {
+        val wrongTrack = SpotifyTrack(
+            id = "ultra",
+            uri = "spotify:track:ultra",
+            name = "Ultra",
+            artists = listOf(SpotifyArtist(name = "Laura")),
+            album = SpotifyAlbum(
+                name = "Ultra",
+                releaseDate = "2009",
+                images = listOf(SpotifyImage(url = "https://img/ultra.jpg", width = 640))
+            )
+        )
+
+        val picked = SpotifyPkce.selectBestTrack(
+            items = listOf(wrongTrack),
+            artist = "Ludmilla Issakova",
+            title = "Uruguai naljalaul"
+        )
+        assertNull(picked)
+    }
+
+    @Test
     fun `filterEditablePlaylists keeps owned and collaborative playlists only`() {
         val playlists = listOf(
             SpotifyPlaylistItem(id = "1", name = "Mine", owner = SpotifyPlaylistOwner(id = "user1")),
