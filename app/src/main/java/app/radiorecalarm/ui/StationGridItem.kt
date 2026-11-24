@@ -84,7 +84,8 @@ fun StationGridItem(
     var pressJob by remember { mutableStateOf<Job?>(null) }
 
     val activeState = if (isSelected) playbackState else StationPlaybackState.IDLE
-    val isListMode = columnCount <= 1
+    val isRowMode = columnCount <= 2
+    val isTwoColumn = columnCount == 2
     val isCompact = columnCount >= 4
 
     val pulseAlpha = if (activeState == StationPlaybackState.BUFFERING) {
@@ -131,7 +132,7 @@ fun StationGridItem(
 
     val cardShape = RoundedCornerShape(if (isCompact) 8.dp else 10.dp)
     val cardHeight = when {
-        isListMode -> 64.dp
+        isRowMode -> 64.dp
         isCompact -> 60.dp
         else -> 70.dp
     }
@@ -206,13 +207,14 @@ fun StationGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = borderStroke
     ) {
-        if (isListMode) {
+        if (isRowMode) {
             StationListRowContent(
                 station = station,
                 activeState = activeState,
                 contentColor = contentColor,
                 showFavoriteIcon = showFavoriteIcon,
                 showFlag = showFlag,
+                isTwoColumn = isTwoColumn,
                 isReorderMode = isReorderMode,
                 onMoreClick = {
                     view.performHapticTap()
@@ -241,6 +243,7 @@ private fun StationListRowContent(
     contentColor: Color,
     showFavoriteIcon: Boolean,
     showFlag: Boolean,
+    isTwoColumn: Boolean,
     isReorderMode: Boolean,
     onMoreClick: () -> Unit
 ) {
@@ -264,44 +267,56 @@ private fun StationListRowContent(
         }
     }
 
+    val startPadding = if (isTwoColumn) 8.dp else 12.dp
+    val endPadding = if (isTwoColumn) 2.dp else 6.dp
+    val logoSize = if (isTwoColumn) 36.dp else 40.dp
+    val logoCornerRadius = if (isTwoColumn) 7.dp else 8.dp
+    val logoInnerPadding = if (isTwoColumn) 3.dp else 4.dp
+    val logoSpacer = if (isTwoColumn) 8.dp else 12.dp
+    val actionSlotWidth = if (isTwoColumn) 28.dp else 36.dp
+
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 12.dp, end = 6.dp),
+            .padding(start = startPadding, end = endPadding),
         verticalAlignment = Alignment.CenterVertically
     ) {
         StationLogoBadge(
             stationName = station.name,
             iconUrl = station.iconUrl,
-            size = 40.dp,
-            cornerRadius = 8.dp,
+            size = logoSize,
+            cornerRadius = logoCornerRadius,
+            innerPadding = logoInnerPadding,
             borderColor = badgeBorder,
             fallbackBackground = badgeBg,
             fallbackTextColor = if (activeState == StationPlaybackState.PLAYING) {
                 MaterialTheme.colorScheme.primary
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            },
+            fallbackFontSize = if (isTwoColumn) 10.sp else 11.sp
         )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(logoSpacer))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 15.sp,
-                    lineHeight = 19.sp
+                    fontSize = if (isTwoColumn) 13.sp else 15.sp,
+                    lineHeight = if (isTwoColumn) 15.sp else 19.sp
                 ),
                 fontWeight = if (activeState == StationPlaybackState.PLAYING) FontWeight.Bold else FontWeight.SemiBold,
                 color = contentColor,
-                maxLines = 1,
+                maxLines = if (isTwoColumn) 2 else 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (subtitleParts.isNotEmpty()) {
                 Text(
                     text = subtitleParts.joinToString(" • "),
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = if (isTwoColumn) 10.sp else 11.sp
+                    ),
                     color = contentColor.copy(alpha = 0.65f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -312,9 +327,9 @@ private fun StationListRowContent(
         if (activeState == StationPlaybackState.PLAYING) {
             LiveSignalBars(
                 color = MaterialTheme.colorScheme.primary,
-                barWidth = 2.5.dp,
-                maxHeight = 14.dp,
-                modifier = Modifier.padding(horizontal = 6.dp)
+                barWidth = if (isTwoColumn) 2.dp else 2.5.dp,
+                maxHeight = if (isTwoColumn) 12.dp else 14.dp,
+                modifier = Modifier.padding(horizontal = if (isTwoColumn) 3.dp else 6.dp)
             )
         } else if (activeState == StationPlaybackState.ERROR) {
             Icon(
@@ -322,8 +337,8 @@ private fun StationListRowContent(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier
-                    .padding(horizontal = 6.dp)
-                    .size(16.dp)
+                    .padding(horizontal = if (isTwoColumn) 3.dp else 6.dp)
+                    .size(if (isTwoColumn) 14.dp else 16.dp)
             )
         }
 
@@ -333,35 +348,35 @@ private fun StationListRowContent(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSecondary,
                 modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(15.dp)
+                    .padding(horizontal = if (isTwoColumn) 2.dp else 4.dp)
+                    .size(if (isTwoColumn) 13.dp else 15.dp)
             )
         }
 
         if (isReorderMode) {
             Box(
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(width = actionSlotWidth, height = 36.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.DragIndicator,
                     contentDescription = stringResource(R.string.action_reorder),
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(if (isTwoColumn) 18.dp else 22.dp)
                 )
             }
         } else {
             IconButton(
                 onClick = onMoreClick,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(width = actionSlotWidth, height = 36.dp)
                     .focusProperties { canFocus = false }
             ) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = stringResource(R.string.action_more),
                     tint = contentColor.copy(alpha = 0.7f),
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(if (isTwoColumn) 16.dp else 18.dp)
                 )
             }
         }
@@ -588,6 +603,32 @@ private fun StationGridItemStatesPreview() {
                             columnCount = 3
                         )
                     }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(modifier = Modifier.weight(1f)) {
+                    StationGridItem(
+                        station = sample,
+                        isSelected = true,
+                        playbackState = StationPlaybackState.PLAYING,
+                        onClick = {},
+                        onLongClick = {},
+                        showFavoriteIcon = true,
+                        showFlag = true,
+                        columnCount = 2
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    StationGridItem(
+                        station = sample.copy(name = "Klassikaraadio"),
+                        isSelected = false,
+                        playbackState = StationPlaybackState.IDLE,
+                        onClick = {},
+                        onLongClick = {},
+                        showFavoriteIcon = false,
+                        showFlag = true,
+                        columnCount = 2
+                    )
                 }
             }
             StationGridItem(
