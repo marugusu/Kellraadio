@@ -27,16 +27,72 @@ class RadioMetadataHelper(
 
     /**
      * Puhastab toorest tekstist mitteprinditavad kontrollsümbolid (nt \u0000 kuni \u001F ja DEL)
-     * ning tehnilise prügi (nt {+info: ...}), asendades reavahetused viisakate eraldajatega.
+     * ning tehnilise prügi (nt {+info: ...} või iHeartRadio atribuudid),
+     * asendades reavahetused viisakate eraldajatega.
      */
     fun sanitizeRawInput(rawMetadata: String): String {
-        return rawMetadata
+        val basicCleaned = rawMetadata
             .replace(Regex("""[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]"""), "")
             .replace(Regex("""\s*\{.*\}\s*$"""), "")
             .trim()
             .replace("\r\n", " - ")
             .replace("\n", " - ")
             .replace("\r", " - ")
+
+        return normalizeIHeartMetadata(basicCleaned) ?: basicCleaned
+    }
+
+    private fun normalizeIHeartMetadata(input: String): String? {
+        val looksLikeIHeart = IHEART_TAG_REGEX.containsMatchIn(input) ||
+            IHEART_TEXT_WITH_LENGTH_REGEX.containsMatchIn(input)
+        if (!looksLikeIHeart) return null
+
+        val songSpot = IHEART_SONG_SPOT_REGEX.find(input)?.groupValues?.get(1)?.trim()
+        if (songSpot.equals("T", ignoreCase = true)) {
+            return ""
+        }
+
+        val titleMatch = IHEART_TITLE_REGEX.find(input)
+        val artistMatch = IHEART_ARTIST_REGEX.find(input)
+        if (titleMatch != null || artistMatch != null) {
+            val title = titleMatch?.groupValues?.get(1)?.trim().orEmpty()
+            val artist = artistMatch?.groupValues?.get(1)?.trim().orEmpty()
+            if (artist.isBlank() || title.isBlank() || isSpotBlockText(artist) || isSpotBlockText(title)) {
+                return ""
+            }
+            return "$artist - $title"
+        }
+
+        val dashTextMatch = IHEART_DASH_TEXT_REGEX.find(input)
+        if (dashTextMatch != null) {
+            val artist = dashTextMatch.groupValues[1].trim()
+            val text = dashTextMatch.groupValues[2].trim()
+            if (artist.isBlank() || text.isBlank() || isSpotBlockText(artist) || isSpotBlockText(text)) {
+                return ""
+            }
+            return "$artist - $text"
+        }
+
+        return ""
+    }
+
+    private fun isSpotBlockText(value: String): Boolean {
+        return value.contains("Spot Block", ignoreCase = true)
+    }
+
+    companion object {
+        private val IHEART_TAG_REGEX = Regex(
+            """\b(?:amgTrackId|song_spot|MediaBaseId|itunesTrackId|spotInstanceId)\s*=\s*"[^"]*"""",
+            RegexOption.IGNORE_CASE
+        )
+        private val IHEART_TEXT_WITH_LENGTH_REGEX = Regex(
+            """\btext\s*=\s*"[^"]*"\s+.*\blength\s*=\s*"\d{2}:\d{2}:\d{2}"""",
+            RegexOption.IGNORE_CASE
+        )
+        private val IHEART_SONG_SPOT_REGEX = Regex("""\bsong_spot\s*=\s*"([^"]*)"""", RegexOption.IGNORE_CASE)
+        private val IHEART_TITLE_REGEX = Regex("""(?:^|,)\s*title\s*=\s*"([^"]*)"""", RegexOption.IGNORE_CASE)
+        private val IHEART_ARTIST_REGEX = Regex("""(?:^|,)\s*artist\s*=\s*"([^"]*)"""", RegexOption.IGNORE_CASE)
+        private val IHEART_DASH_TEXT_REGEX = Regex("""^(.*?)\s*-\s*text\s*=\s*"([^"]*)"""", RegexOption.IGNORE_CASE)
     }
 
     /**
