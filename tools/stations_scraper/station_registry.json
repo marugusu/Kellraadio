@@ -450,19 +450,9 @@
     "category": "Muud",
     "priority": 1440,
     "countrycode": "EE",
-    "fallback_url": "http://78.28.64.87:8000/meieraadio.mp3",
+    "fallback_url": "https://meieraadio.ee/pleier4",
     "iconUrl": "file:///android_asset/logos/st_72_meie_raadio.webp",
     "sourceIconUrl": "https://meieraadio.ee/MRlogo.jpg"
-  },
-  "raadio_x": {
-    "id": 76,
-    "name": "Raadio X",
-    "category": "Muud",
-    "priority": 1450,
-    "countrycode": "EE",
-    "fallback_url": "https://ice.leviracloud.eu/raadioX320-mp3",
-    "iconUrl": "file:///android_asset/logos/st_76_raadio_x.webp",
-    "sourceIconUrl": "https://raadio1.ee/wp-content/themes/raadio1-modern/assets/apple-touch-icon.png?v=1.2.0"
   },
   "xfm": {
     "id": 79,
@@ -610,7 +600,7 @@
     "category": "Sky",
     "priority": 1405,
     "countrycode": "EE",
-    "fallback_url": "https://stream.skymedia.ee/live/R7",
+    "fallback_url": "https://edge05.cdn.bitflip.ee:8888/R7",
     "iconUrl": "file:///android_asset/logos/st_114_raadio_7.webp",
     "sourceIconUrl": "https://raadio7.ee/static/2013/06/cropped-stp-toeta-180x180.jpg"
   },

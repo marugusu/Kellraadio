@@ -512,7 +512,7 @@
   {
     "id": 114,
     "name": "Raadio 7",
-    "url": "https://stream.skymedia.ee/live/R7",
+    "url": "https://edge05.cdn.bitflip.ee:8888/R7",
     "isActive": true,
     "priority": 1405,
     "category": "Sky",
@@ -552,22 +552,12 @@
   {
     "id": 72,
     "name": "Meie Raadio",
-    "url": "http://78.28.64.87:8000/meieraadio.mp3",
+    "url": "https://meieraadio.ee/pleier4",
     "isActive": true,
     "priority": 1440,
     "category": "Muud",
     "countrycode": "EE",
     "iconUrl": "file:///android_asset/logos/st_72_meie_raadio.webp"
-  },
-  {
-    "id": 76,
-    "name": "Raadio X",
-    "url": "https://ice.leviracloud.eu/raadioX320-mp3",
-    "isActive": true,
-    "priority": 1450,
-    "category": "Muud",
-    "countrycode": "EE",
-    "iconUrl": "file:///android_asset/logos/st_76_raadio_x.webp"
   },
   {
     "id": 79,
@@ -622,7 +612,7 @@
   {
     "id": 43,
     "name": "Power Hit Radio",
-    "url": "https://ice.leviracloud.eu/phr96-aac?",
+    "url": "https://ice.leviracloud.eu/phr128-aac",
     "isActive": true,
     "priority": 1500,
     "category": "TV3",
@@ -665,7 +655,7 @@
   {
     "id": 32,
     "name": "YLE Radio 1",
-    "url": "https://yleradiolive.akamaized.net/hls/live/2027672/in-YleRadio1/master.m3u8",
+    "url": "https://icecast.live.yle.fi/radio/YleRadio1Hifi/icecast.audio",
     "isActive": true,
     "priority": 1540,
     "category": "YLE",
@@ -676,7 +666,7 @@
   {
     "id": 33,
     "name": "YLE Radio Suomi",
-    "url": "https://yleradiolive.akamaized.net/hls/live/2027706/in-YleKemi/master.m3u8",
+    "url": "https://icecast.live.yle.fi/radio/YleKemi/icecast.audio",
     "isActive": true,
     "priority": 1550,
     "category": "YLE",
@@ -687,7 +677,7 @@
   {
     "id": 34,
     "name": "YLE Sámi Radio",
-    "url": "https://yleradiolive.akamaized.net/hls/live/2027680/in-YleSami/master.m3u8",
+    "url": "https://icecast.live.yle.fi/radio/YleSami/icecast.audio",
     "isActive": true,
     "priority": 1560,
     "category": "YLE",
@@ -785,7 +775,7 @@
   {
     "id": 64,
     "name": "Bayern 1",
-    "url": "https://mcdn.hf.br.de/br/hf/b1main/master.m3u8",
+    "url": "https://dispatcher.rndfnk.com/br/br1/obb/mp3/mid",
     "isActive": true,
     "priority": 1700,
     "category": "News",
@@ -806,8 +796,8 @@
   },
   {
     "id": 68,
-    "name": "BR24 live",
-    "url": "https://mcdn.hf.br.de/br/hf/br24live/master.m3u8",
+    "name": "BR24",
+    "url": "https://dispatcher.rndfnk.com/br/br24/live/mp3/mid",
     "isActive": true,
     "priority": 1740,
     "category": "News",
@@ -818,7 +808,7 @@
   {
     "id": 69,
     "name": "Ballermann Radio",
-    "url": "https://s37.derstream.net/bmr-dab.mp3",
+    "url": "https://stream.bmr-radio.de/ballermann-radio.mp3",
     "isActive": true,
     "priority": 1750,
     "category": "Schlager",

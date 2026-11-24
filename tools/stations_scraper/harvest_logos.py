@@ -107,7 +107,6 @@ KNOWN_HOMEPAGES: Dict[str, List[str]] = {
     "ida": ["https://idaidaida.net/"],
     "kaguraadio": ["https://kaguraadio.ee/"],
     "meie_raadio": ["https://meieraadio.ee/"],
-    "raadio_x": ["https://raadio1.ee/"],
     "xfm": ["https://xfm.ee/"],
     "finest_fm": ["https://finestfm.fi/"],
 }
