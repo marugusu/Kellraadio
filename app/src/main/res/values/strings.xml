@@ -100,6 +100,10 @@
     <string name="settings_show_flags_desc">Display country code in the corner of station card</string>
     <string name="settings_widget_transparency">Widget Transparency</string>
     <string name="settings_widget_transparency_desc">Adjust home screen widget background opacity</string>
+    <string name="widget_classic_name">Kellraadio (Classic)</string>
+    <string name="widget_classic_desc">Classic widget with playback, track info and next alarm</string>
+    <string name="widget_compact_name">Kellraadio (Compact)</string>
+    <string name="widget_compact_desc">Adaptive 2×1+ radio player widget with station artwork and controls</string>
     
     <string name="settings_group_general">General</string>
     <string name="settings_language">Language</string>

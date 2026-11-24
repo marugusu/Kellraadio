@@ -1,0 +1,3 @@
+# Kaks eraldiseisvat avaekraani vidinat (HomeWidget ja CompactWidget)
+
+Kellraadio säilitab olemasoleva `HomeWidget` vidina muutmata kujul ning lisab selle kõrvale uue adaptiivse `CompactWidget` vidina (miinimumsuurusega 2×1, skaleeruv nii laiemaks kui pikemaks), selle asemel et olemasolevat vidinat kohapeal ümber kujundada. Androidi käivitajad ei paku usaldusväärset viisi olemasoleva `AppWidgetProvider`-i kuju ja suuruse muutmiseks ilma kasutajate juba paigutatud vidinaid lõhkumata, mistõttu on kaks eraldi `GlanceAppWidgetReceiver`-it turvaline ja kasutaja harjumusi hoidev lahendus. Mõlemad vidinad jagavad ühist uuenduskanalit (`HomeWidgetUpdater`) ja sama läbipaistvuse seadet (`widget_transparency`), et vältida taustateenuse oleku dubleerimist.

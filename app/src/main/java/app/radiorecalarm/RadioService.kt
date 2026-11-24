@@ -221,6 +221,14 @@ class RadioService : Service() {
         var isCurrentlyPlaying: Boolean = false
             private set
 
+        @Volatile
+        var isCurrentlyRecording: Boolean = false
+            private set
+
+        @Volatile
+        var currentActiveStreamUrl: String = ""
+            private set
+
         const val ACTION_UPDATE_STATION_NAME = "app.radiorecalarm.UPDATE_NAME"
         const val ACTION_FORCE_WIDGET_UPDATE = "app.radiorecalarm.FORCE_WIDGET_UPDATE"
 
@@ -899,6 +907,7 @@ class RadioService : Service() {
     }
 
     private fun sendRecordingStatus() {
+        isCurrentlyRecording = isRecording
         val intent = Intent(ACTION_RECORDING_STATUS).apply {
             putExtra("IS_RECORDING", isRecording)
             putExtra("IS_MUTED_RECORDING", isRecording && interruptionPolicy.isMutedRecording)
@@ -1031,6 +1040,7 @@ class RadioService : Service() {
             if (!isRecording) return@launch
             sendRecordingStatus()
             updateNotification()
+            updateWidget()
 
             recordingTimerJob?.cancel()
             recordingTimerJob = serviceScope.launch(Dispatchers.Main) {
@@ -1077,6 +1087,7 @@ class RadioService : Service() {
             }
             sendRecordingStatus()
             updateNotification()
+            updateWidget()
         }
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
             refreshStoppedUi()
@@ -1374,6 +1385,7 @@ class RadioService : Service() {
                 }
                 if (!newUrl.isNullOrEmpty() && newUrl != currentStreamUrl) {
                     currentStreamUrl = newUrl
+                    currentActiveStreamUrl = newUrl
                     prefs.edit().putString("last_url", newUrl).apply()
                     changed = true
                 }
@@ -1490,6 +1502,7 @@ class RadioService : Service() {
         }
 
         currentStreamUrl = streamUrl
+        currentActiveStreamUrl = streamUrl
         currentStationName = stationName ?: "Radio"
         if (!isAlarmMode) {
             notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
@@ -1592,6 +1605,7 @@ class RadioService : Service() {
                 if (currentStationName == stationName && currentStreamUrl == streamUrl) {
                     currentStationBitmap = loadedBitmap
                     updateNotification()
+                    updateWidget()
                 }
             }
         }
@@ -1819,6 +1833,9 @@ class RadioService : Service() {
         val artist = currentArtist
         val extra = currentExtra
         val currentBitrate = lastBitrateInfo
+        val recordingNow = isRecording
+        val streamUrl = currentStreamUrl
+        val isLocal = PlaybackStatusSync.isLocalStreamUri(streamUrl)
 
         serviceScope.launch {
             app.radiorecalarm.widget.HomeWidgetUpdater.update(
@@ -1828,13 +1845,18 @@ class RadioService : Service() {
                 artist = artist,
                 extra = extra,
                 bitrate = currentBitrate,
-                isPlaying = isPlaying
+                isPlaying = isPlaying,
+                isRecording = recordingNow,
+                isLocalStream = isLocal,
+                streamUrl = streamUrl
             )
         }
     }
 
     override fun onDestroy() {
         isCurrentlyPlaying = false
+        isCurrentlyRecording = false
+        currentActiveStreamUrl = ""
         cancelIdleTimeout()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
