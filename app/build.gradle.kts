@@ -27,8 +27,8 @@ android {
         applicationId = "app.radiorecalarm"
         minSdk = 26
         targetSdk = 36
-        versionCode = 50
-        versionName = "1.1.50"
+        versionCode = 51
+        versionName = "1.1.51"
 
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
