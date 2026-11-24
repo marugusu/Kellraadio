@@ -270,23 +270,19 @@ private fun StationListRowContent(
             .padding(start = 12.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(badgeBg)
-                .border(1.dp, badgeBorder, RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = StationArtworkUtils.getStationInitials(station.name),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp,
-                color = if (activeState == StationPlaybackState.PLAYING) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-        }
+        StationLogoBadge(
+            stationName = station.name,
+            iconUrl = station.iconUrl,
+            size = 40.dp,
+            cornerRadius = 8.dp,
+            borderColor = badgeBorder,
+            fallbackBackground = badgeBg,
+            fallbackTextColor = if (activeState == StationPlaybackState.PLAYING) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
 
         Spacer(modifier = Modifier.width(12.dp))
 

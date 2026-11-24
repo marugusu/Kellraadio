@@ -215,14 +215,16 @@ def get_duo_streams() -> Dict[str, str]:
         "elmari_ballaadid": f"{base}/EB_elmariballaadid.aac",
         "elmari_tantsuohtu": f"{base}/elmaritantsuohtu.aac",
         "kuku": f"{base}/kuku_high.mp3",
+        "raadio_duo": f"{base}/radioduo.aac",
         "myhits": f"{base}/myhits.mp3",
-        "duo_rock": f"{base}/rokk.aac",
+        "myhits_rock": f"{base}/MHR_myhitsrock.aac",
+        "myhits_dance": f"{base}/md_mhdance.aac",
+        "myhits_kpop": f"{base}/MHKPop.aac",
         "duo_country": f"{base}/dc_duocountry.aac",
         "duo_gold": f"{base}/kuld.aac",
         "duo_softmix": f"{base}/DS_softmix.aac",
         "duo_party": f"{base}/duodance.aac",
         "duo_hitmix": f"{base}/DHM_hitmix.aac",
-        "duo_dance": f"{base}/md_mhdance.aac",
         "duo_christmas": f"{base}/christmas.aac",
         "raadio_kidzone": f"{base}/kidzone.aac"
     }
@@ -255,7 +257,8 @@ def build_stations_list() -> List[Dict[str, Any]]:
             "isActive": True,
             "priority": meta["priority"],
             "category": meta["category"],
-            "countrycode": meta["countrycode"]
+            "countrycode": meta["countrycode"],
+            "iconUrl": meta.get("iconUrl", "")
         }
         final_stations.append(station)
 

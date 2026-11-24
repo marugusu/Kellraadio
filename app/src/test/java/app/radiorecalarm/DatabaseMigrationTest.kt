@@ -29,4 +29,26 @@ class DatabaseMigrationTest {
             executedSql.any { it.contains("ALTER TABLE alarms ADD COLUMN recordAudio INTEGER NOT NULL DEFAULT 0") }
         )
     }
+
+    @Test
+    fun migration10to11_addsIconUrlColumnToStationsTable() {
+        val executedSql = mutableListOf<String>()
+
+        val db = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        AppDatabase.MIGRATION_10_11.migrate(db)
+
+        assertTrue(
+            "Expected ALTER TABLE stations ADD COLUMN iconUrl to be executed",
+            executedSql.any { it.contains("ALTER TABLE stations ADD COLUMN iconUrl TEXT NOT NULL DEFAULT ''") }
+        )
+    }
 }

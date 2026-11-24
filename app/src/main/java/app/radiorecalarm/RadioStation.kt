@@ -26,5 +26,6 @@ data class RadioStation(
     val countryCode: String = "",
     
     // UUS: Järjekord ainult lemmikute vaates
-    val favoriteOrder: Int = 0
+    val favoriteOrder: Int = 0,
+    val iconUrl: String = ""
 )

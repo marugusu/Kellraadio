@@ -83,7 +83,11 @@ object AppConfig {
             "star fm 80s" to "80",
             "star fm 90s" to "90",
             "talksport 2" to "SPOR",
-            "talksport" to "SPOR"
+            "talksport" to "SPOR",
+            "raadio duo" to "DUO",
+            "myhits rock" to "MHRO",
+            "myhits dance" to "MHDA",
+            "myhits k-pop" to "KPOP"
         )
 
         // Sõnad, mida me lühendite tegemisel ignoreerime

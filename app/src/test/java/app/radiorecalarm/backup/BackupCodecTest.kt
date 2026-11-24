@@ -54,7 +54,8 @@ class BackupCodecTest {
                 countryCode = "EE",
                 isFavorite = true,
                 isUserStation = true,
-                favoriteOrder = 2
+                favoriteOrder = 2,
+                iconUrl = "https://example.com/jazz.png"
             )
         )
         val settings = BackupSettings(
@@ -82,6 +83,7 @@ class BackupCodecTest {
         assertEquals(1763890000000L, decoded.exportedAt)
         assertEquals(1, decoded.customStations.size)
         assertEquals("Minu Jazz", decoded.customStations.first().name)
+        assertEquals("https://example.com/jazz.png", decoded.customStations.first().iconUrl)
         assertEquals(1, decoded.favoriteUrls.size)
         assertEquals(1, decoded.favoriteUrls.first().stationId)
         assertEquals("Vikerraadio", decoded.favoriteUrls.first().stationName)

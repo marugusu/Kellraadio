@@ -32,7 +32,13 @@ class RadioStationRepository(
         stationDao.delete(station)
     }
 
-    suspend fun saveUserStation(name: String, url: String, countryCode: String, category: String): Int {
+    suspend fun saveUserStation(
+        name: String,
+        url: String,
+        countryCode: String,
+        category: String,
+        iconUrl: String = ""
+    ): Int {
         val maxId = stationDao.getMaxId() ?: 9999
         val newId = if (maxId < 10000) 10000 else maxId + 1
 
@@ -47,19 +53,28 @@ class RadioStationRepository(
             isUserStation = true,
             uuid = UUID.randomUUID().toString(),
             countryCode = countryCode,
-            isFavorite = false
+            isFavorite = false,
+            iconUrl = iconUrl.trim()
         )
         stationDao.insert(newStation)
         return newId
     }
 
-    suspend fun updateUserStation(station: RadioStation, newName: String, newUrl: String, newCountryCode: String, newCategory: String) {
+    suspend fun updateUserStation(
+        station: RadioStation,
+        newName: String,
+        newUrl: String,
+        newCountryCode: String,
+        newCategory: String,
+        newIconUrl: String = station.iconUrl
+    ) {
         val stationCategory = newCategory.trim()
         val updatedStation = station.copy(
             name = newName.trim(),
             url = newUrl.trim(),
             countryCode = newCountryCode,
-            category = stationCategory
+            category = stationCategory,
+            iconUrl = newIconUrl.trim()
         )
         stationDao.update(updatedStation)
     }
@@ -151,14 +166,31 @@ class RadioStationRepository(
     suspend fun loadOfflineStationsIfEmpty(context: Context) {
         try {
             val existingStations = stationDao.getAllActiveStationsSync()
-            if (existingStations.isEmpty()) {
-                context.assets.open("stations.json").use { inputStream ->
-                    val jsonText = inputStream.bufferedReader().readText()
-                    val offlineStations = json.decodeFromString<List<RadioStation>>(jsonText)
-
+            context.assets.open("stations.json").use { inputStream ->
+                val jsonText = inputStream.bufferedReader().readText()
+                val offlineStations = json.decodeFromString<List<RadioStation>>(jsonText)
+                if (existingStations.isEmpty()) {
                     if (offlineStations.isNotEmpty()) {
                         stationDao.insertAll(offlineStations)
                         Log.d("RADIO_DEBUG", "Laaditud ${offlineStations.size} jaama kohalikust varukoopiast (assets).")
+                    }
+                } else if (offlineStations.isNotEmpty()) {
+                    val iconById = offlineStations.filter { it.iconUrl.isNotBlank() }.associate { it.id to it.iconUrl }
+                    val iconByUrl = offlineStations.filter { it.iconUrl.isNotBlank() }.associate { it.url to it.iconUrl }
+                    val updates = existingStations.mapNotNull { current ->
+                        if (!current.isUserStation) {
+                            val bundledIcon = iconById[current.id] ?: iconByUrl[current.url]
+                            val isBundledAsset = bundledIcon?.startsWith("file:///android_asset/") == true
+                            val shouldUpdate = !bundledIcon.isNullOrBlank() &&
+                                (current.iconUrl.isBlank() || (isBundledAsset && current.iconUrl != bundledIcon))
+                            if (shouldUpdate) current.copy(iconUrl = bundledIcon!!) else null
+                        } else {
+                            null
+                        }
+                    }
+                    if (updates.isNotEmpty()) {
+                        stationDao.updateAll(updates)
+                        Log.d("RADIO_DEBUG", "Seemendatud ${updates.size} jaamaikooni kaasasolevast varukoopiast.")
                     }
                 }
             }
@@ -174,17 +206,23 @@ class RadioStationRepository(
             val userCount = existingStations.count { it.isUserStation }
             val favoriteById = existingStations.filter { it.isFavorite }.associate { it.id to it.favoriteOrder }
             val favoriteByUrl = existingStations.filter { it.isFavorite }.associate { it.url to it.favoriteOrder }
+            val existingIconById = existingStations.filter { it.iconUrl.isNotBlank() }.associate { it.id to it.iconUrl }
+            val existingIconByUrl = existingStations.filter { it.iconUrl.isNotBlank() }.associate { it.url to it.iconUrl }
             val remoteStations = apiService.getStations(System.currentTimeMillis())
 
             if (remoteStations.isNotEmpty()) {
                 val updatedStations = remoteStations.map { remote ->
                     val isFav = favoriteById.containsKey(remote.id) || favoriteByUrl.containsKey(remote.url)
                     val favOrder = favoriteById[remote.id] ?: favoriteByUrl[remote.url] ?: 0
+                    val preservedIconUrl = remote.iconUrl.ifBlank {
+                        existingIconById[remote.id] ?: existingIconByUrl[remote.url] ?: ""
+                    }
                     remote.copy(
                         isFavorite = isFav,
                         favoriteOrder = favOrder,
                         isUserStation = false,
-                        uuid = ""
+                        uuid = "",
+                        iconUrl = preservedIconUrl
                     )
                 }
                 stationDao.insertAll(updatedStations)

@@ -40,7 +40,8 @@ fun SongInfoTeaser(
     onClick: () -> Unit,
     shape: Shape = RectangleShape,
     modifier: Modifier = Modifier,
-    backgroundBrush: Brush? = null
+    backgroundBrush: Brush? = null,
+    stationIconUrl: String = ""
 ) {
     val infoParts = if (info != null) {
         listOfNotNull(info.album, info.year, info.genre).filter { it.isNotEmpty() }
@@ -73,15 +74,19 @@ fun SongInfoTeaser(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(stationColor),
+                    .clip(RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = stationInitials,
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 14.sp
+                StationLogoBadge(
+                    stationName = stationName,
+                    iconUrl = stationIconUrl,
+                    size = 48.dp,
+                    cornerRadius = 8.dp,
+                    borderWidth = 0.dp,
+                    borderColor = Color.Transparent,
+                    fallbackBackground = stationColor,
+                    fallbackTextColor = Color.White.copy(alpha = 0.5f),
+                    fallbackFontSize = 14.sp
                 )
 
                 if (info?.coverArtUrl != null) {

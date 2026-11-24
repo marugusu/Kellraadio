@@ -25,16 +25,18 @@ fun StationEditorDialog(
     initialUrl: String,
     initialCountryCode: String,
     initialSubgroup: String,
+    initialIconUrl: String = "",
     allCountries: List<RadioFilterItem>,
     allSubgroups: List<String>,
     onDismiss: () -> Unit,
     onTest: (String, String) -> Unit,
-    onSave: (name: String, url: String, countryCode: String, subgroup: String) -> Unit
+    onSave: (name: String, url: String, countryCode: String, subgroup: String, iconUrl: String) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var url by remember { mutableStateOf(initialUrl) }
     var countryCode by remember { mutableStateOf(initialCountryCode) }
     var subgroup by remember { mutableStateOf(initialSubgroup) }
+    var iconUrl by remember { mutableStateOf(initialIconUrl) }
     var countryName by remember {
         mutableStateOf(allCountries.find { it.isoCode == initialCountryCode }?.name ?: "")
     }
@@ -135,11 +137,20 @@ fun StationEditorDialog(
                         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                     }
                 }
+
+                OutlinedTextField(
+                    value = iconUrl,
+                    onValueChange = { iconUrl = it },
+                    label = { Text(stringResource(R.string.station_icon_url)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onSave(name.trim(), url.trim(), countryCode.trim(), subgroup.trim()) },
+                onClick = { onSave(name.trim(), url.trim(), countryCode.trim(), subgroup.trim(), iconUrl.trim()) },
                 enabled = name.isNotBlank() && url.isNotBlank(),
                 shape = RoundedCornerShape(8.dp)
             ) {
@@ -198,7 +209,7 @@ private fun StationEditorDialogPreview() {
             allSubgroups = listOf("Rock", "Pop", "Jutusaated"),
             onDismiss = {},
             onTest = { _, _ -> },
-            onSave = { _, _, _, _ -> }
+            onSave = { _, _, _, _, _ -> }
         )
     }
 }

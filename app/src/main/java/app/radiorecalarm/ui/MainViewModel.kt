@@ -696,11 +696,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun saveUserStation(name: String, url: String, countryCode: String, category: String) {
+    fun saveUserStation(name: String, url: String, countryCode: String, category: String, iconUrl: String = "") {
         val trimmedName = name.trim()
         val trimmedUrl = url.trim()
         val trimmedCountry = countryCode.trim()
         val trimmedCategory = category.trim()
+        val trimmedIconUrl = iconUrl.trim()
 
         if (!isValidUrl(trimmedUrl)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
@@ -708,7 +709,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         
         viewModelScope.launch {
-            val newId = stationRepository.saveUserStation(trimmedName, trimmedUrl, trimmedCountry, trimmedCategory)
+            val newId = stationRepository.saveUserStation(trimmedName, trimmedUrl, trimmedCountry, trimmedCategory, trimmedIconUrl)
             Toast.makeText(context, context.getString(R.string.station_added, trimmedName), Toast.LENGTH_SHORT).show()
 
             val currentCat = _uiState.value.selectedCategory
@@ -815,11 +816,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { stationRepository.clearHistory() }
     }
 
-    fun updateUserStation(newName: String, newUrl: String, newCountryCode: String, newCategory: String) {
+    fun updateUserStation(newName: String, newUrl: String, newCountryCode: String, newCategory: String, newIconUrl: String = "") {
         val trimmedName = newName.trim()
         val trimmedUrl = newUrl.trim()
         val trimmedCountryCode = newCountryCode.trim()
         val trimmedCategory = newCategory.trim()
+        val trimmedIconUrl = newIconUrl.trim()
 
         if (!isValidUrl(trimmedUrl)) {
             Toast.makeText(context, getString(R.string.error_invalid_url), Toast.LENGTH_SHORT).show()
@@ -831,7 +833,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope.launch {
                 val oldName = stationToUpdate.name
                 val oldUrl = stationToUpdate.url
-                stationRepository.updateUserStation(stationToUpdate, trimmedName, trimmedUrl, trimmedCountryCode, trimmedCategory)
+                stationRepository.updateUserStation(stationToUpdate, trimmedName, trimmedUrl, trimmedCountryCode, trimmedCategory, trimmedIconUrl)
 
                 val identityChanged = trimmedName != oldName || trimmedUrl != oldUrl
                 if (identityChanged) {

@@ -43,6 +43,7 @@ fun SongInfoSheet(
     artist: String,
     title: String,
     stationName: String,
+    stationIconUrl: String = "",
     bitrate: String,      // UUS
     streamUrl: String,    // UUS
     info: SongAdditionalInfo,
@@ -93,6 +94,7 @@ fun SongInfoSheet(
             artist = artist,
             title = title,
             stationName = stationName,
+            stationIconUrl = stationIconUrl,
             bitrate = bitrate,
             streamUrl = streamUrl,
             info = info,
@@ -112,6 +114,7 @@ fun SongInfoContent(
     artist: String,
     title: String,
     stationName: String,
+    stationIconUrl: String = "",
     bitrate: String,
     streamUrl: String,
     info: SongAdditionalInfo,
@@ -155,11 +158,17 @@ fun SongInfoContent(
                     .background(if (isImageLoaded) Color.DarkGray else stationColor),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = stationInitials,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White.copy(alpha = 0.3f)
+                StationLogoBadge(
+                    stationName = stationName,
+                    iconUrl = stationIconUrl,
+                    innerPadding = 16.dp,
+                    cornerRadius = 12.dp,
+                    borderWidth = 0.dp,
+                    borderColor = Color.Transparent,
+                    fallbackBackground = stationColor,
+                    fallbackTextColor = Color.White.copy(alpha = 0.3f),
+                    fallbackFontSize = 36.sp,
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 if (!info.coverArtUrl.isNullOrEmpty()) {
@@ -385,6 +394,7 @@ fun SongInfoContentLandscape(
     artist: String,
     title: String,
     stationName: String,
+    stationIconUrl: String = "",
     info: SongAdditionalInfo,
     showSpotifySaveButton: Boolean = false,
     isSpotifyTrackSaved: Boolean = false,
@@ -416,11 +426,17 @@ fun SongInfoContentLandscape(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = stationInitials,
-                    fontSize = 54.sp,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+                StationLogoBadge(
+                    stationName = stationName,
+                    iconUrl = stationIconUrl,
+                    innerPadding = 14.dp,
+                    cornerRadius = 8.dp,
+                    borderWidth = 0.dp,
+                    borderColor = Color.Transparent,
+                    fallbackBackground = MaterialTheme.colorScheme.surfaceVariant,
+                    fallbackTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
+                    fallbackFontSize = 54.sp,
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 if (!info.coverArtUrl.isNullOrEmpty()) {

@@ -285,4 +285,5 @@
     <string name="action_reorder">"Mūot jūrkõ"</string>
     <string name="action_done">"Valmõz"</string>
     <string name="reorder_mode_hint">"Vedīd stacijid sūovtõd jūrkõ"</string>
+    <string name="station_icon_url">"Logo URL (valīmi)"</string>
 </resources>
