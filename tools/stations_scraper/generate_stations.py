@@ -129,7 +129,6 @@ def scrape_sky() -> Dict[str, str]:
         "instrumental": "relax_instrumental",
         "international": "relax_international",
         "spa": "relax_spa",
-        "R7": "raadio_7",
         "Legendaarne": "legendaarne"
     }
 
