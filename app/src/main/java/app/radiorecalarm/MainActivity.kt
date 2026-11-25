@@ -265,11 +265,11 @@ fun RaadioEkraan(
                         isFavorite = displayStations.find { it.id == state.selectedStationId }?.isFavorite ?: false,
                         songInfo = songInfo,
                         isRecording = state.isRecording,
+                        isMutedRecording = state.isMutedRecording,
                         recordingDuration = state.recordingDuration,
                         recordingCount = state.recordingCount,
                         onInfoClick = mainViewModel::openSongInfo,
                         onPlayPause = mainViewModel::onPlayPauseClicked,
-                        onPlayStation = mainViewModel::onStationClicked,
                         onSleepClick = mainViewModel::openSleepTimerDialog,
                         onAlarmClick = {
                             if (state.currentTab == 3) Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show()
@@ -403,11 +403,11 @@ fun RaadioEkraan(
                         isFavorite = displayStations.find { it.id == state.selectedStationId }?.isFavorite ?: false,
                         songInfo = songInfo,
                         isRecording = state.isRecording,
+                        isMutedRecording = state.isMutedRecording,
                         recordingDuration = state.recordingDuration,
                         recordingCount = state.recordingCount,
                         onInfoClick = mainViewModel::openSongInfo,
                         onPlayPause = mainViewModel::onPlayPauseClicked,
-                        onPlayStation = mainViewModel::onStationClicked,
                         onSleepClick = mainViewModel::openSleepTimerDialog,
                         onAlarmClick = {
                             if (state.currentTab == 3) Toast.makeText(context, context.getString(R.string.error_station_not_found), Toast.LENGTH_SHORT).show()

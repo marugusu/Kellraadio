@@ -87,6 +87,11 @@ class RecordingInterruptionPolicyTest {
         val callEnd = policy.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN, isRecording = true)
         assertEquals(InterruptionAction.None, callEnd)
         assertTrue(policy.isMutedRecording)
+
+        val userResume = policy.onUserUnmuteOrResume()
+        assertEquals(InterruptionAction.SetVolume(1.0f, isMutedRecording = false), userResume)
+        assertFalse(policy.isMutedRecording)
+        assertNull(policy.muteReason)
     }
 
     @Test

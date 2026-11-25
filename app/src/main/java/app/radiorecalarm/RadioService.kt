@@ -899,10 +899,20 @@ class RadioService : Service() {
         if (!interruptionPolicy.isMutedRecording) return false
         applyInterruptionAction(interruptionPolicy.onUserUnmuteOrResume())
         requestAudioFocus()
-        if (!player.playWhenReady && currentStreamUrl.isNotEmpty()) {
-            player.playWhenReady = true
-            player.play()
+        if (currentStreamUrl.isNotEmpty()) {
+            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+                player.prepare()
+            }
+            if (!player.playWhenReady) {
+                player.playWhenReady = true
+                player.play()
+            }
+            sendStationChangedBroadcast(
+                isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl),
+                isPlaying = true
+            )
         }
+        updateWidget()
         return true
     }
 
@@ -1333,6 +1343,17 @@ class RadioService : Service() {
                 if (unmuteFromUserAction()) {
                     return START_STICKY
                 }
+                if (player.isPlaying && currentStreamUrl.isNotEmpty()) {
+                    requestAudioFocus()
+                    player.volume = 1.0f
+                    sendStationChangedBroadcast(
+                        isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl),
+                        isPlaying = true
+                    )
+                    updateNotification()
+                    updateWidget()
+                    return START_STICKY
+                }
                 if (!player.isPlaying && currentStreamUrl.isNotEmpty()) {
                     val isLocal = PlaybackStatusSync.isLocalStreamUri(currentStreamUrl)
                     if (isLocal && player.playbackState != Player.STATE_IDLE) {
@@ -1434,10 +1455,16 @@ class RadioService : Service() {
                 prefs.edit().putString("last_category", category).apply()
             }
 
-            if (currentStreamUrl == streamUrl && player.isPlaying && triggeredBy != "USER_RESUME" && triggeredBy != "ALARM") {
+            if (currentStreamUrl == streamUrl &&
+                triggeredBy != "ALARM" &&
+                (interruptionPolicy.isMutedRecording || (player.isPlaying && triggeredBy != "USER_RESUME"))
+            ) {
                 if (isAlarmMode) {
                     isAlarmMode = false
                     notificationManager.cancel(RadioNotificationManager.ALARM_NOTIFICATION_ID)
+                }
+                if (unmuteFromUserAction()) {
+                    return START_STICKY
                 }
                 updateNotification()
                 if (PlaybackStatusSync.isLocalStreamUri(streamUrl)) {
