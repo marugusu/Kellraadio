@@ -30,6 +30,8 @@ class AlarmReceiver(
         }
         val wakeLockHandle: WakeLockHandle = rawWakeLock?.let { AndroidWakeLockHandle(it) } ?: NoOpWakeLockHandle
 
+        val alarmId = intent.getIntExtra("ALARM_ID", -1)
+
         val coordinator = coordinatorFactory?.invoke(context, wakeLockHandle) ?: run {
             val db = AppDatabase.getDatabase(context)
             val launcher = AndroidAlarmPlaybackLauncher(context)
@@ -38,7 +40,7 @@ class AlarmReceiver(
                 alarmDao = db.alarmDao(),
                 playbackLauncher = launcher,
                 onAlarmRescheduled = {
-                    AlarmUtils.scheduleNextAlarmInternal(context)
+                    AlarmUtils.scheduleNextAlarmInternal(context, triggeredAlarmId = alarmId)
                     app.radiorecalarm.widget.HomeWidgetUpdater.update(context)
                     val uiUpdateIntent = Intent("app.radiorecalarm.ALARMS_CHANGED")
                     LocalBroadcastManager.getInstance(context).sendBroadcast(uiUpdateIntent)
@@ -49,8 +51,7 @@ class AlarmReceiver(
         // Haara WakeLock turvalimiidiga enne asünkroonse korutiini käivitamist
         coordinator.acquireWakeLock()
 
-        // 2. Hangi äratuse ID intent'ist
-        val alarmId = intent.getIntExtra("ALARM_ID", -1)
+        // 2. Kontrolli äratuse ID kehtivust
         if (alarmId == -1) {
             Log.e(TAG, "ALARM_ID puudub, vabastame luku ja lõpetame.")
             if (wakeLockHandle.isHeld) {

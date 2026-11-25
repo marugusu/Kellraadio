@@ -17,8 +17,33 @@ object AlarmUtils {
 
     private const val TAG = "AlarmUtils"
     private const val ALARM_REQUEST_CODE = 1001
+    private const val TRIGGERED_ALARM_REFIRE_BUFFER_MS = 15_000L
 
-    suspend fun scheduleNextAlarmInternal(context: Context) = withContext(Dispatchers.IO) {
+    fun selectNextAlarm(
+        enabledAlarms: List<Alarm>,
+        nowMillis: Long = System.currentTimeMillis(),
+        triggeredAlarmId: Int? = null
+    ): Pair<Alarm, Long>? {
+        return enabledAlarms.map { alarm ->
+            val bufferMillis = if (triggeredAlarmId != null && alarm.id == triggeredAlarmId) {
+                TRIGGERED_ALARM_REFIRE_BUFFER_MS
+            } else {
+                0L
+            }
+            alarm to findNextAlarmTime(
+                alarm.hour,
+                alarm.minute,
+                alarm.days,
+                nowMillis = nowMillis,
+                bufferMillis = bufferMillis
+            )
+        }.minByOrNull { it.second }
+    }
+
+    suspend fun scheduleNextAlarmInternal(
+        context: Context,
+        triggeredAlarmId: Int? = null
+    ) = withContext(Dispatchers.IO) {
         try {
             val db = AppDatabase.getDatabase(context)
             val enabledAlarms = db.alarmDao().getAllEnabledAlarms()
@@ -29,9 +54,7 @@ object AlarmUtils {
                 return@withContext
             }
 
-            val nextUpcoming = enabledAlarms.map { alarm ->
-                alarm to findNextAlarmTime(alarm.hour, alarm.minute, alarm.days)
-            }.minByOrNull { it.second }
+            val nextUpcoming = selectNextAlarm(enabledAlarms, triggeredAlarmId = triggeredAlarmId)
 
             if (nextUpcoming != null) {
                 val (nextAlarm, triggerTime) = nextUpcoming
@@ -156,12 +179,15 @@ object AlarmUtils {
         rescheduleNextAlarm(context)
     }
 
-    fun findNextAlarmTime(hour: Int, minute: Int, days: Set<Int>): Long {
-        val now = Calendar.getInstance()
-        // Kui äratus käivitub vahetult enne minutivahetust (nt 06:29:59),
-        // hoiab puhver ära selle uuesti tänaseks arvestamise.
-        val bufferMillis = 15_000L
+    fun findNextAlarmTime(
+        hour: Int,
+        minute: Int,
+        days: Set<Int>,
+        nowMillis: Long = System.currentTimeMillis(),
+        bufferMillis: Long = 0L
+    ): Long {
         val target = Calendar.getInstance().apply {
+            timeInMillis = nowMillis
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
@@ -169,18 +195,17 @@ object AlarmUtils {
         }
 
         if (days.isEmpty()) {
-            if (target.timeInMillis <= now.timeInMillis + bufferMillis) {
+            if (target.timeInMillis <= nowMillis + bufferMillis) {
                 target.add(Calendar.DAY_OF_YEAR, 1)
             }
             return target.timeInMillis
         }
 
-        val sortedDays = days.sorted()
-
-        val today = now.get(Calendar.DAY_OF_WEEK)
-
         for (i in 0..7) {
-            val checkCal = (now.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, i) }
+            val checkCal = Calendar.getInstance().apply {
+                timeInMillis = nowMillis
+                add(Calendar.DAY_OF_YEAR, i)
+            }
             val dayOfWeek = checkCal.get(Calendar.DAY_OF_WEEK)
 
             if (days.contains(dayOfWeek)) {
@@ -192,7 +217,7 @@ object AlarmUtils {
                     set(Calendar.MILLISECOND, 0)
                 }
 
-                if (potentialAlarmTime.timeInMillis > now.timeInMillis + bufferMillis) {
+                if (potentialAlarmTime.timeInMillis > nowMillis + bufferMillis) {
                     return potentialAlarmTime.timeInMillis
                 }
             }
