@@ -32,6 +32,14 @@ _Avoid_: Kategooria, alamfilter kui omadus
 Kasutaja poolt esiletõstetud jaam, mis kuulub püsiva järjekorraga kiirvaliku vaatesse.
 _Avoid_: Lemmikkanal
 
+**Jaamakaart (Station Card)**:
+Ühe **Jaama** valiku- ja olekuelement jaamade nimekirjas või ruudustikus (rearežiimis ja kaardirežiimis).
+_Avoid_: Jaamanupp, nupp, plaat
+
+**Jaamalogo (Station Logo)**:
+**Jaama** visuaalne tunnusmärk pildina või selle puudumisel initsiaalidega asendusmärgina.
+_Avoid_: Jaama ikoon, brändimärk
+
 **Salvestus (Recording)**:
 Raadio helivoo reaalajas talletamine failisüsteemi bit-perfect helifailina, mis jätkab väliste helikatkestuste (Bluetoothi lahtiühendamine, kõne, teise äpi audiofookus) korral tööd vaigistatult taustal kuni kasutaja selle ise peatab.
 _Avoid_: Audio rip, striimitõmmis

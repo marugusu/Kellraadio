@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.radiorecalarm.R
@@ -86,7 +87,6 @@ fun StationGridItem(
     val activeState = if (isSelected) playbackState else StationPlaybackState.IDLE
     val isRowMode = columnCount <= 2
     val isTwoColumn = columnCount == 2
-    val isCompact = columnCount >= 4
 
     val pulseAlpha = if (activeState == StationPlaybackState.BUFFERING) {
         val infiniteTransition = rememberInfiniteTransition(label = "station_buffering")
@@ -130,11 +130,11 @@ fun StationGridItem(
         else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     }
 
-    val cardShape = RoundedCornerShape(if (isCompact) 8.dp else 10.dp)
+    val cardShape = RoundedCornerShape(if (columnCount >= 4) 8.dp else 10.dp)
     val cardHeight = when {
         isRowMode -> 64.dp
-        isCompact -> 60.dp
-        else -> 70.dp
+        columnCount >= 4 -> 68.dp
+        else -> 78.dp
     }
 
     Card(
@@ -229,11 +229,44 @@ fun StationGridItem(
                 contentColor = contentColor,
                 showFavoriteIcon = showFavoriteIcon,
                 showFlag = showFlag,
-                isCompact = isCompact,
+                columnCount = columnCount,
                 isReorderMode = isReorderMode
             )
         }
     }
+}
+
+private data class StationLogoColors(
+    val background: Color,
+    val border: Color,
+    val loadedBorder: Color,
+    val fallbackText: Color
+)
+
+@Composable
+private fun rememberStationLogoColors(activeState: StationPlaybackState): StationLogoColors {
+    return StationLogoColors(
+        background = when (activeState) {
+            StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+            StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+            else -> MaterialTheme.colorScheme.surface
+        },
+        border = when (activeState) {
+            StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+            else -> MaterialTheme.colorScheme.outline
+        },
+        loadedBorder = when (activeState) {
+            StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+            else -> Color.Transparent
+        },
+        fallbackText = if (activeState == StationPlaybackState.PLAYING) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    )
 }
 
 @Composable
@@ -247,21 +280,7 @@ private fun StationListRowContent(
     isReorderMode: Boolean,
     onMoreClick: () -> Unit
 ) {
-    val badgeBg = when (activeState) {
-        StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-        StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-        else -> MaterialTheme.colorScheme.surface
-    }
-    val badgeBorder = when (activeState) {
-        StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-        StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
-        else -> MaterialTheme.colorScheme.outline
-    }
-    val loadedBadgeBorder = when (activeState) {
-        StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-        StationPlaybackState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
-        else -> Color.Transparent
-    }
+    val logoColors = rememberStationLogoColors(activeState)
     val subtitleParts = buildList {
         if (showFlag && station.countryCode.isNotEmpty()) {
             add(station.countryCode.uppercase())
@@ -290,14 +309,10 @@ private fun StationListRowContent(
             iconUrl = station.iconUrl,
             size = logoSize,
             cornerRadius = logoCornerRadius,
-            borderColor = badgeBorder,
-            loadedBorderColor = loadedBadgeBorder,
-            fallbackBackground = badgeBg,
-            fallbackTextColor = if (activeState == StationPlaybackState.PLAYING) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            borderColor = logoColors.border,
+            loadedBorderColor = logoColors.loadedBorder,
+            fallbackBackground = logoColors.background,
+            fallbackTextColor = logoColors.fallbackText,
             fallbackFontSize = if (isTwoColumn) 10.sp else 11.sp
         )
 
@@ -387,6 +402,84 @@ private fun StationListRowContent(
     }
 }
 
+private data class GridCardLayoutSpec(
+    val horizontalPad: Dp,
+    val verticalPad: Dp,
+    val logoSize: Dp,
+    val logoCornerRadius: Dp,
+    val logoFallbackFontSize: TextUnit,
+    val showCountryCode: Boolean,
+    val countryFontSize: TextUnit,
+    val signalBarWidth: Dp,
+    val signalMaxHeight: Dp,
+    val statusIconSize: Dp,
+    val trailingIconSize: Dp,
+    val starIconSize: Dp,
+    val statusGap: Dp,
+    val nameFontSize: TextUnit,
+    val nameLineHeight: TextUnit,
+    val indicatorWidth: Dp
+)
+
+private fun gridCardLayoutSpec(columnCount: Int): GridCardLayoutSpec {
+    return when {
+        columnCount <= 3 -> GridCardLayoutSpec(
+            horizontalPad = 8.dp,
+            verticalPad = 6.dp,
+            logoSize = 22.dp,
+            logoCornerRadius = 6.dp,
+            logoFallbackFontSize = 8.sp,
+            showCountryCode = true,
+            countryFontSize = 9.sp,
+            signalBarWidth = 2.dp,
+            signalMaxHeight = 11.dp,
+            statusIconSize = 12.dp,
+            trailingIconSize = 13.dp,
+            starIconSize = 12.dp,
+            statusGap = 3.dp,
+            nameFontSize = 13.sp,
+            nameLineHeight = 15.5.sp,
+            indicatorWidth = 26.dp
+        )
+        columnCount == 4 -> GridCardLayoutSpec(
+            horizontalPad = 6.dp,
+            verticalPad = 5.dp,
+            logoSize = 18.dp,
+            logoCornerRadius = 5.dp,
+            logoFallbackFontSize = 7.sp,
+            showCountryCode = true,
+            countryFontSize = 8.sp,
+            signalBarWidth = 1.5.dp,
+            signalMaxHeight = 9.dp,
+            statusIconSize = 10.dp,
+            trailingIconSize = 11.dp,
+            starIconSize = 10.dp,
+            statusGap = 3.dp,
+            nameFontSize = 11.5.sp,
+            nameLineHeight = 13.5.sp,
+            indicatorWidth = 20.dp
+        )
+        else -> GridCardLayoutSpec(
+            horizontalPad = 5.dp,
+            verticalPad = 5.dp,
+            logoSize = 18.dp,
+            logoCornerRadius = 5.dp,
+            logoFallbackFontSize = 7.sp,
+            showCountryCode = false,
+            countryFontSize = 8.sp,
+            signalBarWidth = 1.5.dp,
+            signalMaxHeight = 9.dp,
+            statusIconSize = 10.dp,
+            trailingIconSize = 11.dp,
+            starIconSize = 10.dp,
+            statusGap = 2.dp,
+            nameFontSize = 11.sp,
+            nameLineHeight = 13.sp,
+            indicatorWidth = 18.dp
+        )
+    }
+}
+
 @Composable
 private fun StationGridCardContent(
     station: RadioStation,
@@ -395,64 +488,92 @@ private fun StationGridCardContent(
     contentColor: Color,
     showFavoriteIcon: Boolean,
     showFlag: Boolean,
-    isCompact: Boolean,
+    columnCount: Int,
     isReorderMode: Boolean
 ) {
-    val horizontalPad = if (isCompact) 6.dp else 8.dp
-    val verticalPad = if (isCompact) 5.dp else 6.dp
-    val microTrackHeight = if (isCompact) 12.dp else 14.dp
+    val spec = remember(columnCount) { gridCardLayoutSpec(columnCount) }
+    val logoColors = rememberStationLogoColors(activeState)
+    val hasTrailingBadge = isReorderMode || (station.isFavorite && showFavoriteIcon)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = horizontalPad, vertical = verticalPad)
+            .padding(horizontal = spec.horizontalPad, vertical = spec.verticalPad)
     ) {
-        // Ülemine mikroriba (riigikood, elav signaal, lemmik)
+        // Ülemine päiseriba: vasakul mini-jaamalogo (+ riigikood 3–4 tulbas), paremal olek ja täht/käepide
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(microTrackHeight),
+                .height(spec.logoSize),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (showFlag && station.countryCode.isNotEmpty()) {
+            StationLogoBadge(
+                stationName = station.name,
+                iconUrl = station.iconUrl,
+                size = spec.logoSize,
+                cornerRadius = spec.logoCornerRadius,
+                borderWidth = 0.75.dp,
+                borderColor = logoColors.border,
+                loadedBorderColor = logoColors.loadedBorder,
+                fallbackBackground = logoColors.background,
+                fallbackTextColor = logoColors.fallbackText,
+                fallbackFontSize = spec.logoFallbackFontSize
+            )
+
+            if (spec.showCountryCode && showFlag && station.countryCode.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = station.countryCode.uppercase(),
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = if (isCompact) 8.sp else 9.sp,
+                        fontSize = spec.countryFontSize,
                         letterSpacing = 0.5.sp
                     ),
                     color = when (activeState) {
                         StationPlaybackState.ERROR -> MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f)
                         StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
                     },
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
                 )
-            } else {
-                Spacer(modifier = Modifier.width(1.dp))
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            if (activeState == StationPlaybackState.PLAYING) {
-                LiveSignalBars(
-                    color = MaterialTheme.colorScheme.primary,
-                    barWidth = if (isCompact) 1.5.dp else 2.dp,
-                    maxHeight = if (isCompact) 9.dp else 11.dp
-                )
-                if (station.isFavorite && showFavoriteIcon) {
-                    Spacer(modifier = Modifier.width(4.dp))
+            when (activeState) {
+                StationPlaybackState.PLAYING -> {
+                    LiveSignalBars(
+                        color = MaterialTheme.colorScheme.primary,
+                        barWidth = spec.signalBarWidth,
+                        maxHeight = spec.signalMaxHeight
+                    )
+                    if (hasTrailingBadge) {
+                        Spacer(modifier = Modifier.width(spec.statusGap))
+                    }
                 }
-            } else if (activeState == StationPlaybackState.ERROR) {
-                Icon(
-                    imageVector = Icons.Default.ErrorOutline,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(if (isCompact) 10.dp else 12.dp)
-                )
-                if (station.isFavorite && showFavoriteIcon) {
-                    Spacer(modifier = Modifier.width(4.dp))
+                StationPlaybackState.BUFFERING -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(spec.statusIconSize),
+                        strokeWidth = 1.5.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (hasTrailingBadge) {
+                        Spacer(modifier = Modifier.width(spec.statusGap))
+                    }
                 }
+                StationPlaybackState.ERROR -> {
+                    Icon(
+                        imageVector = Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(spec.statusIconSize)
+                    )
+                    if (hasTrailingBadge) {
+                        Spacer(modifier = Modifier.width(spec.statusGap))
+                    }
+                }
+                StationPlaybackState.IDLE -> Unit
             }
 
             if (isReorderMode) {
@@ -460,47 +581,47 @@ private fun StationGridCardContent(
                     imageVector = Icons.Default.DragIndicator,
                     contentDescription = stringResource(R.string.action_reorder),
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(if (isCompact) 11.dp else 13.dp)
+                    modifier = Modifier.size(spec.trailingIconSize)
                 )
             } else if (station.isFavorite && showFavoriteIcon) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(if (isCompact) 10.dp else 12.dp)
+                    modifier = Modifier.size(spec.starIconSize)
                 )
             }
         }
 
-        // Põhiline nimeala
+        // Vasakule joondatud jaama nimi (ühtib mini-jaamalogoga ühele teljele)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = if (isCompact) 11.5.sp else 13.5.sp,
-                    lineHeight = if (isCompact) 14.sp else 17.sp,
+                    fontSize = spec.nameFontSize,
+                    lineHeight = spec.nameLineHeight,
                     letterSpacing = 0.sp
                 ),
                 fontWeight = if (activeState == StationPlaybackState.PLAYING) FontWeight.Bold else FontWeight.SemiBold,
                 color = contentColor,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Start,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
-        // Alumine tuuneri-indikaatori triip aktiivsel jaamal
+        // Vasakule joondatud aktiivse oleku triip
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(3.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.CenterStart
         ) {
             val barColor = when (activeState) {
                 StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary
@@ -511,7 +632,7 @@ private fun StationGridCardContent(
             if (barColor != Color.Transparent) {
                 Box(
                     modifier = Modifier
-                        .width(if (isCompact) 18.dp else 28.dp)
+                        .width(spec.indicatorWidth)
                         .height(2.dp)
                         .clip(RoundedCornerShape(1.dp))
                         .background(barColor)
@@ -605,6 +726,22 @@ private fun StationGridItemStatesPreview() {
                             showFavoriteIcon = true,
                             showFlag = true,
                             columnCount = 3
+                        )
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(4, 4, 6, 6).forEachIndexed { index, cols ->
+                    Box(modifier = Modifier.weight(1f)) {
+                        StationGridItem(
+                            station = if (index % 2 == 0) sample else sample.copy(name = "Klassikaraadio"),
+                            isSelected = index == 0 || index == 2,
+                            playbackState = if (index == 0) StationPlaybackState.PLAYING else if (index == 2) StationPlaybackState.BUFFERING else StationPlaybackState.IDLE,
+                            onClick = {},
+                            onLongClick = {},
+                            showFavoriteIcon = true,
+                            showFlag = true,
+                            columnCount = cols
                         )
                     }
                 }
