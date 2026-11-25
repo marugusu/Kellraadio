@@ -616,12 +616,12 @@ private fun StationGridCardContent(
             )
         }
 
-        // Vasakule joondatud aktiivse oleku triip
+        // Keskele joondatud aktiivse oleku triip
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(3.dp),
-            contentAlignment = Alignment.CenterStart
+            contentAlignment = Alignment.Center
         ) {
             val barColor = when (activeState) {
                 StationPlaybackState.PLAYING -> MaterialTheme.colorScheme.primary
