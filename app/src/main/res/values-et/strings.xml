@@ -189,6 +189,14 @@
     <string name="info_not_found">Lisainfot ei leitud.</string>
     <string name="info_available">Lisainfo leitud</string>
     <string name="info_searching">Otsin lisainfot...</string>
+    <string name="info_searching_lyrics">Otsin laulusõnu...</string>
+    <string name="info_lyrics_not_found">Laulusõnu ei leitud</string>
+    <string name="info_search_lyrics_online">Otsi veebist</string>
+    <string name="info_copy_lyrics">Kopeeri</string>
+    <string name="info_lyrics_copied">Laulusõnad kopeeritud</string>
+    <string name="info_lyrics_badge">Sõnad</string>
+    <string name="info_open_full">Täisvaade</string>
+    <string name="cd_album_art">Albumi kaanepilt</string>
 
     <!-- Share Content -->
     <string name="share_title">Jaga lugu</string>

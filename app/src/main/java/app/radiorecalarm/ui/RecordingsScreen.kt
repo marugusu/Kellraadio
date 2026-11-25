@@ -436,31 +436,24 @@ fun RecordingsScreen(
                 app.radiorecalarm.spotify.SpotifyRepository.checkTrackSaved(currentTrackId)
             }
         }
-        ModalBottomSheet(
-            onDismissRequest = { sheetSongInfo = null },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ) {
-            SongInfoSheet(
-                artist = sheetArtist,
-                title = sheetTitle,
-                stationName = sheetStation,
-                bitrate = sheetBitrate,
-                streamUrl = "",
-                info = sheetSongInfo!!,
-                isLoadingLyrics = isLyricsLoading,
-                showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
-                isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
-                isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
-                onSaveToSpotify = {
-                    scope.launch {
-                        saveTrackToSpotifyWithFeedback(context, currentTrackId)
-                    }
-                },
-                onDismiss = { sheetSongInfo = null }
-            )
-        }
+        SongInfoModalSheet(
+            artist = sheetArtist,
+            title = sheetTitle,
+            stationName = sheetStation,
+            bitrate = sheetBitrate,
+            streamUrl = "",
+            info = sheetSongInfo!!,
+            isLoadingLyrics = isLyricsLoading,
+            showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
+            isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
+            isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
+            onSaveToSpotify = {
+                scope.launch {
+                    saveTrackToSpotifyWithFeedback(context, currentTrackId)
+                }
+            },
+            onDismiss = { sheetSongInfo = null }
+        )
     }
 
     if (showDatePicker) {

@@ -1,5 +1,7 @@
 package app.radiorecalarm.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -22,6 +24,21 @@ fun openYoutubeSearch(context: Context, query: String) {
     try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=$encodedQuery")))
     } catch (e: Exception) {}
+}
+
+fun openLyricsWebSearch(context: Context, artist: String, title: String) {
+    val query = buildLyricsWebSearchQuery(artist, title)
+    if (query.isBlank()) return
+    val encodedQuery = Uri.encode(query)
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$encodedQuery")))
+    } catch (e: Exception) {}
+}
+
+fun copyLyricsWithFeedback(context: Context, lyrics: String) {
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard?.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.info_lyrics), lyrics.trim()))
+    Toast.makeText(context, context.getString(R.string.info_lyrics_copied), Toast.LENGTH_SHORT).show()
 }
 
 fun openSpotifyTrack(context: Context, trackId: String?, fallbackQuery: String) {
