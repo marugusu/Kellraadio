@@ -82,7 +82,7 @@
     <string name="date_picker_title">날짜 선택</string>
 
     <!-- Search / Add Station -->
-    <string name="search_title">채널 추가</string>
+    <string name="search_title">방송국 추가</string>
     <string name="search_placeholder">방송국 검색...</string>
     <string name="search_manual">수동 추가</string>
     <string name="search_no_results">검색 결과 없음.</string>
@@ -341,4 +341,20 @@
     <string name="action_done">완료</string>
     <string name="reorder_mode_hint">드래그하여 방송국 순서를 변경하세요</string>
     <string name="station_icon_url">로고 URL (선택 사항)</string>
+    <string name="action_clear">지우기</string>
+    <string name="action_retry">다시 시도</string>
+    <string name="search_query_too_short">2글자 이상 입력하거나 필터를 선택하세요</string>
+    <string name="search_network_error">방송국을 불러오지 못했습니다. 인터넷 연결을 확인하세요.</string>
+    <string name="search_quick_browse">빠른 탐색</string>
+    <string name="search_manual_hint_title">직접 스트림 주소가 있나요?</string>
+    <string name="search_manual_hint_desc">스트림 URL을 입력해 원하는 인터넷 라디오를 직접 추가하세요.</string>
+    <string name="search_clear_filter">필터 지우기</string>
+    <string name="station_editor_url_invalid">URL은 http:// 또는 https://로 시작해야 합니다</string>
+    <string name="station_editor_add_https">https:// 추가</string>
+    <string name="station_editor_duplicate_url">이미 저장된 스트림입니다: %1$s</string>
+    <string name="station_editor_test_stop">테스트 정지</string>
+    <string name="station_editor_test_buffering">버퍼링 중...</string>
+    <string name="station_editor_test_error">이 스트림을 재생할 수 없습니다</string>
+    <string name="station_editor_country_unspecified">지정 안 함</string>
+    <string name="station_editor_subgroup_hint">선택 사항 (예: Pop, Rock, News)</string>
 </resources>
