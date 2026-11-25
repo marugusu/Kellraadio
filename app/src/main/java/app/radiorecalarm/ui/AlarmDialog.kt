@@ -1,6 +1,5 @@
 package app.radiorecalarm.ui
 
-import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,7 +33,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
@@ -47,12 +45,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.radiorecalarm.AlarmUtils
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioStation
-import app.radiorecalarm.isTv
 import app.radiorecalarm.ui.theme.KellraadioTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -73,7 +68,6 @@ private val ALL_DAYS = WORK_DAYS + WEEKEND_DAYS
  * Kohanduv äratuse loomise ja muutmise vorm.
  * Püstasendis kuvatakse `ModalBottomSheet`ina, rõhtasendis ja TV-s 2-veerulise `Dialog`ina.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmDialog(
     selectedStation: RadioStation?,
@@ -86,11 +80,8 @@ fun AlarmDialog(
     onDelete: (() -> Unit)? = null,
     onAlarmSaved: (hour: Int, minute: Int, days: Set<Int>, recordAudio: Boolean, station: RadioStation) -> Unit
 ) {
-    val configuration = LocalConfiguration.current
     val context = LocalContext.current
     val view = LocalView.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val useDialogFrame = isLandscape || isTv(context)
 
     val nowCal = remember { Calendar.getInstance() }
     var hour by remember { mutableIntStateOf(initialHour ?: nowCal.get(Calendar.HOUR_OF_DAY)) }
@@ -128,75 +119,61 @@ fun AlarmDialog(
         stringResource(R.string.alarm_set_title)
     }
 
-    if (useDialogFrame) {
-        Dialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp,
-                modifier = Modifier
-                    .widthIn(max = 720.dp)
-                    .fillMaxWidth(0.92f)
-                    .heightIn(max = (configuration.screenHeightDp * 0.92f).dp)
-            ) {
-                AlarmFormLandscapeLayout(
-                    title = titleText,
-                    hour = hour,
-                    minute = minute,
-                    isKeyboardMode = isKeyboardMode,
-                    countdownText = countdownText,
-                    station = currentStation,
-                    days = days,
-                    recordAudio = recordAudio,
-                    canSave = currentStation != null,
-                    showDelete = onDelete != null,
-                    onToggleInputMode = {
-                        view.performHapticTap()
-                        isKeyboardMode = !isKeyboardMode
-                    },
-                    onHourChange = { hour = it },
-                    onMinuteChange = { minute = it },
-                    onOpenStationPicker = {
-                        view.performHapticTap()
-                        showStationPicker = true
-                    },
-                    onDaysChange = { days = it },
-                    onRecordAudioChange = { recordAudio = it },
-                    onDelete = onDelete?.let { deleteAction ->
-                        {
-                            view.performHapticTap()
-                            deleteAction()
-                        }
-                    },
-                    onDismiss = {
-                        view.performHapticTap()
-                        onDismiss()
-                    },
-                    onSave = {
-                        val stationToSave = currentStation ?: return@AlarmFormLandscapeLayout
-                        view.performHapticTap()
-                        onAlarmSaved(hour, minute, days, recordAudio, stationToSave)
-                    }
-                )
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 720.dp,
+        dialogWidthFraction = 0.92f,
+        dialogMaxHeightFraction = 0.92f
+    ) { isDialogMode ->
+        val onToggleInputMode = {
+            view.performHapticTap()
+            isKeyboardMode = !isKeyboardMode
+        }
+        val onOpenStationPicker = {
+            view.performHapticTap()
+            showStationPicker = true
+        }
+        val wrappedDelete = onDelete?.let { deleteAction ->
+            {
+                view.performHapticTap()
+                deleteAction()
             }
         }
-    } else {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
-            dragHandle = {
-                BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outline)
+        val wrappedDismiss = {
+            view.performHapticTap()
+            onDismiss()
+        }
+        val wrappedSave = {
+            currentStation?.let { stationToSave ->
+                view.performHapticTap()
+                onAlarmSaved(hour, minute, days, recordAudio, stationToSave)
             }
-        ) {
+            Unit
+        }
+
+        if (isDialogMode) {
+            AlarmFormLandscapeLayout(
+                title = titleText,
+                hour = hour,
+                minute = minute,
+                isKeyboardMode = isKeyboardMode,
+                countdownText = countdownText,
+                station = currentStation,
+                days = days,
+                recordAudio = recordAudio,
+                canSave = currentStation != null,
+                showDelete = onDelete != null,
+                onToggleInputMode = onToggleInputMode,
+                onHourChange = { hour = it },
+                onMinuteChange = { minute = it },
+                onOpenStationPicker = onOpenStationPicker,
+                onDaysChange = { days = it },
+                onRecordAudioChange = { recordAudio = it },
+                onDelete = wrappedDelete,
+                onDismiss = wrappedDismiss,
+                onSave = wrappedSave
+            )
+        } else {
             AlarmFormPortraitLayout(
                 title = titleText,
                 hour = hour,
@@ -208,39 +185,21 @@ fun AlarmDialog(
                 recordAudio = recordAudio,
                 canSave = currentStation != null,
                 showDelete = onDelete != null,
-                onToggleInputMode = {
-                    view.performHapticTap()
-                    isKeyboardMode = !isKeyboardMode
-                },
+                onToggleInputMode = onToggleInputMode,
                 onHourChange = { hour = it },
                 onMinuteChange = { minute = it },
-                onOpenStationPicker = {
-                    view.performHapticTap()
-                    showStationPicker = true
-                },
+                onOpenStationPicker = onOpenStationPicker,
                 onDaysChange = { days = it },
                 onRecordAudioChange = { recordAudio = it },
-                onDelete = onDelete?.let { deleteAction ->
-                    {
-                        view.performHapticTap()
-                        deleteAction()
-                    }
-                },
-                onDismiss = {
-                    view.performHapticTap()
-                    onDismiss()
-                },
-                onSave = {
-                    val stationToSave = currentStation ?: return@AlarmFormPortraitLayout
-                    view.performHapticTap()
-                    onAlarmSaved(hour, minute, days, recordAudio, stationToSave)
-                }
+                onDelete = wrappedDelete,
+                onDismiss = wrappedDismiss,
+                onSave = wrappedSave
             )
         }
     }
 
     if (showStationPicker) {
-        AlarmStationPickerDialog(
+        AlarmStationPickerSheet(
             stations = stations,
             selectedStation = currentStation,
             onDismiss = { showStationPicker = false },
@@ -1079,13 +1038,12 @@ private fun AlarmRecordToggleCard(
 }
 
 @Composable
-private fun AlarmStationPickerDialog(
+private fun AlarmStationPickerSheet(
     stations: List<RadioStation>,
     selectedStation: RadioStation?,
     onDismiss: () -> Unit,
     onSelect: (RadioStation) -> Unit
 ) {
-    val configuration = LocalConfiguration.current
     var query by remember { mutableStateOf("") }
 
     val favoriteStations = remember(stations) {
@@ -1110,115 +1068,114 @@ private fun AlarmStationPickerDialog(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 480.dp,
+        dialogWidthFraction = 0.92f,
+        dialogMaxHeightFraction = 0.8f,
+        sheetHeightFraction = 0.8f
+    ) { isDialogMode ->
+        Column(
             modifier = Modifier
-                .widthIn(max = 480.dp)
-                .fillMaxWidth(0.92f)
-                .heightIn(max = (configuration.screenHeightDp * 0.8f).dp)
+                .fillMaxWidth()
+                .then(if (isDialogMode) Modifier.heightIn(min = 240.dp) else Modifier.fillMaxHeight())
+                .padding(bottom = 12.dp)
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.alarm_station_pick_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 18.dp, end = 8.dp, top = if (isDialogMode) 12.dp else 4.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.alarm_station_pick_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (isDialogMode) {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
                     }
                 }
+            }
 
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = null)
-                            }
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = null)
                         }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (filteredFavorites.isEmpty() && filteredOthers.isEmpty()) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (filteredFavorites.isEmpty() && filteredOthers.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.search_no_results),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                    ) {
-                        if (filteredFavorites.isNotEmpty()) {
-                            item(key = "header_fav") {
-                                Text(
-                                    text = stringResource(R.string.alarm_section_favorites),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            }
-                            items(filteredFavorites, key = { "fav_${it.id}_${it.url}" }) { station ->
-                                StationPickerRow(
-                                    station = station,
-                                    isSelected = selectedStation?.url == station.url && selectedStation.name == station.name,
-                                    onClick = { onSelect(station) }
-                                )
-                            }
+                        .height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.search_no_results),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = !isDialogMode)
+                ) {
+                    if (filteredFavorites.isNotEmpty()) {
+                        item(key = "header_fav") {
+                            Text(
+                                text = stringResource(R.string.alarm_section_favorites),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
                         }
+                        items(filteredFavorites, key = { "fav_${it.id}_${it.url}" }) { station ->
+                            StationPickerRow(
+                                station = station,
+                                isSelected = selectedStation?.url == station.url && selectedStation.name == station.name,
+                                onClick = { onSelect(station) }
+                            )
+                        }
+                    }
 
-                        if (filteredOthers.isNotEmpty()) {
-                            item(key = "header_all") {
-                                Text(
-                                    text = stringResource(R.string.alarm_section_all_stations),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = if (filteredFavorites.isNotEmpty()) 8.dp else 4.dp, bottom = 4.dp)
-                                )
-                            }
-                            items(filteredOthers, key = { "all_${it.id}_${it.url}" }) { station ->
-                                StationPickerRow(
-                                    station = station,
-                                    isSelected = selectedStation?.url == station.url && selectedStation.name == station.name,
-                                    onClick = { onSelect(station) }
-                                )
-                            }
+                    if (filteredOthers.isNotEmpty()) {
+                        item(key = "header_all") {
+                            Text(
+                                text = stringResource(R.string.alarm_section_all_stations),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = if (filteredFavorites.isNotEmpty()) 8.dp else 4.dp, bottom = 4.dp)
+                            )
+                        }
+                        items(filteredOthers, key = { "all_${it.id}_${it.url}" }) { station ->
+                            StationPickerRow(
+                                station = station,
+                                isSelected = selectedStation?.url == station.url && selectedStation.name == station.name,
+                                onClick = { onSelect(station) }
+                            )
                         }
                     }
                 }

@@ -1,34 +1,56 @@
 package app.radiorecalarm.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import app.radiorecalarm.R
+import app.radiorecalarm.ui.theme.KellraadioTheme
 import app.radiorecalarm.update.GitHubRelease
 import app.radiorecalarm.update.GitHubReleaseAsset
 import app.radiorecalarm.update.UpdateUiState
 import java.io.File
+import java.util.Locale
 
 @Composable
-fun UpdateDialog(
+fun UpdateSheet(
     state: UpdateUiState,
     canInstallPackages: Boolean,
     onDismiss: () -> Unit,
@@ -41,64 +63,83 @@ fun UpdateDialog(
         return
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 480.dp,
+        dialogWidthFraction = 0.92f,
+        dialogMaxHeightFraction = 0.9f,
+        dismissible = state !is UpdateUiState.Downloading
+    ) { isDialogMode ->
+        UpdateSheetContent(
+            state = state,
+            canInstallPackages = canInstallPackages,
+            onDismiss = onDismiss,
+            onDownload = onDownload,
+            onInstall = onInstall,
+            onRequestPermission = onRequestPermission,
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth()
-            ) {
-                when (state) {
-                    is UpdateUiState.UpToDate -> {
-                        UpToDateContent(
-                            version = state.currentVersion,
-                            onDismiss = onDismiss
-                        )
-                    }
-                    is UpdateUiState.UpdateAvailable -> {
-                        UpdateAvailableContent(
-                            release = state.release,
-                            asset = state.apkAsset,
-                            onDismiss = onDismiss,
-                            onDownload = { onDownload(state.release, state.apkAsset) }
-                        )
-                    }
-                    is UpdateUiState.Downloading -> {
-                        DownloadingContent(
-                            release = state.release,
-                            progress = state.progress,
-                            downloadedBytes = state.downloadedBytes,
-                            totalBytes = state.totalBytes,
-                            onCancel = onDismiss
-                        )
-                    }
-                    is UpdateUiState.ReadyToInstall -> {
-                        ReadyToInstallContent(
-                            release = state.release,
-                            apkFile = state.apkFile,
-                            canInstallPackages = canInstallPackages,
-                            onDismiss = onDismiss,
-                            onInstall = { onInstall(state.apkFile) },
-                            onRequestPermission = onRequestPermission
-                        )
-                    }
-                    is UpdateUiState.Error -> {
-                        UpdateErrorContent(
-                            errorMessage = state.message,
-                            onDismiss = onDismiss
-                        )
-                    }
-                    else -> Unit
-                }
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = if (isDialogMode) 20.dp else 4.dp,
+                    bottom = 20.dp
+                )
+        )
+    }
+}
+
+@Composable
+private fun UpdateSheetContent(
+    state: UpdateUiState,
+    canInstallPackages: Boolean,
+    onDismiss: () -> Unit,
+    onDownload: (GitHubRelease, GitHubReleaseAsset) -> Unit,
+    onInstall: (File) -> Unit,
+    onRequestPermission: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        when (state) {
+            is UpdateUiState.UpToDate -> {
+                UpToDateContent(
+                    version = state.currentVersion,
+                    onDismiss = onDismiss
+                )
             }
+            is UpdateUiState.UpdateAvailable -> {
+                UpdateAvailableContent(
+                    release = state.release,
+                    asset = state.apkAsset,
+                    onDismiss = onDismiss,
+                    onDownload = { onDownload(state.release, state.apkAsset) }
+                )
+            }
+            is UpdateUiState.Downloading -> {
+                DownloadingContent(
+                    progress = state.progress,
+                    downloadedBytes = state.downloadedBytes,
+                    totalBytes = state.totalBytes,
+                    onCancel = onDismiss
+                )
+            }
+            is UpdateUiState.ReadyToInstall -> {
+                ReadyToInstallContent(
+                    release = state.release,
+                    canInstallPackages = canInstallPackages,
+                    onDismiss = onDismiss,
+                    onInstall = { onInstall(state.apkFile) },
+                    onRequestPermission = onRequestPermission
+                )
+            }
+            is UpdateUiState.Error -> {
+                UpdateErrorContent(
+                    errorMessage = state.message,
+                    onDismiss = onDismiss
+                )
+            }
+            else -> Unit
         }
     }
 }
@@ -108,7 +149,7 @@ private fun UpToDateContent(
     version: String,
     onDismiss: () -> Unit
 ) {
-    DialogHeader(
+    SheetHeader(
         icon = Icons.Default.CheckCircle,
         iconTint = MaterialTheme.colorScheme.primary,
         title = stringResource(R.string.update_already_latest, version),
@@ -138,10 +179,10 @@ private fun UpdateAvailableContent(
     onDownload: () -> Unit
 ) {
     val sizeMb = if (asset.size > 0L) {
-        String.format(java.util.Locale.US, " • %.1f MB", asset.size / (1024f * 1024f))
+        String.format(Locale.US, " • %.1f MB", asset.size / (1024f * 1024f))
     } else ""
 
-    DialogHeader(
+    SheetHeader(
         icon = Icons.Default.SystemUpdate,
         iconTint = MaterialTheme.colorScheme.primary,
         title = stringResource(R.string.update_dialog_title),
@@ -200,7 +241,6 @@ private fun UpdateAvailableContent(
 
 @Composable
 private fun DownloadingContent(
-    release: GitHubRelease,
     progress: Float,
     downloadedBytes: Long,
     totalBytes: Long,
@@ -210,12 +250,12 @@ private fun DownloadingContent(
     val downloadedMb = downloadedBytes / (1024f * 1024f)
     val totalMb = if (totalBytes > 0L) totalBytes / (1024f * 1024f) else 0f
     val progressText = if (totalBytes > 0L) {
-        String.format(java.util.Locale.US, "%.1f MB / %.1f MB (%d%%)", downloadedMb, totalMb, percent)
+        String.format(Locale.US, "%.1f MB / %.1f MB (%d%%)", downloadedMb, totalMb, percent)
     } else {
-        String.format(java.util.Locale.US, "%.1f MB", downloadedMb)
+        String.format(Locale.US, "%.1f MB", downloadedMb)
     }
 
-    DialogHeader(
+    SheetHeader(
         icon = Icons.Default.CloudDownload,
         iconTint = MaterialTheme.colorScheme.primary,
         title = stringResource(R.string.update_downloading, percent),
@@ -252,13 +292,12 @@ private fun DownloadingContent(
 @Composable
 private fun ReadyToInstallContent(
     release: GitHubRelease,
-    apkFile: File,
     canInstallPackages: Boolean,
     onDismiss: () -> Unit,
     onInstall: () -> Unit,
     onRequestPermission: () -> Unit
 ) {
-    DialogHeader(
+    SheetHeader(
         icon = Icons.Default.CheckCircle,
         iconTint = MaterialTheme.colorScheme.primary,
         title = stringResource(R.string.update_action_install),
@@ -319,7 +358,7 @@ private fun UpdateErrorContent(
     errorMessage: String,
     onDismiss: () -> Unit
 ) {
-    DialogHeader(
+    SheetHeader(
         icon = Icons.Default.Warning,
         iconTint = MaterialTheme.colorScheme.error,
         title = "Viga uuenduse kontrollimisel",
@@ -342,9 +381,9 @@ private fun UpdateErrorContent(
 }
 
 @Composable
-private fun DialogHeader(
+private fun SheetHeader(
     icon: ImageVector,
-    iconTint: androidx.compose.ui.graphics.Color,
+    iconTint: Color,
     title: String,
     subtitle: String?
 ) {
@@ -378,29 +417,32 @@ private fun DialogHeader(
     }
 }
 
-@Preview
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C10)
 @Composable
-fun UpdateDialogPreview() {
-    MaterialTheme {
-        UpdateDialog(
-            state = UpdateUiState.UpdateAvailable(
-                release = GitHubRelease(
-                    tagName = "v1.1.0",
-                    name = "Kellraadio 1.1",
-                    body = "- Äpisisene uuendus\n- Bluetooth stabiilsuse parandused\n- Parem raadiojaamade laadimine"
+private fun UpdateSheetPreview() {
+    KellraadioTheme {
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            UpdateSheetContent(
+                state = UpdateUiState.UpdateAvailable(
+                    release = GitHubRelease(
+                        tagName = "v1.1.0",
+                        name = "Kellraadio 1.1",
+                        body = "- Äpisisene uuendus\n- Bluetooth stabiilsuse parandused\n- Parem raadiojaamade laadimine"
+                    ),
+                    apkAsset = GitHubReleaseAsset(
+                        name = "Kellraadio-v1.1.0.apk",
+                        size = 15728640L,
+                        browserDownloadUrl = "https://github.com"
+                    ),
+                    currentVersion = "1.0.0"
                 ),
-                apkAsset = GitHubReleaseAsset(
-                    name = "Kellraadio-v1.1.0.apk",
-                    size = 15728640L,
-                    browserDownloadUrl = "https://github.com"
-                ),
-                currentVersion = "1.0.0"
-            ),
-            canInstallPackages = true,
-            onDismiss = {},
-            onDownload = { _, _ -> },
-            onInstall = {},
-            onRequestPermission = {}
-        )
+                canInstallPackages = true,
+                onDismiss = {},
+                onDownload = { _, _ -> },
+                onInstall = {},
+                onRequestPermission = {},
+                modifier = Modifier.padding(20.dp)
+            )
+        }
     }
 }

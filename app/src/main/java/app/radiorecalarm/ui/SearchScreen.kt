@@ -247,7 +247,7 @@ fun SearchScreen(
     }
 
     if (showFilterSheet) {
-        FilterDialog(
+        FilterSheet(
             title = if (filterType == "COUNTRY") stringResource(R.string.filter_country) else stringResource(R.string.filter_genre),
             items = filterItems,
             onDismiss = { viewModel.closeFilterSheet() },
@@ -264,7 +264,7 @@ fun SearchScreen(
 
     if (showManualDialog) {
         val unknownName = stringResource(R.string.unknown_station_name)
-        StationEditorDialog(
+        StationEditorSheet(
             title = stringResource(R.string.manual_dialog_title),
             initialName = manualDialogInitialData.name,
             initialUrl = manualDialogInitialData.url,
