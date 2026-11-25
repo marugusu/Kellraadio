@@ -1171,7 +1171,8 @@ fun InfoChip(
 }
 
 /**
- * Companion track-info panel embedded below PlayerControls on tall landscape / tablet screens.
+ * Companion track-info panel embedded below PlayerControls on tall landscape / tablet / TV screens.
+ * Keeps album artwork as the hero centerpiece while keeping lyrics on-demand via [onOpenFullSheet].
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1192,195 +1193,208 @@ fun SongInfoContentLandscape(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val stationColor = StationArtworkUtils.getStationColor(stationName)
+    val surfaceColor = Color(0xFF0C0E14)
+    val isBlurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
     var localImageState by remember(info.coverArtUrl) {
         mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
     }
     var showArtworkLightbox by remember { mutableStateOf(false) }
     val isImageLoaded = localImageState is AsyncImagePainter.State.Success
+    val metaPills = remember(info) { buildTrackMetadataPills(info) }
+    val hasLyrics = !info.lyrics.isNullOrBlank()
 
-    Row(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        // Left column: artwork + metadata/source pills
-        Column(
-            modifier = Modifier
-                .weight(0.40f)
-                .fillMaxHeight()
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            HeroArtworkCard(
-                coverArtUrl = info.coverArtUrl,
-                stationName = stationName,
-                stationIconUrl = stationIconUrl,
-                size = 148.dp,
-                cornerRadius = 12.dp,
-                isImageLoaded = isImageLoaded,
-                onState = { localImageState = it },
-                onClick = if (isImageLoaded) ({ showArtworkLightbox = true }) else null
-            )
+        SongInfoAmbientBackdrop(
+            coverArtUrl = info.coverArtUrl,
+            isImageLoaded = isImageLoaded,
+            isBlurSupported = isBlurSupported,
+            stationColor = stationColor,
+            surfaceColor = surfaceColor,
+            modifier = Modifier.matchParentSize()
+        )
 
-            if (!info.album.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = info.album,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left hero zone: dominant album cover art
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(0.52f)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                val artworkSize = min(maxWidth, maxHeight).coerceIn(140.dp, 280.dp)
+
+                Box(
+                    modifier = Modifier
+                        .size(artworkSize + 24.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    (if (isImageLoaded) MaterialTheme.colorScheme.primary else stationColor)
+                                        .copy(alpha = 0.18f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                HeroArtworkCard(
+                    coverArtUrl = info.coverArtUrl,
+                    stationName = stationName,
+                    stationIconUrl = stationIconUrl,
+                    size = artworkSize,
+                    cornerRadius = 16.dp,
+                    isImageLoaded = isImageLoaded,
+                    onState = { localImageState = it },
+                    onClick = if (isImageLoaded) ({ showArtworkLightbox = true }) else null
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            MetadataAndSourcePills(
-                info = info,
-                stationName = stationName,
-                bitrate = bitrate,
-                centered = true
-            )
-        }
-
-        // Right column: lyrics preview / status + full-view trigger + action buttons
-        Column(
-            modifier = Modifier
-                .weight(0.60f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            // Right calm metadata & actions zone (no lyrics wall by default)
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+                    .weight(0.48f)
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Column(
+                if (!info.album.isNullOrBlank()) {
+                    Text(
+                        text = info.album,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                if (metaPills.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        metaPills.forEach { pillText ->
+                            InfoChip(text = pillText)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                // On-demand lyrics / full sheet trigger pill
+                Surface(
+                    onClick = onOpenFullSheet,
+                    color = if (hasLyrics) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (hasLyrics) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        }
+                    ),
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp)
+                        .fillMaxWidth()
+                        .heightIn(min = 42.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.info_lyrics),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            letterSpacing = 1.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Surface(
-                            onClick = onOpenFullSheet,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
+                        when {
+                            isLoadingLyrics -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.info_searching_lyrics),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            hasLyrics -> {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_lyrics),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.info_lyrics_badge),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Icon(
                                     imageVector = Icons.Rounded.OpenInFull,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(12.dp)
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(13.dp)
                                 )
+                            }
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Rounded.OpenInFull,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = stringResource(R.string.info_open_full),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    when {
-                        !info.lyrics.isNullOrBlank() -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .verticalScroll(rememberScrollState()),
-                                contentAlignment = Alignment.TopCenter
-                            ) {
-                                Text(
-                                    text = info.lyrics.trim(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    lineHeight = 22.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                        isLoadingLyrics -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.info_searching_lyrics),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                        else -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                LyricsNotFoundRow(
-                                    onSearchLyricsOnline = { openLyricsWebSearch(context, artist, title) }
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1
                                 )
                             }
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                LandscapeActionGrid(
+                    artist = artist,
+                    title = title,
+                    stationName = stationName,
+                    bitrate = bitrate,
+                    streamUrl = streamUrl,
+                    info = info,
+                    showSpotifySaveButton = showSpotifySaveButton,
+                    isSpotifyTrackSaved = isSpotifyTrackSaved,
+                    isSpotifySaveInProgress = isSpotifySaveInProgress,
+                    onSaveToSpotify = onSaveToSpotify,
+                    context = context
+                )
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SongActionRow(
-                artist = artist,
-                title = title,
-                stationName = stationName,
-                bitrate = bitrate,
-                streamUrl = streamUrl,
-                info = info,
-                showSpotifySaveButton = showSpotifySaveButton,
-                isSpotifyTrackSaved = isSpotifyTrackSaved,
-                isSpotifySaveInProgress = isSpotifySaveInProgress,
-                onSaveToSpotify = onSaveToSpotify,
-                context = context,
-                compact = true
-            )
         }
     }
 
@@ -1391,6 +1405,92 @@ fun SongInfoContentLandscape(
             artist = artist,
             onDismiss = { showArtworkLightbox = false }
         )
+    }
+}
+
+@Composable
+private fun LandscapeActionGrid(
+    artist: String,
+    title: String,
+    stationName: String,
+    bitrate: String,
+    streamUrl: String,
+    info: SongAdditionalInfo,
+    showSpotifySaveButton: Boolean,
+    isSpotifyTrackSaved: Boolean,
+    isSpotifySaveInProgress: Boolean,
+    onSaveToSpotify: () -> Unit,
+    context: Context
+) {
+    if (!showSpotifySaveButton) {
+        SongActionRow(
+            artist = artist,
+            title = title,
+            stationName = stationName,
+            bitrate = bitrate,
+            streamUrl = streamUrl,
+            info = info,
+            showSpotifySaveButton = false,
+            isSpotifyTrackSaved = false,
+            isSpotifySaveInProgress = false,
+            onSaveToSpotify = onSaveToSpotify,
+            context = context,
+            compact = true
+        )
+    } else {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ActionButton(
+                    icon = Icons.Default.MusicNote,
+                    label = "Spotify",
+                    color = SpotifyBrandColor,
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                    onClick = { openSpotifyTrack(context, info.spotifyTrackId, "$artist $title") }
+                )
+                ActionButton(
+                    icon = if (isSpotifyTrackSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    label = if (isSpotifyTrackSaved) {
+                        stringResource(R.string.spotify_saved_action)
+                    } else {
+                        stringResource(R.string.spotify_save_action)
+                    },
+                    color = SpotifyBrandColor,
+                    isHighlighted = isSpotifyTrackSaved,
+                    isLoading = isSpotifySaveInProgress,
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                    onClick = onSaveToSpotify
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ActionButton(
+                    icon = Icons.Default.PlayCircleOutline,
+                    label = "YouTube",
+                    color = YouTubeBrandColor,
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                    onClick = { openYoutubeSearch(context, "$artist $title") }
+                )
+                ActionButton(
+                    icon = Icons.Default.Share,
+                    label = stringResource(R.string.action_share),
+                    color = MaterialTheme.colorScheme.primary,
+                    compact = true,
+                    modifier = Modifier.weight(1f),
+                    onClick = { shareSongInfo(context, artist, title, stationName, bitrate, streamUrl, info) }
+                )
+            }
+        }
     }
 }
 
@@ -1442,21 +1542,22 @@ private fun SongInfoContentNoLyricsPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF12151E, widthDp = 640, heightDp = 340)
+@Preview(showBackground = true, backgroundColor = 0xFF0C0E14, widthDp = 440, heightDp = 380)
 @Composable
 private fun SongInfoContentLandscapePreview() {
     KellraadioTheme {
         SongInfoContentLandscape(
-            artist = "Curly Strings",
-            title = "Kauges külas",
-            stationName = "Raadio Elmar",
-            bitrate = "128 kbps",
+            artist = "East 17",
+            title = "Stay Another Day",
+            stationName = "Duo Christmas",
+            bitrate = "192 kbps",
             info = SongAdditionalInfo(
-                album = "Üle ilma",
-                year = "2014",
-                genre = "Folk",
-                durationMs = 230_000L,
-                lyrics = "Kauges külas, vanaema juures\nelas kord üks väike poiss...",
+                album = "Stay Another Day (Remixes)",
+                year = "1996",
+                genre = "Pop",
+                trackNumber = 9,
+                durationMs = 215_000L,
+                lyrics = "Stay now...",
                 spotifyTrackId = "12345"
             ),
             showSpotifySaveButton = true,
