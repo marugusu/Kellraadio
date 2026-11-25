@@ -487,6 +487,12 @@ fun RaadioEkraan(
         } else {
             stationToEdit.category
         }
+        val editorPlaybackState = resolveStationPlaybackState(
+            playerStatus = state.playerStatus,
+            isPlaying = state.isPlaying,
+            bufferingStatusText = stringResource(R.string.status_buffering),
+            errorStatusText = stringResource(R.string.status_error)
+        )
         StationEditorSheet(
             title = stringResource(R.string.action_edit_station),
             initialName = stationToEdit.name,
@@ -496,8 +502,13 @@ fun RaadioEkraan(
             initialIconUrl = stationToEdit.iconUrl,
             allCountries = state.countries,
             allSubgroups = state.allCategories,
+            existingStations = state.stations,
+            editingStationId = stationToEdit.id,
+            activeStreamUrl = state.activeStreamUrl,
+            playbackState = editorPlaybackState,
             onDismiss = mainViewModel::closeEditStationDialog,
             onTest = { name, url -> mainViewModel.playTestStation("$name (${context.getString(R.string.action_test)})", url) },
+            onStopTest = mainViewModel::stopPlayback,
             onSave = { newName, newUrl, newCountry, newCategory, newIconUrl -> mainViewModel.updateUserStation(newName, newUrl, newCountry, newCategory, newIconUrl) }
         )
     }
@@ -531,6 +542,20 @@ fun RaadioEkraan(
     }
 }
 
+private fun resolveStationPlaybackState(
+    playerStatus: String,
+    isPlaying: Boolean,
+    bufferingStatusText: String,
+    errorStatusText: String
+): StationPlaybackState {
+    return when {
+        playerStatus == errorStatusText -> StationPlaybackState.ERROR
+        playerStatus == bufferingStatusText -> StationPlaybackState.BUFFERING
+        isPlaying -> StationPlaybackState.PLAYING
+        else -> StationPlaybackState.IDLE
+    }
+}
+
 @Composable
 fun ContentScreens(
     state: MainUiState,
@@ -543,14 +568,12 @@ fun ContentScreens(
     context: android.content.Context
 ) {
     val searchViewModel: SearchViewModel = viewModel(factory = SearchViewModelFactory(viewModel.stationRepository))
-    val bufferingStatusText = stringResource(R.string.status_buffering)
-    val errorStatusText = stringResource(R.string.status_error)
-    val playbackState = when {
-        state.playerStatus == errorStatusText -> StationPlaybackState.ERROR
-        state.playerStatus == bufferingStatusText -> StationPlaybackState.BUFFERING
-        state.isPlaying -> StationPlaybackState.PLAYING
-        else -> StationPlaybackState.IDLE
-    }
+    val playbackState = resolveStationPlaybackState(
+        playerStatus = state.playerStatus,
+        isPlaying = state.isPlaying,
+        bufferingStatusText = stringResource(R.string.status_buffering),
+        errorStatusText = stringResource(R.string.status_error)
+    )
     when (state.currentTab) {
         0 -> {
             val isLandscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -622,15 +645,17 @@ fun ContentScreens(
             allCategories = state.allCategories,
             activeUrl = state.activeStreamUrl,
             isPlayerPlaying = state.isPlaying,
+            playbackState = playbackState,
+            countries = state.countries,
             onPlayTest = { name, url, isSaved ->
                 if (url == state.activeStreamUrl && state.isPlaying) {
-                    val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
-                    context.startService(i)
+                    viewModel.stopPlayback()
                 } else {
                     val displayName = if (isSaved) name else "$name (${context.getString(R.string.action_test)})"
                     viewModel.playTestStation(displayName, url)
                 }
             },
+            onStopPlayback = viewModel::stopPlayback,
             onSaveStation = { name, url, country, category, iconUrl -> viewModel.saveUserStation(name, url, country, category, iconUrl) },
             viewModel = searchViewModel
         )

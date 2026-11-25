@@ -261,19 +261,27 @@ class RadioStationRepository(
     }
 
     suspend fun searchStations(query: String, countryCode: String?, tag: String?): List<RadioBrowserStation> {
+        return searchStationsResult(query, countryCode, tag).getOrElse { emptyList() }
+    }
+
+    suspend fun searchStationsResult(query: String, countryCode: String?, tag: String?): Result<List<RadioBrowserStation>> {
         return try {
-            if (query.length < 2 && countryCode == null && tag == null) return emptyList()
+            val trimmedQuery = query.trim()
+            if (trimmedQuery.length < 2 && countryCode == null && tag == null) {
+                return Result.success(emptyList())
+            }
             val rawResults = searchApiService.advancedSearch(
-                name = query,
+                name = trimmedQuery,
                 countryCode = countryCode,
                 tag = tag
             )
-            rawResults.filter { station ->
+            val filtered = rawResults.filter { station ->
                 station.countryCode != "RU" && !station.country.contains("Russia", ignoreCase = true)
             }
+            Result.success(filtered)
         } catch (e: Exception) {
             android.util.Log.e("RADIO_DEBUG", "Otsingu viga: ${e.message}")
-            emptyList()
+            Result.failure(e)
         }
     }
 

@@ -4,7 +4,7 @@
 <string name="nav_radio">"Rādij"</string>
 <string name="nav_alarms">"Āratõmizt"</string>
 <string name="nav_recordings">"Tāļtõmizt"</string>
-<string name="nav_add_channel">"Līsa kanāl"</string>
+<string name="nav_add_channel">"Līsa"</string>
 <string name="nav_settings">"Sādimizt"</string>
 <string name="action_cancel">"Katkestõ"</string>
 <string name="action_save">"Tāļtõ"</string>
@@ -70,7 +70,7 @@
 <string name="history_today">"Tämpõ"</string>
 <string name="history_yesterday">"Eilõ"</string>
 <string name="date_picker_title">"Vaļī pǟva"</string>
-<string name="search_title">"Līsa kanāl"</string>
+<string name="search_title">"Līsa stacij"</string>
 <string name="search_placeholder">"Vȯtš stacij..."</string>
 <string name="search_manual">"Līsa iž"</string>
 <string name="search_no_results">"Äb līdõd"</string>
@@ -313,4 +313,20 @@
     <string name="action_done">"Valmõz"</string>
     <string name="reorder_mode_hint">"Vedīd stacijid sūovtõd jūrkõ"</string>
     <string name="station_icon_url">"Logo URL (valīmi)"</string>
+    <string name="action_clear">"Tī’jõ"</string>
+    <string name="action_retry">"Prōv ūstiz"</string>
+    <string name="search_query_too_short">"Kīerõt vähimst 2 tē’d vai valī filter"</string>
+    <string name="search_network_error">"Stacijidi äb sōdõd lēdõ. Kontrōl internēt ītmõst."</string>
+    <string name="search_quick_browse">"Kīerõ valīmi"</string>
+    <string name="search_manual_hint_title">"Voi sinūl um strīmi aadress?"</string>
+    <string name="search_manual_hint_desc">"Līsa īž rādijstacij strīmi URL-kõks."</string>
+    <string name="search_clear_filter">"Pūstõ filter"</string>
+    <string name="station_editor_url_invalid">"URL algõb http:// vai https://"</string>
+    <string name="station_editor_add_https">"Līsa https://"</string>
+    <string name="station_editor_duplicate_url">"Se strīmi um jūba tallõtõd: %1$s"</string>
+    <string name="station_editor_test_stop">"Saisõ prōv"</string>
+    <string name="station_editor_test_buffering">"Lēdõb..."</string>
+    <string name="station_editor_test_error">"Strīmi äb sōdõd mäņgõ"</string>
+    <string name="station_editor_country_unspecified">"Äb mārõtõd"</string>
+    <string name="station_editor_subgroup_hint">"Valīmi (nt ERR, Rock, Uudīzt)"</string>
 </resources>

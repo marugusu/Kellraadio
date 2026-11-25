@@ -87,7 +87,7 @@
     <string name="date_picker_title">Vali kuupäev</string>
 
     <!-- Search / Add Station -->
-    <string name="search_title">Lisa kanal</string>
+    <string name="search_title">Lisa jaam</string>
     <string name="search_placeholder">Otsi jaama...</string>
     <string name="search_manual">Lisa käsitsi</string>
     <string name="search_no_results">Tulemusi ei leitud.</string>
@@ -341,4 +341,20 @@
     <string name="action_done">Valmis</string>
     <string name="reorder_mode_hint">Lohista jaamad soovitud järjekorda</string>
     <string name="station_icon_url">Logo URL (valikuline)</string>
+    <string name="action_clear">Tühjenda</string>
+    <string name="action_retry">Proovi uuesti</string>
+    <string name="search_query_too_short">Sisesta vähemalt 2 tähemärki või vali filter</string>
+    <string name="search_network_error">Jaamade laadimine ebaõnnestus. Kontrolli internetiühendust.</string>
+    <string name="search_quick_browse">Kiirvalik</string>
+    <string name="search_manual_hint_title">Kas sul on striimi aadress olemas?</string>
+    <string name="search_manual_hint_desc">Lisa mistahes internetiraadio jaam käsitsi striimi URL-iga.</string>
+    <string name="search_clear_filter">Eemalda filter</string>
+    <string name="station_editor_url_invalid">URL peab algama http:// või https://</string>
+    <string name="station_editor_add_https">Lisa https://</string>
+    <string name="station_editor_duplicate_url">See striim on juba salvestatud: %1$s</string>
+    <string name="station_editor_test_stop">Peata test</string>
+    <string name="station_editor_test_buffering">Puhverdab...</string>
+    <string name="station_editor_test_error">Striimi ei õnnestunud esitada</string>
+    <string name="station_editor_country_unspecified">Määramata</string>
+    <string name="station_editor_subgroup_hint">Valikuline (nt ERR, Rock, Uudised)</string>
 </resources>

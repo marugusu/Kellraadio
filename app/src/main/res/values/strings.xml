@@ -87,7 +87,7 @@
     <string name="date_picker_title">Select date</string>
 
     <!-- Search / Add Station -->
-    <string name="search_title">Add Channel</string>
+    <string name="search_title">Add Station</string>
     <string name="search_placeholder">Search station...</string>
     <string name="search_manual">Add manually</string>
     <string name="search_no_results">No results found.</string>
@@ -341,4 +341,20 @@
     <string name="action_done">Done</string>
     <string name="reorder_mode_hint">Drag stations to reorder</string>
     <string name="station_icon_url">Logo URL (optional)</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_retry">Retry</string>
+    <string name="search_query_too_short">Enter at least 2 characters or pick a filter</string>
+    <string name="search_network_error">Could not load stations. Check your internet connection.</string>
+    <string name="search_quick_browse">Quick browse</string>
+    <string name="search_manual_hint_title">Have a direct stream link?</string>
+    <string name="search_manual_hint_desc">Add any internet radio station manually by stream URL.</string>
+    <string name="search_clear_filter">Clear filter</string>
+    <string name="station_editor_url_invalid">URL must start with http:// or https://</string>
+    <string name="station_editor_add_https">Add https://</string>
+    <string name="station_editor_duplicate_url">This stream is already saved: %1$s</string>
+    <string name="station_editor_test_stop">Stop test</string>
+    <string name="station_editor_test_buffering">Buffering...</string>
+    <string name="station_editor_test_error">Could not play this stream</string>
+    <string name="station_editor_country_unspecified">Unspecified</string>
+    <string name="station_editor_subgroup_hint">Optional (e.g. ERR, Rock, News)</string>
 </resources>

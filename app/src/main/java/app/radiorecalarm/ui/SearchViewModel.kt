@@ -6,15 +6,13 @@ import androidx.lifecycle.viewModelScope
 import app.radiorecalarm.RadioBrowserStation
 import app.radiorecalarm.RadioFilterItem
 import app.radiorecalarm.RadioStationRepository
+import app.radiorecalarm.StationFormLogic
+import app.radiorecalarm.getCachedCountryDisplayName
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class SearchViewModel(private val repository: RadioStationRepository) : ViewModel() {
-
-    // --- Oleku (State) hoidjad ---
-    // Kasutame StateFlow'd, mis on loodud spetsiaalselt ViewModeli ja UI vaheliseks suhtluseks.
-    // Private _muutuja hoiab tegelikku väärtust, public muutuja on ainult lugemiseks.
 
     private val _query = MutableStateFlow("")
     val query = _query.asStateFlow()
@@ -27,6 +25,12 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
 
     private val _hasSearched = MutableStateFlow(false)
     val hasSearched = _hasSearched.asStateFlow()
+
+    private val _searchError = MutableStateFlow(false)
+    val searchError = _searchError.asStateFlow()
+
+    private val _queryTooShortHint = MutableStateFlow(false)
+    val queryTooShortHint = _queryTooShortHint.asStateFlow()
 
     private val _selectedCountry = MutableStateFlow<RadioFilterItem?>(null)
     val selectedCountry = _selectedCountry.asStateFlow()
@@ -46,7 +50,6 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
     private val _showManualDialog = MutableStateFlow(false)
     val showManualDialog = _showManualDialog.asStateFlow()
 
-    // UUS: Hoiab andmeid dialoogi eeltäitmiseks
     data class ManualDialogData(
         val name: String = "",
         val url: String = "",
@@ -58,46 +61,76 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
 
     private var cachedCountries: List<RadioFilterItem> = emptyList()
 
-    // Kerimise asukoha meelespidamiseks
     val listState = LazyListState()
-
-
-    // --- Sündmuste (Events) käsitlejad ---
-    // UI kutsub neid funktsioone, kui kasutaja midagi teeb.
 
     fun onQueryChange(newQuery: String) {
         _query.value = newQuery
+        _queryTooShortHint.value = false
     }
 
     fun performSearch() {
-        if (_query.value.trim().length < 2 && _selectedCountry.value == null && _selectedGenre.value == null) {
-            // Siia võiks lisada vea näitamise UI-s, aga hoiame esialgu lihtsana.
+        val trimmedQuery = _query.value.trim()
+        if (trimmedQuery.length < 2 && _selectedCountry.value == null && _selectedGenre.value == null) {
+            _queryTooShortHint.value = true
             return
         }
+        _queryTooShortHint.value = false
+        _searchError.value = false
         _isLoading.value = true
         _hasSearched.value = true
 
         viewModelScope.launch {
-            val searchResults = repository.searchStations(_query.value, _selectedCountry.value?.isoCode, _selectedGenre.value)
-            _results.value = searchResults
-            _isLoading.value = false
-            if (searchResults.isNotEmpty()) {
-                listState.scrollToItem(0)
+            val result = repository.searchStationsResult(
+                query = trimmedQuery,
+                countryCode = _selectedCountry.value?.isoCode,
+                tag = _selectedGenre.value
+            )
+            result.onSuccess { searchResults ->
+                _results.value = searchResults
+                _searchError.value = false
+                if (searchResults.isNotEmpty()) {
+                    listState.scrollToItem(0)
+                }
+            }.onFailure {
+                _results.value = emptyList()
+                _searchError.value = true
             }
+            _isLoading.value = false
         }
+    }
+
+    fun retrySearch() {
+        performSearch()
+    }
+
+    fun applyQuickFilter(countryCode: String? = null, genre: String? = null) {
+        _query.value = ""
+        _queryTooShortHint.value = false
+        _selectedCountry.value = countryCode?.let { code ->
+            val upper = code.uppercase()
+            cachedCountries.find { it.isoCode.equals(upper, ignoreCase = true) }
+                ?: RadioFilterItem(
+                    name = getCachedCountryDisplayName(upper).ifBlank { upper },
+                    stationCount = 0,
+                    isoCode = upper
+                )
+        }
+        _selectedGenre.value = genre
+        performSearch()
     }
 
     fun onCountrySelected(country: RadioFilterItem?) {
         _selectedCountry.value = country
-        // Otsime automaatselt, kui filter muutub
-        if (_query.value.length >= 2 || country != null || _selectedGenre.value != null) {
+        _queryTooShortHint.value = false
+        if (_query.value.trim().length >= 2 || country != null || _selectedGenre.value != null) {
             performSearch()
         }
     }
 
     fun onGenreSelected(genreName: String?) {
         _selectedGenre.value = genreName
-        if (_query.value.length >= 2 || _selectedCountry.value != null || genreName != null) {
+        _queryTooShortHint.value = false
+        if (_query.value.trim().length >= 2 || _selectedCountry.value != null || genreName != null) {
             performSearch()
         }
     }
@@ -106,15 +139,18 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
         viewModelScope.launch {
             _isLoading.value = true
             var items = if (type == "COUNTRY") repository.getCountries() else repository.getTags()
-            
-            // PARANDUS: Tõstame Eesti esimeseks, säilitades muu järjekorra
+
             if (type == "COUNTRY") {
-                items = items.sortedBy { 
-                    if (it.isoCode == "EE" || it.name.equals("Estonia", ignoreCase = true)) 0 else 1 
+                items = if (items.isEmpty()) {
+                    StationFormLogic.buildCountryPickerItems(emptyList(), emptyList())
+                } else {
+                    items.sortedBy {
+                        if (it.isoCode == "EE" || it.name.equals("Estonia", ignoreCase = true)) 0 else 1
+                    }
                 }
                 cachedCountries = items
             }
-            
+
             _filterItems.value = items
             _filterType.value = type
             _isLoading.value = false
@@ -126,7 +162,6 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
         _showFilterSheet.value = false
     }
 
-    // UUENDATUD: Võtab nüüd valikulise parameetri
     fun openManualAddDialog(station: RadioBrowserStation? = null) {
         if (station != null) {
             _manualDialogInitialData.value = ManualDialogData(
@@ -138,15 +173,16 @@ class SearchViewModel(private val repository: RadioStationRepository) : ViewMode
         } else {
             _manualDialogInitialData.value = ManualDialogData()
         }
-        
+
         _showManualDialog.value = true
-        
-        // Tagame, et riigid on olemas (nimekirja jaoks dialoogis)
+
         if (cachedCountries.isEmpty()) {
             viewModelScope.launch {
-                // Laeme ja sorteerime (Eesti esimeseks)
-                cachedCountries = repository.getCountries().sortedBy { 
-                    if (it.isoCode == "EE" || it.name.equals("Estonia", ignoreCase = true)) 0 else 1 
+                val remote = repository.getCountries()
+                if (remote.isNotEmpty()) {
+                    cachedCountries = remote.sortedBy {
+                        if (it.isoCode == "EE" || it.name.equals("Estonia", ignoreCase = true)) 0 else 1
+                    }
                 }
             }
         }

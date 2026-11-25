@@ -16,8 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -49,6 +52,8 @@ import app.radiorecalarm.ui.theme.KellraadioTheme
 fun FilterSheet(
     title: String,
     items: List<RadioFilterItem>,
+    selectedIsoCode: String? = null,
+    onClearSelection: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onSelect: (RadioFilterItem) -> Unit
 ) {
@@ -70,6 +75,8 @@ fun FilterSheet(
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },
             items = filteredItems,
+            selectedIsoCode = selectedIsoCode,
+            onClearSelection = onClearSelection,
             showCloseButton = isDialogMode,
             onDismiss = onDismiss,
             onSelect = onSelect,
@@ -92,6 +99,8 @@ private fun FilterSheetContent(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     items: List<RadioFilterItem>,
+    selectedIsoCode: String?,
+    onClearSelection: (() -> Unit)?,
     showCloseButton: Boolean,
     onDismiss: () -> Unit,
     onSelect: (RadioFilterItem) -> Unit,
@@ -132,13 +141,13 @@ private fun FilterSheetContent(
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Close, contentDescription = null)
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_clear))
                     }
                 }
             }
         )
         Spacer(modifier = Modifier.height(4.dp))
-        if (items.isEmpty()) {
+        if (items.isEmpty() && (onClearSelection == null || searchQuery.isNotBlank())) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -158,22 +167,54 @@ private fun FilterSheetContent(
                     .fillMaxWidth()
                     .weight(1f, fill = !showCloseButton)
             ) {
+                if (onClearSelection != null && searchQuery.isBlank()) {
+                    item(key = "__clear_country__") {
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    text = stringResource(R.string.station_editor_country_unspecified),
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.PublicOff,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onClearSelection() },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
                 items(items) { item ->
                     val flag = if (item.isoCode != null) getFlagEmoji(item.isoCode) else ""
+                    val isSelected = !selectedIsoCode.isNullOrBlank() &&
+                        item.isoCode.equals(selectedIsoCode, ignoreCase = true)
                     ListItem(
                         headlineContent = {
                             Text(
                                 text = item.name,
-                                fontWeight = FontWeight.Normal,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         },
-                        supportingContent = {
-                            Text(
-                                text = "${item.stationCount}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        supportingContent = if (item.stationCount > 0) {
+                            {
+                                Text(
+                                    text = "${item.stationCount}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            null
                         },
                         leadingContent = {
                             if (flag.isNotEmpty()) {
@@ -182,6 +223,17 @@ private fun FilterSheetContent(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                             }
+                        },
+                        trailingContent = if (isSelected) {
+                            {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        } else {
+                            null
                         },
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
@@ -207,6 +259,8 @@ private fun FilterSheetPreview() {
                     RadioFilterItem(name = "Estonia", stationCount = 42, isoCode = "EE"),
                     RadioFilterItem(name = "Finland", stationCount = 128, isoCode = "FI")
                 ),
+                selectedIsoCode = "EE",
+                onClearSelection = {},
                 showCloseButton = false,
                 onDismiss = {},
                 onSelect = {},

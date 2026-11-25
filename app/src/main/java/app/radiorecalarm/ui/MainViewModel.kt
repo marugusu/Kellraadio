@@ -950,9 +950,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun stopPlayback() {
+        _uiState.update { it.copy(isPlaying = false) }
+        val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_STOP }
+        context.startService(i)
+    }
+
     private fun isValidUrl(url: String): Boolean {
-        val trimmed = url.trim().lowercase()
-        return trimmed.startsWith("http://") || trimmed.startsWith("https://")
+        return app.radiorecalarm.StationFormLogic.isValidStreamUrl(url)
     }
 
     override fun onCleared() {
