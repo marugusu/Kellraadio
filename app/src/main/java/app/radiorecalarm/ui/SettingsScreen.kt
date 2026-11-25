@@ -45,7 +45,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.window.Dialog
 import app.radiorecalarm.AppConfig
 import app.radiorecalarm.LogExporter
 import app.radiorecalarm.R
@@ -548,85 +547,19 @@ fun SettingsScreen(
     }
 
     if (showLanguageDialog) {
-        Dialog(onDismissRequest = { showLanguageDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.settings_language),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
-                    )
-
-                    SUPPORTED_LANGUAGES.forEach { lang ->
-                        val isSelected = lang.code == displayLangCode
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                .border(
-                                    width = 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else Color.Transparent,
-                                    shape = RoundedCornerShape(6.dp)
-                                )
-                                .clickable {
-                                    val appLocale = LocaleListCompat.forLanguageTags(lang.code)
-                                    AppCompatDelegate.setApplicationLocales(appLocale)
-                                    showLanguageDialog = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = lang.flag,
-                                style = MaterialTheme.typography.headlineSmall
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = lang.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
-                            if (isSelected) {
-                                Spacer(modifier = Modifier.weight(1f))
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = { showLanguageDialog = false },
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(stringResource(R.string.action_cancel))
-                        }
-                    }
-                }
-            }
-        }
+        LanguagePickerSheet(
+            selectedCode = displayLangCode,
+            onSelectLanguage = { langCode ->
+                val appLocale = LocaleListCompat.forLanguageTags(langCode)
+                AppCompatDelegate.setApplicationLocales(appLocale)
+                showLanguageDialog = false
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
     }
 
     if (showMinDurationDialog) {
-        SecondsSliderDialog(
+        SecondsSliderSheet(
             title = stringResource(R.string.settings_min_track_duration),
             description = stringResource(R.string.settings_min_track_duration_desc),
             icon = Icons.Default.Timer,
@@ -641,7 +574,7 @@ fun SettingsScreen(
     }
 
     if (showPreRollDialog) {
-        SecondsSliderDialog(
+        SecondsSliderSheet(
             title = stringResource(R.string.settings_pre_roll_margin),
             description = stringResource(R.string.settings_pre_roll_margin_desc),
             icon = Icons.Default.FastRewind,
@@ -656,7 +589,7 @@ fun SettingsScreen(
     }
 
     if (showPostRollDialog) {
-        SecondsSliderDialog(
+        SecondsSliderSheet(
             title = stringResource(R.string.settings_post_roll_margin),
             description = stringResource(R.string.settings_post_roll_margin_desc),
             icon = Icons.Default.FastForward,
@@ -671,7 +604,7 @@ fun SettingsScreen(
     }
 
     if (showSpotifyDestinationDialog) {
-        SpotifyDestinationDialog(
+        SpotifyDestinationSheet(
             spotifyState = spotifyState,
             onSelectLikedSongs = {
                 onSpotifySaveTargetChange(SpotifySaveTarget.LIKED_SONGS)
@@ -687,7 +620,7 @@ fun SettingsScreen(
     }
 
     if (showSpotifyClientIdDialog) {
-        SpotifyClientIdDialog(
+        SpotifyClientIdSheet(
             initialClientId = spotifyState.customClientId,
             onSave = { entered ->
                 onSaveSpotifyClientId(entered)
@@ -698,14 +631,14 @@ fun SettingsScreen(
     }
 
     if (pendingBackupImport != null) {
-        RestoreConfirmDialog(
+        RestoreConfirmSheet(
             pendingImport = pendingBackupImport,
             onConfirm = onConfirmImportData,
             onDismiss = onDismissImportData
         )
     }
 
-    UpdateDialog(
+    UpdateSheet(
         state = updateState,
         canInstallPackages = hasInstallPermission,
         onDismiss = onDismissUpdateDialog,
@@ -1012,11 +945,111 @@ internal fun clampAndRoundSeconds(
     return rawValue.coerceIn(0f, safeMax.toFloat()).roundToInt().toLong().coerceIn(0L, safeMax)
 }
 
+@Composable
+private fun LanguagePickerSheet(
+    selectedCode: String,
+    onSelectLanguage: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 420.dp,
+        dialogWidthFraction = 0.9f,
+        dialogMaxHeightFraction = 0.85f
+    ) { isDialogMode ->
+        LanguagePickerSheetContent(
+            selectedCode = selectedCode,
+            onSelectLanguage = onSelectLanguage,
+            onDismiss = onDismiss,
+            modifier = Modifier.padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = if (isDialogMode) 16.dp else 4.dp,
+                bottom = 16.dp
+            )
+        )
+    }
+}
+
+@Composable
+private fun LanguagePickerSheetContent(
+    selectedCode: String,
+    onSelectLanguage: (String) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.settings_language),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
+        )
+
+        SUPPORTED_LANGUAGES.forEach { lang ->
+            val isSelected = lang.code == selectedCode
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else Color.Transparent,
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                    .clickable { onSelectLanguage(lang.code) }
+                    .padding(vertical = 12.dp, horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = lang.flag,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = lang.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                if (isSelected) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    }
+}
+
 /**
- * Modal slider dialog for configuring recording second thresholds with 1-second precision.
+ * Modal sheet for configuring recording second thresholds with 1-second precision.
  */
 @Composable
-private fun SecondsSliderDialog(
+private fun SecondsSliderSheet(
     title: String,
     description: String,
     icon: ImageVector,
@@ -1026,77 +1059,110 @@ private fun SecondsSliderDialog(
     onDismiss: () -> Unit
 ) {
     val view = LocalView.current
-    val scrollState = rememberScrollState()
     var selectedSeconds by remember(initialSeconds, maxSeconds) {
         mutableLongStateOf(clampAndRoundSeconds(initialSeconds.toFloat(), maxSeconds))
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(12.dp),
-        icon = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
-        title = {
-            Text(
-                text = title,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 440.dp,
+        dialogWidthFraction = 0.9f,
+        dialogMaxHeightFraction = 0.9f
+    ) { isDialogMode ->
+        SecondsSliderSheetContent(
+            title = title,
+            description = description,
+            icon = icon,
+            selectedSeconds = selectedSeconds,
+            maxSeconds = maxSeconds,
+            onSliderChange = { raw ->
+                val nextSeconds = clampAndRoundSeconds(raw, maxSeconds)
+                if (nextSeconds != selectedSeconds) {
+                    view.performHapticTap()
+                    selectedSeconds = nextSeconds
+                }
+            },
+            onSave = {
+                view.performHapticTap()
+                onSave(selectedSeconds)
+            },
+            onDismiss = {
+                view.performHapticTap()
+                onDismiss()
+            },
+            modifier = Modifier.padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = if (isDialogMode) 20.dp else 4.dp,
+                bottom = 20.dp
             )
-        },
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(scrollState)
-            ) {
-                Text(
-                    text = formatSecondsOptionLabel(selectedSeconds),
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Slider(
-                    value = selectedSeconds.toFloat(),
-                    onValueChange = { raw ->
-                        val nextSeconds = clampAndRoundSeconds(raw, maxSeconds)
-                        if (nextSeconds != selectedSeconds) {
-                            view.performHapticTap()
-                            selectedSeconds = nextSeconds
-                        }
-                    },
-                    valueRange = 0f..maxSeconds.toFloat(),
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    view.performHapticTap()
-                    onSave(selectedSeconds)
-                },
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(stringResource(R.string.action_save))
-            }
-        },
-        dismissButton = {
+        )
+    }
+}
+
+@Composable
+private fun SecondsSliderSheetContent(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    selectedSeconds: Long,
+    maxSeconds: Long,
+    onSliderChange: (Float) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = formatSecondsOptionLabel(selectedSeconds),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Slider(
+            value = selectedSeconds.toFloat(),
+            onValueChange = onSliderChange,
+            valueRange = 0f..maxSeconds.toFloat(),
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary
+            )
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
+        ) {
             TextButton(
-                onClick = {
-                    view.performHapticTap()
-                    onDismiss()
-                },
+                onClick = onDismiss,
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
@@ -1104,98 +1170,129 @@ private fun SecondsSliderDialog(
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
+            Button(
+                onClick = onSave,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
         }
-    )
+    }
 }
 
 @Composable
-private fun RestoreConfirmDialog(
+private fun RestoreConfirmSheet(
     pendingImport: PendingBackupImport,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val view = LocalView.current
-    val scrollState = rememberScrollState()
+
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 460.dp,
+        dialogWidthFraction = 0.9f,
+        dialogMaxHeightFraction = 0.9f
+    ) { isDialogMode ->
+        RestoreConfirmSheetContent(
+            pendingImport = pendingImport,
+            onConfirm = {
+                view.performHapticTap()
+                onConfirm()
+            },
+            onDismiss = {
+                view.performHapticTap()
+                onDismiss()
+            },
+            modifier = Modifier.padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = if (isDialogMode) 20.dp else 4.dp,
+                bottom = 20.dp
+            )
+        )
+    }
+}
+
+@Composable
+private fun RestoreConfirmSheetContent(
+    pendingImport: PendingBackupImport,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val formattedDate = remember(pendingImport.exportedAt) {
         pendingImport.exportedAt?.let { timestamp ->
             DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(timestamp))
         }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(12.dp),
-        icon = { Icon(Icons.Default.Restore, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) },
-        title = {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Restore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .size(28.dp)
+        )
+        Text(
+            text = stringResource(R.string.restore_confirm_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        if (formattedDate != null) {
             Text(
-                text = stringResource(R.string.restore_confirm_title),
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
+                text = stringResource(R.string.restore_confirm_exported_at, formattedDate),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (formattedDate != null) {
-                    Text(
-                        text = stringResource(R.string.restore_confirm_exported_at, formattedDate),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.restore_confirm_custom_stations, pendingImport.customStationCount),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = stringResource(R.string.restore_confirm_favorites, pendingImport.favoriteCount),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = stringResource(R.string.restore_confirm_alarms, pendingImport.alarmCount),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (pendingImport.hasSettings) {
-                        stringResource(R.string.restore_confirm_settings_included)
-                    } else {
-                        stringResource(R.string.restore_confirm_settings_none)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.restore_confirm_warning),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    view.performHapticTap()
-                    onConfirm()
-                },
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(stringResource(R.string.action_restore))
-            }
-        },
-        dismissButton = {
+        }
+        Text(
+            text = stringResource(R.string.restore_confirm_custom_stations, pendingImport.customStationCount),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = stringResource(R.string.restore_confirm_favorites, pendingImport.favoriteCount),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = stringResource(R.string.restore_confirm_alarms, pendingImport.alarmCount),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = if (pendingImport.hasSettings) {
+                stringResource(R.string.restore_confirm_settings_included)
+            } else {
+                stringResource(R.string.restore_confirm_settings_none)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.restore_confirm_warning),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
+        ) {
             TextButton(
-                onClick = {
-                    view.performHapticTap()
-                    onDismiss()
-                },
+                onClick = onDismiss,
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
@@ -1203,40 +1300,68 @@ private fun RestoreConfirmDialog(
                     color = MaterialTheme.colorScheme.tertiary
                 )
             }
+            Button(
+                onClick = onConfirm,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.action_restore))
+            }
         }
-    )
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
-@Composable
-private fun RestoreConfirmDialogPreview() {
-    MaterialTheme(colorScheme = darkColorScheme()) {
-        RestoreConfirmDialog(
-            pendingImport = PendingBackupImport(
-                BackupData(
-                    exportedAt = 1763890000000L,
-                    settings = BackupSettings(colsPortrait = 3)
-                )
-            ),
-            onConfirm = {},
-            onDismiss = {}
-        )
     }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
 @Composable
-private fun SecondsSliderDialogPreview() {
+private fun LanguagePickerSheetPreview() {
     MaterialTheme(colorScheme = darkColorScheme()) {
-        SecondsSliderDialog(
-            title = "Minimum clip length",
-            description = "Delete shorter clips such as jingles and ads",
-            icon = Icons.Default.Timer,
-            initialSeconds = 15L,
-            maxSeconds = AppConfig.Recording.MIN_DURATION_MAX_SECONDS,
-            onSave = {},
-            onDismiss = {}
-        )
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            LanguagePickerSheetContent(
+                selectedCode = "et",
+                onSelectLanguage = {},
+                onDismiss = {},
+                modifier = Modifier.padding(20.dp)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun RestoreConfirmSheetPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            RestoreConfirmSheetContent(
+                pendingImport = PendingBackupImport(
+                    BackupData(
+                        exportedAt = 1763890000000L,
+                        settings = BackupSettings(colsPortrait = 3)
+                    )
+                ),
+                onConfirm = {},
+                onDismiss = {},
+                modifier = Modifier.padding(20.dp)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun SecondsSliderSheetPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            SecondsSliderSheetContent(
+                title = "Minimum clip length",
+                description = "Delete shorter clips such as jingles and ads",
+                icon = Icons.Default.Timer,
+                selectedSeconds = 15L,
+                maxSeconds = AppConfig.Recording.MIN_DURATION_MAX_SECONDS,
+                onSliderChange = {},
+                onSave = {},
+                onDismiss = {},
+                modifier = Modifier.padding(20.dp)
+            )
+        }
     }
 }
 
@@ -1269,135 +1394,165 @@ private fun SettingsScreenPreview() {
 }
 
 @Composable
-private fun SpotifyDestinationDialog(
+private fun SpotifyDestinationSheet(
     spotifyState: SpotifyUiState,
     onSelectLikedSongs: () -> Unit,
     onSelectPlaylist: (SpotifyPlaylistItem) -> Unit,
     onRefreshPlaylists: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth()
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 460.dp,
+        dialogWidthFraction = 0.9f,
+        dialogMaxHeightFraction = 0.85f,
+        sheetHeightFraction = 0.72f
+    ) { isDialogMode ->
+        SpotifyDestinationSheetContent(
+            spotifyState = spotifyState,
+            onSelectLikedSongs = onSelectLikedSongs,
+            onSelectPlaylist = onSelectPlaylist,
+            onRefreshPlaylists = onRefreshPlaylists,
+            onDismiss = onDismiss,
+            fillListWeight = !isDialogMode,
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (isDialogMode) Modifier.heightIn(min = 240.dp) else Modifier.fillMaxHeight())
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = if (isDialogMode) 16.dp else 4.dp,
+                    bottom = 16.dp
+                )
+        )
+    }
+}
+
+@Composable
+private fun SpotifyDestinationSheetContent(
+    spotifyState: SpotifyUiState,
+    onSelectLikedSongs: () -> Unit,
+    onSelectPlaylist: (SpotifyPlaylistItem) -> Unit,
+    onRefreshPlaylists: () -> Unit,
+    onDismiss: () -> Unit,
+    fillListWeight: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = stringResource(R.string.spotify_choose_destination),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onRefreshPlaylists, enabled = !spotifyState.isLoadingPlaylists) {
-                        if (spotifyState.isLoadingPlaylists) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = stringResource(R.string.spotify_refresh_playlists),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val likedSelected = spotifyState.saveTarget == SpotifySaveTarget.LIKED_SONGS
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (likedSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
-                        .clickable(onClick = onSelectLikedSongs)
-                        .padding(horizontal = 8.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(selected = likedSelected, onClick = onSelectLikedSongs)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.spotify_liked_songs),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (likedSelected) FontWeight.Bold else FontWeight.Normal
+            Text(
+                text = stringResource(R.string.spotify_choose_destination),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onRefreshPlaylists, enabled = !spotifyState.isLoadingPlaylists) {
+                if (spotifyState.isLoadingPlaylists) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.spotify_refresh_playlists),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
+            }
+        }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-                if (spotifyState.isLoadingPlaylists && spotifyState.playlists.isEmpty()) {
+        val likedSelected = spotifyState.saveTarget == SpotifySaveTarget.LIKED_SONGS
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (likedSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
+                .clickable(onClick = onSelectLikedSongs)
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(selected = likedSelected, onClick = onSelectLikedSongs)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.spotify_liked_songs),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (likedSelected) FontWeight.Bold else FontWeight.Normal
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        if (spotifyState.isLoadingPlaylists && spotifyState.playlists.isEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(stringResource(R.string.spotify_loading_playlists), style = MaterialTheme.typography.bodyMedium)
+            }
+        } else if (spotifyState.playlists.isEmpty()) {
+            Text(
+                text = stringResource(R.string.spotify_no_editable_playlists),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (fillListWeight) Modifier.weight(1f)
+                        else Modifier.heightIn(max = 260.dp)
+                    )
+            ) {
+                items(spotifyState.playlists, key = { it.id }) { playlist ->
+                    val isSelected = spotifyState.saveTarget == SpotifySaveTarget.PLAYLIST &&
+                        spotifyState.selectedPlaylistId == playlist.id
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        horizontalArrangement = Arrangement.Center,
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
+                            .clickable { onSelectPlaylist(playlist) }
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(stringResource(R.string.spotify_loading_playlists), style = MaterialTheme.typography.bodyMedium)
-                    }
-                } else if (spotifyState.playlists.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.spotify_no_editable_playlists),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp)
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 260.dp)
-                    ) {
-                        items(spotifyState.playlists, key = { it.id }) { playlist ->
-                            val isSelected = spotifyState.saveTarget == SpotifySaveTarget.PLAYLIST &&
-                                spotifyState.selectedPlaylistId == playlist.id
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent)
-                                    .clickable { onSelectPlaylist(playlist) }
-                                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(selected = isSelected, onClick = { onSelectPlaylist(playlist) })
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = playlist.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
+                        RadioButton(selected = isSelected, onClick = { onSelectPlaylist(playlist) })
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = playlist.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp)) {
-                        Text(stringResource(R.string.action_close))
-                    }
-                }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp)) {
+                Text(stringResource(R.string.action_close))
             }
         }
     }
 }
 
 @Composable
-private fun SpotifyClientIdDialog(
+private fun SpotifyClientIdSheet(
     initialClientId: String,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit
@@ -1405,81 +1560,105 @@ private fun SpotifyClientIdDialog(
     val context = LocalContext.current
     var text by remember(initialClientId) { mutableStateOf(initialClientId) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.spotify_client_id_dialog_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text(stringResource(R.string.spotify_client_id_hint)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.spotify_redirect_uri_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = AppConfig.Api.SPOTIFY_REDIRECT_URI,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f)
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 460.dp,
+        dialogWidthFraction = 0.9f,
+        dialogMaxHeightFraction = 0.9f
+    ) { isDialogMode ->
+        SpotifyClientIdSheetContent(
+            clientId = text,
+            onClientIdChange = { text = it },
+            onCopyRedirectUri = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(
+                    android.content.ClipData.newPlainText(
+                        "Spotify Redirect URI",
+                        AppConfig.Api.SPOTIFY_REDIRECT_URI
                     )
-                    TextButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(
-                                android.content.ClipData.newPlainText(
-                                    "Spotify Redirect URI",
-                                    AppConfig.Api.SPOTIFY_REDIRECT_URI
-                                )
-                            )
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.spotify_redirect_uri_copied),
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    ) {
-                        Text(stringResource(R.string.spotify_copy_redirect_uri))
-                    }
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp)) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { onSave(text) }, shape = RoundedCornerShape(8.dp)) {
-                        Text(stringResource(R.string.action_save))
-                    }
-                }
+                )
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(R.string.spotify_redirect_uri_copied),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            },
+            onSave = { onSave(text) },
+            onDismiss = onDismiss,
+            modifier = Modifier.padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = if (isDialogMode) 16.dp else 4.dp,
+                bottom = 16.dp
+            )
+        )
+    }
+}
+
+@Composable
+private fun SpotifyClientIdSheetContent(
+    clientId: String,
+    onClientIdChange: (String) -> Unit,
+    onCopyRedirectUri: () -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.spotify_client_id_dialog_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = clientId,
+            onValueChange = onClientIdChange,
+            label = { Text(stringResource(R.string.spotify_client_id_hint)) },
+            singleLine = true,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.spotify_redirect_uri_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = AppConfig.Api.SPOTIFY_REDIRECT_URI,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onCopyRedirectUri) {
+                Text(stringResource(R.string.spotify_copy_redirect_uri))
+            }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onDismiss, shape = RoundedCornerShape(8.dp)) {
+                Text(stringResource(R.string.action_cancel))
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = onSave, shape = RoundedCornerShape(8.dp)) {
+                Text(stringResource(R.string.action_save))
             }
         }
     }
@@ -1487,20 +1666,41 @@ private fun SpotifyClientIdDialog(
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
 @Composable
-private fun SpotifyDestinationDialogPreview() {
+private fun SpotifyDestinationSheetPreview() {
     MaterialTheme(colorScheme = darkColorScheme()) {
-        SpotifyDestinationDialog(
-            spotifyState = SpotifyUiState(
-                isConnected = true,
-                playlists = listOf(
-                    SpotifyPlaylistItem(id = "1", name = "Kellraadio leiud"),
-                    SpotifyPlaylistItem(id = "2", name = "Hommikuraadio")
-                )
-            ),
-            onSelectLikedSongs = {},
-            onSelectPlaylist = {},
-            onRefreshPlaylists = {},
-            onDismiss = {}
-        )
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            SpotifyDestinationSheetContent(
+                spotifyState = SpotifyUiState(
+                    isConnected = true,
+                    playlists = listOf(
+                        SpotifyPlaylistItem(id = "1", name = "Kellraadio leiud"),
+                        SpotifyPlaylistItem(id = "2", name = "Hommikuraadio")
+                    )
+                ),
+                onSelectLikedSongs = {},
+                onSelectPlaylist = {},
+                onRefreshPlaylists = {},
+                onDismiss = {},
+                fillListWeight = false,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0A0C12)
+@Composable
+private fun SpotifyClientIdSheetPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            SpotifyClientIdSheetContent(
+                clientId = "abc123",
+                onClientIdChange = {},
+                onCopyRedirectUri = {},
+                onSave = {},
+                onDismiss = {},
+                modifier = Modifier.padding(20.dp)
+            )
+        }
     }
 }

@@ -429,7 +429,7 @@ fun RaadioEkraan(
         }
     }
 
-    if (state.showSleepDialog) { SleepTimerDialog(initialMillis = state.sleepTimerRemaining, onDismiss = mainViewModel::closeSleepTimerDialog) }
+    if (state.showSleepDialog) { SleepTimerSheet(initialMillis = state.sleepTimerRemaining, onDismiss = mainViewModel::closeSleepTimerDialog) }
     if (state.showAlarmDialog) {
         val currentAlarmToEdit = state.alarmToEdit
         val stationForDialog = if (currentAlarmToEdit != null) {
@@ -487,7 +487,7 @@ fun RaadioEkraan(
         } else {
             stationToEdit.category
         }
-        StationEditorDialog(
+        StationEditorSheet(
             title = stringResource(R.string.action_edit_station),
             initialName = stationToEdit.name,
             initialUrl = stationToEdit.url,

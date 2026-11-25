@@ -1,6 +1,5 @@
 package app.radiorecalarm.ui
 
-import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,8 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -27,13 +24,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.radiorecalarm.R
 import app.radiorecalarm.RadioStation
-import app.radiorecalarm.isTv
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationActionSheet(
     station: RadioStation,
@@ -50,78 +43,29 @@ fun StationActionSheet(
     onMoveToBottom: () -> Unit,
     onEnterReorderMode: () -> Unit = {}
 ) {
-    val configuration = LocalConfiguration.current
-    val context = LocalContext.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val useDialogFrame = isLandscape || isTv(context)
-
-    if (useDialogFrame) {
-        Dialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp,
-                modifier = Modifier
-                    .widthIn(max = 460.dp)
-                    .fillMaxWidth(0.9f)
-                    .heightIn(max = (configuration.screenHeightDp * 0.9f).dp)
-            ) {
-                StationActionSheetContent(
-                    station = station,
-                    favoritePosition = favoritePosition,
-                    totalFavorites = totalFavorites,
-                    showCloseButton = true,
-                    onDismiss = onDismiss,
-                    onToggleFavorite = onToggleFavorite,
-                    onSetAlarm = onSetAlarm,
-                    onEdit = onEdit,
-                    onDelete = onDelete,
-                    onMoveUp = onMoveUp,
-                    onMoveDown = onMoveDown,
-                    onMoveToTop = onMoveToTop,
-                    onMoveToBottom = onMoveToBottom,
-                    onEnterReorderMode = onEnterReorderMode,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
-        }
-    } else {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = onDismiss,
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
-            dragHandle = {
-                BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outline)
-            }
-        ) {
-            StationActionSheetContent(
-                station = station,
-                favoritePosition = favoritePosition,
-                totalFavorites = totalFavorites,
-                showCloseButton = false,
-                onDismiss = onDismiss,
-                onToggleFavorite = onToggleFavorite,
-                onSetAlarm = onSetAlarm,
-                onEdit = onEdit,
-                onDelete = onDelete,
-                onMoveUp = onMoveUp,
-                onMoveDown = onMoveDown,
-                onMoveToTop = onMoveToTop,
-                onMoveToBottom = onMoveToBottom,
-                onEnterReorderMode = onEnterReorderMode,
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(bottom = 16.dp)
-            )
-        }
+    AdaptiveModalSheet(
+        onDismiss = onDismiss,
+        dialogMaxWidth = 460.dp,
+        dialogWidthFraction = 0.9f,
+        dialogMaxHeightFraction = 0.9f
+    ) { isDialogMode ->
+        StationActionSheetContent(
+            station = station,
+            favoritePosition = favoritePosition,
+            totalFavorites = totalFavorites,
+            showCloseButton = isDialogMode,
+            onDismiss = onDismiss,
+            onToggleFavorite = onToggleFavorite,
+            onSetAlarm = onSetAlarm,
+            onEdit = onEdit,
+            onDelete = onDelete,
+            onMoveUp = onMoveUp,
+            onMoveDown = onMoveDown,
+            onMoveToTop = onMoveToTop,
+            onMoveToBottom = onMoveToBottom,
+            onEnterReorderMode = onEnterReorderMode,
+            modifier = Modifier.padding(bottom = if (isDialogMode) 12.dp else 16.dp)
+        )
     }
 }
 
