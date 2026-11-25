@@ -418,13 +418,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onStationClicked(station: RadioStation) {
         val freshStation = _uiState.value.stations.find { it.id == station.id } ?: station
         updateSelectedStationLocal(freshStation.id)
+        val isResumingMutedSameStation = _uiState.value.isMutedRecording &&
+            freshStation.url == _uiState.value.activeStreamUrl
         _uiState.update { it.copy(
             activeStationName = freshStation.name,
             activeStreamUrl = freshStation.url,
             isPlaying = true,
-            playerStatus = getString(R.string.status_buffering)
+            isMutedRecording = false,
+            playerStatus = getString(if (isResumingMutedSameStation) R.string.status_playing else R.string.status_buffering)
         )}
-        startRadioService(freshStation)
+        if (isResumingMutedSameStation) {
+            val i = Intent(context, RadioService::class.java).apply { action = RadioService.ACTION_RESUME }
+            context.startService(i)
+        } else {
+            startRadioService(freshStation)
+        }
     }
 
     fun onPlayPauseClicked() {

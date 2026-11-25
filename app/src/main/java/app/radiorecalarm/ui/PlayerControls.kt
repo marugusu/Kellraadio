@@ -60,11 +60,11 @@ fun PlayerControls(
     isFavorite: Boolean,
     songInfo: SongAdditionalInfo?,
     isRecording: Boolean,
+    isMutedRecording: Boolean = false,
     recordingDuration: Long,
     recordingCount: Int = 0,
     onInfoClick: () -> Unit,
     onPlayPause: () -> Unit,
-    onPlayStation: (RadioStation) -> Unit,
     onSleepClick: () -> Unit,
     onAlarmClick: () -> Unit,
     onAlarmLongClick: () -> Unit,
@@ -306,7 +306,7 @@ fun PlayerControls(
             PlayerActionTile(
                 icon = if (isRecording) Icons.Default.Stop else Icons.Default.FiberManualRecord,
                 contentDescription = stringResource(R.string.action_record),
-                enabled = isPlaying && selectedStation != null,
+                enabled = (isPlaying && selectedStation != null) || isRecording,
                 isActive = isRecording,
                 activeContainerColor = MaterialTheme.colorScheme.error,
                 activeContentColor = Color.White,
@@ -321,7 +321,7 @@ fun PlayerControls(
             PlayerActionTile(
                 icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = stringResource(if (isPlaying) R.string.action_pause else R.string.action_play),
-                enabled = isPlaying || selectedStation != null,
+                enabled = isPlaying || isMutedRecording || selectedStation != null,
                 isActive = isPlaying,
                 activeContainerColor = MaterialTheme.colorScheme.primary,
                 activeContentColor = Color.Black,
@@ -334,7 +334,7 @@ fun PlayerControls(
                 modifier = Modifier.weight(1.4f).height(buttonHeight),
                 onClick = {
                     view.performHapticTap()
-                    if (isPlaying) onPlayPause() else selectedStation?.let { onPlayStation(it) }
+                    onPlayPause()
                 }
             )
 
@@ -342,7 +342,7 @@ fun PlayerControls(
             PlayerActionTile(
                 icon = Icons.Default.Bedtime,
                 contentDescription = stringResource(R.string.timer_dialog_title),
-                enabled = isPlaying || isTimerSet,
+                enabled = isPlaying || isMutedRecording || isTimerSet,
                 isActive = isTimerSet,
                 activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
                 activeContentColor = MaterialTheme.colorScheme.secondary,
@@ -467,7 +467,6 @@ private fun PlayerControlsPlayingPreview() {
             recordingDuration = 0L,
             onInfoClick = {},
             onPlayPause = {},
-            onPlayStation = {},
             onSleepClick = {},
             onAlarmClick = {},
             onAlarmLongClick = {},
@@ -506,7 +505,6 @@ private fun PlayerControlsPausedPreview() {
             recordingDuration = 0L,
             onInfoClick = {},
             onPlayPause = {},
-            onPlayStation = {},
             onSleepClick = {},
             onAlarmClick = {},
             onAlarmLongClick = {},
