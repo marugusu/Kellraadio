@@ -189,6 +189,14 @@
     <string name="info_not_found">No additional info found.</string>
     <string name="info_available">Info available</string>
     <string name="info_searching">Searching info...</string>
+    <string name="info_searching_lyrics">Searching lyrics...</string>
+    <string name="info_lyrics_not_found">Lyrics not found</string>
+    <string name="info_search_lyrics_online">Search online</string>
+    <string name="info_copy_lyrics">Copy</string>
+    <string name="info_lyrics_copied">Lyrics copied</string>
+    <string name="info_lyrics_badge">Lyrics</string>
+    <string name="info_open_full">Full view</string>
+    <string name="cd_album_art">Album art</string>
 
     <!-- Share Content -->
     <string name="share_title">Share song</string>

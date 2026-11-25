@@ -114,9 +114,13 @@ fun RaadioEkraan(
         }
     }
 
-    // **PARANDATUD LOOGIKA**
-    // Teaser on nähtav, kui songInfo objektis on reaalset sisu (pilt või album)
-    val showTeaser = songInfo?.coverArtUrl != null || songInfo?.album != null
+    // Teaser on nähtav, kui songInfo objektis on reaalset sisu (pilt, album, sõnad või Spotify vaste)
+    val showTeaser = songInfo != null && (
+        songInfo?.coverArtUrl != null ||
+            songInfo?.album != null ||
+            songInfo?.lyrics != null ||
+            songInfo?.spotifyTrackId != null
+        )
 
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
 
@@ -306,7 +310,10 @@ fun RaadioEkraan(
                                 title = state.parsedTitle,
                                 stationName = state.activeStationName,
                                 stationIconUrl = activeStationIconUrl,
+                                bitrate = state.bitrate,
+                                streamUrl = displayStations.find { it.name == state.activeStationName }?.url ?: "",
                                 info = songInfo!!,
+                                isLoadingLyrics = isFetchingInfo && songInfo?.lyrics.isNullOrBlank(),
                                 showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
                                 isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
                                 isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
@@ -314,7 +321,8 @@ fun RaadioEkraan(
                                     coroutineScope.launch {
                                         saveTrackToSpotifyWithFeedback(context, currentTrackId)
                                     }
-                                }
+                                },
+                                onOpenFullSheet = mainViewModel::openSongInfo
                             )
                         }
                     } else {
@@ -514,31 +522,25 @@ fun RaadioEkraan(
     }
     if (state.showSongInfoSheet && songInfo != null) {
         val currentTrackId = songInfo?.spotifyTrackId
-        ModalBottomSheet(
-            onDismissRequest = mainViewModel::closeSongInfo,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ) {
-            SongInfoSheet(
-                artist = state.parsedArtist,
-                title = state.parsedTitle,
-                stationName = state.activeStationName,
-                stationIconUrl = activeStationIconUrl,
-                bitrate = state.bitrate,
-                streamUrl = displayStations.find { it.name == state.activeStationName }?.url ?: "",
-                info = songInfo!!,
-                showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
-                isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
-                isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
-                onSaveToSpotify = {
-                    coroutineScope.launch {
-                        saveTrackToSpotifyWithFeedback(context, currentTrackId)
-                    }
-                },
-                onDismiss = mainViewModel::closeSongInfo
-            )
-        }
+        SongInfoModalSheet(
+            artist = state.parsedArtist,
+            title = state.parsedTitle,
+            stationName = state.activeStationName,
+            stationIconUrl = activeStationIconUrl,
+            bitrate = state.bitrate,
+            streamUrl = displayStations.find { it.name == state.activeStationName }?.url ?: "",
+            info = songInfo!!,
+            isLoadingLyrics = isFetchingInfo && songInfo?.lyrics.isNullOrBlank(),
+            showSpotifySaveButton = spotifyState.isConnected && !currentTrackId.isNullOrBlank(),
+            isSpotifyTrackSaved = currentTrackId != null && spotifyState.savedTrackIds.contains(currentTrackId),
+            isSpotifySaveInProgress = currentTrackId != null && spotifyState.savingTrackIds.contains(currentTrackId),
+            onSaveToSpotify = {
+                coroutineScope.launch {
+                    saveTrackToSpotifyWithFeedback(context, currentTrackId)
+                }
+            },
+            onDismiss = mainViewModel::closeSongInfo
+        )
     }
 }
 

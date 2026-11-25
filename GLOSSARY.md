@@ -40,6 +40,10 @@ _Avoid_: Audio rip, striimitõmmis
 Tuvastatud esitaja ja pealkirjaga muusikateos kestusega kuni 10 minutit, millele päritakse laiendatud metaandmed ja kaanepilt.
 _Avoid_: Lugu, laul kui tehniline salvestis
 
+**Pala lisainfo (Track Info)**:
+Tuvastatud **Pala** laiendatud metaandmed (kaanepilt, album, aasta, žanr, kestus, laulusõnad) koos allikakonteksti ja välistegevustega (Spotify, YouTube, jagamine), mida mitte-muusikalisele **Saatele** ei pärita.
+_Avoid_: Loo lisaaken, lauluinfo hüpik
+
 **Saade (Broadcast)**:
 Mitte-muusikaline raadioprogramm, uudiste- või teenusteade, üheosalise metainfoga ülekanne, äratusega salvestatud programm või üle 10 minuti kestev salvestis.
 _Avoid_: Otseeeter kui failitüüp, jutt, Show

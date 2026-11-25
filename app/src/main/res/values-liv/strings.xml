@@ -160,6 +160,14 @@
 <string name="info_not_found">"Līsa tiedõd äb līdõd"</string>
 <string name="info_available">"Līsa informācijõ līdõd"</string>
 <string name="info_searching">"Vȯtšub līsa tiedõ..."</string>
+<string name="info_searching_lyrics">"Vȯtšub loul sõnīdi..."</string>
+<string name="info_lyrics_not_found">"Loul sõnād äb līdõd"</string>
+<string name="info_search_lyrics_online">"Vȯtš vōrkõst"</string>
+<string name="info_copy_lyrics">"Kopīr"</string>
+<string name="info_lyrics_copied">"Loul sõnād kopīrtõd"</string>
+<string name="info_lyrics_badge">"Sõnād"</string>
+<string name="info_open_full">"Täuž vaātõm"</string>
+<string name="cd_album_art">"Album kānõpīlt"</string>
 
     <!-- Share Content -->
     <string name="action_share">Jaga</string>
