@@ -432,16 +432,29 @@ fun RaadioEkraan(
     if (state.showSleepDialog) { SleepTimerDialog(initialMillis = state.sleepTimerRemaining, onDismiss = mainViewModel::closeSleepTimerDialog) }
     if (state.showAlarmDialog) {
         val currentAlarmToEdit = state.alarmToEdit
-        val stationForDialog = if (currentAlarmToEdit != null) { displayStations.find { it.name == currentAlarmToEdit.stationName } ?: RadioStation(0, currentAlarmToEdit.stationName, currentAlarmToEdit.stationUrl) } else { displayStations.find { it.id == state.selectedStationId } }
+        val stationForDialog = if (currentAlarmToEdit != null) {
+            displayStations.find { it.url == currentAlarmToEdit.stationUrl && it.name == currentAlarmToEdit.stationName }
+                ?: displayStations.find { it.url == currentAlarmToEdit.stationUrl }
+                ?: displayStations.find { it.name == currentAlarmToEdit.stationName }
+                ?: RadioStation(0, currentAlarmToEdit.stationName, currentAlarmToEdit.stationUrl)
+        } else {
+            displayStations.find { it.id == state.selectedStationId }
+                ?: displayStations.firstOrNull { it.url == state.activeStreamUrl }
+                ?: favoriteStations.firstOrNull()
+                ?: displayStations.firstOrNull()
+        }
         AlarmDialog(
             selectedStation = stationForDialog,
+            stations = displayStations,
             initialHour = currentAlarmToEdit?.hour,
             initialMinute = currentAlarmToEdit?.minute,
             initialDays = currentAlarmToEdit?.days ?: emptySet(),
             initialRecordAudio = currentAlarmToEdit?.recordAudio ?: false,
             onDismiss = mainViewModel::closeAlarmDialog,
             onDelete = if (currentAlarmToEdit != null && currentAlarmToEdit.id != 0) { { mainViewModel.deleteAlarm(currentAlarmToEdit) } } else null,
-            onAlarmSaved = mainViewModel::saveAlarm
+            onAlarmSaved = { hour, minute, days, recordAudio, station ->
+                mainViewModel.saveAlarm(hour, minute, days, recordAudio, station)
+            }
         )
     }
     if (state.showActionSheetForStation != null) {
@@ -570,7 +583,13 @@ fun ContentScreens(
                 onSaveFavoritesOrder = viewModel::saveFavoritesOrder
             )
         }
-        1 -> AlarmsScreen(alarms = state.alarms, onAddAlarm = { viewModel.openAlarmDialog(null) }, onToggleAlarm = viewModel::toggleAlarm, onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) })
+        1 -> AlarmsScreen(
+            alarms = state.alarms,
+            stations = allStations,
+            onAddAlarm = { viewModel.openAlarmDialog(null) },
+            onToggleAlarm = viewModel::toggleAlarm,
+            onEditAlarm = { alarm -> viewModel.openAlarmDialog(alarm) }
+        )
         2 -> RecordingsScreen(
             repository = viewModel.stationRepository,
             onPlayStationByName = viewModel::onHistoryStationClicked,
