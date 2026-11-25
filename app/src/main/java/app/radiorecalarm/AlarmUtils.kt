@@ -225,15 +225,54 @@ object AlarmUtils {
         return target.apply { add(Calendar.DAY_OF_YEAR, 7) }.timeInMillis
     }
 
-    fun getAlarmText(context: Context, hour: Int, minute: Int, days: Set<Int>): String {
-        val timeStr = String.format("%02d:%02d", hour, minute)
-        if (days.isEmpty()) return "$timeStr (${context.getString(R.string.alarm_once)})"
+    data class TimeUntilAlarm(
+        val days: Int,
+        val hours: Int,
+        val minutes: Int,
+        val triggerAtMillis: Long
+    )
+
+    fun computeTimeUntilAlarm(
+        hour: Int,
+        minute: Int,
+        days: Set<Int>,
+        nowMillis: Long = System.currentTimeMillis()
+    ): TimeUntilAlarm {
+        val triggerAtMillis = findNextAlarmTime(hour, minute, days, nowMillis = nowMillis)
+        val diffMillis = (triggerAtMillis - nowMillis).coerceAtLeast(0L)
+        val totalMinutes = if (diffMillis == 0L) 0L else ((diffMillis + 59_999L) / 60_000L).coerceAtLeast(1L)
+        val totalHours = totalMinutes / 60L
+        val d = (totalHours / 24L).toInt()
+        val h = (totalHours % 24L).toInt()
+        val m = (totalMinutes % 60L).toInt()
+        return TimeUntilAlarm(days = d, hours = h, minutes = m, triggerAtMillis = triggerAtMillis)
+    }
+
+    fun formatTimeUntilAlarm(context: Context, timeUntil: TimeUntilAlarm): String {
+        return when {
+            timeUntil.days > 0 -> context.getString(
+                R.string.alarm_rings_in_days_hours_min,
+                timeUntil.days,
+                timeUntil.hours,
+                timeUntil.minutes
+            )
+            timeUntil.hours > 0 -> context.getString(
+                R.string.alarm_rings_in_hours_min,
+                timeUntil.hours,
+                timeUntil.minutes
+            )
+            else -> context.getString(R.string.alarm_rings_in_min, timeUntil.minutes)
+        }
+    }
+
+    fun getRepeatLabel(context: Context, days: Set<Int>): String {
+        if (days.isEmpty()) return context.getString(R.string.alarm_preset_once)
 
         val workDays = setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)
         val weekend = setOf(Calendar.SATURDAY, Calendar.SUNDAY)
         val allDays = workDays + weekend
 
-        val dayStr = when (days) {
+        return when (days) {
             allDays -> context.getString(R.string.days_every_day)
             workDays -> context.getString(R.string.days_weekdays)
             weekend -> context.getString(R.string.days_weekend)
@@ -253,6 +292,11 @@ object AlarmUtils {
                     }
             }
         }
-        return "$timeStr • $dayStr"
+    }
+
+    fun getAlarmText(context: Context, hour: Int, minute: Int, days: Set<Int>): String {
+        val timeStr = String.format("%02d:%02d", hour, minute)
+        if (days.isEmpty()) return "$timeStr (${context.getString(R.string.alarm_once)})"
+        return "$timeStr • ${getRepeatLabel(context, days)}"
     }
 }

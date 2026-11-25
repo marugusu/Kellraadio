@@ -630,8 +630,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun closeSleepTimerDialog() { _uiState.update { it.copy(showSleepDialog = false) } }
 
     fun openAlarmDialog(alarm: Alarm? = null) {
-        if (alarm == null && _uiState.value.selectedStationId == -1) {
-            Toast.makeText(context, getString(R.string.select_station), Toast.LENGTH_SHORT).show()
+        if (alarm == null && _uiState.value.stations.isEmpty()) {
+            Toast.makeText(context, getString(R.string.alarm_no_stations_available), Toast.LENGTH_SHORT).show()
             return
         }
         _uiState.update { it.copy(showAlarmDialog = true, alarmToEdit = alarm) }
@@ -653,13 +653,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun closeEditStationDialog() { _uiState.update { it.copy(stationToEdit = null) } }
 
-    fun saveAlarm(hour: Int, minute: Int, days: Set<Int>, recordAudio: Boolean = false) {
+    fun saveAlarm(
+        hour: Int,
+        minute: Int,
+        days: Set<Int>,
+        recordAudio: Boolean = false,
+        chosenStation: RadioStation? = null
+    ) {
         val alarmToEdit = _uiState.value.alarmToEdit
-        val station = if (alarmToEdit != null) {
-            _uiState.value.stations.find { it.name == alarmToEdit.stationName }
-        } else {
-            _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
-        } ?: return
+        val station = chosenStation
+            ?: if (alarmToEdit != null) {
+                _uiState.value.stations.find { it.url == alarmToEdit.stationUrl && it.name == alarmToEdit.stationName }
+                    ?: _uiState.value.stations.find { it.name == alarmToEdit.stationName }
+            } else {
+                _uiState.value.stations.find { it.id == _uiState.value.selectedStationId }
+                    ?: _uiState.value.stations.firstOrNull { it.isFavorite }
+                    ?: _uiState.value.stations.firstOrNull()
+            } ?: return
 
         val alarm = alarmToEdit?.copy(
             hour = hour, minute = minute, days = days,

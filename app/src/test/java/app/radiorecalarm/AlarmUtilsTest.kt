@@ -111,4 +111,43 @@ class AlarmUtilsTest {
     fun `empty alarm list returns null`() {
         assertNull(AlarmUtils.selectNextAlarm(emptyList(), nowMillis = 0L))
     }
+
+    @Test
+    fun `computeTimeUntilAlarm calculates hours and minutes accurately`() {
+        val now083100 = calMillis(2026, Calendar.NOVEMBER, 25, 8, 31, 0)
+        val resultSameDay = AlarmUtils.computeTimeUntilAlarm(
+            hour = 15,
+            minute = 0,
+            days = setOf(Calendar.WEDNESDAY),
+            nowMillis = now083100
+        )
+        assertEquals(0, resultSameDay.days)
+        assertEquals(6, resultSameDay.hours)
+        assertEquals(29, resultSameDay.minutes)
+
+        val now083115 = calMillis(2026, Calendar.NOVEMBER, 25, 8, 31, 15)
+        val resultSubMinute = AlarmUtils.computeTimeUntilAlarm(
+            hour = 8,
+            minute = 32,
+            days = emptySet(),
+            nowMillis = now083115
+        )
+        assertEquals(0, resultSubMinute.days)
+        assertEquals(0, resultSubMinute.hours)
+        assertEquals(1, resultSubMinute.minutes)
+    }
+
+    @Test
+    fun `computeTimeUntilAlarm handles multi-day future alarm`() {
+        val nowWednesday = calMillis(2026, Calendar.NOVEMBER, 25, 10, 0, 0)
+        val resultSaturday = AlarmUtils.computeTimeUntilAlarm(
+            hour = 15,
+            minute = 4,
+            days = setOf(Calendar.SATURDAY),
+            nowMillis = nowWednesday
+        )
+        assertEquals(3, resultSaturday.days)
+        assertEquals(5, resultSaturday.hours)
+        assertEquals(4, resultSaturday.minutes)
+    }
 }
