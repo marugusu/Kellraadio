@@ -21,9 +21,12 @@ class RecordingInterruptionPolicyTest {
 
     @Test
     fun `noisy event while not recording pauses playback and invalidates socket`() {
-        val action = policy.onAudioBecomingNoisy(isRecording = false)
+        val action = policy.onAudioBecomingNoisy(isRecording = false, isPlaybackActive = true)
 
-        assertEquals(InterruptionAction.PausePlayback(invalidateSocket = true), action)
+        assertEquals(
+            InterruptionAction.PausePlayback(invalidateSocket = true, abandonAudioFocus = true),
+            action
+        )
         assertFalse(policy.isMutedRecording)
     }
 
@@ -134,5 +137,65 @@ class RecordingInterruptionPolicyTest {
         val restore = policy.onAudioFocusChange(AudioManager.AUDIOFOCUS_GAIN, isRecording = true)
         assertEquals(InterruptionAction.SetVolume(1.0f, isMutedRecording = false), restore)
         assertFalse(policy.isDucked)
+    }
+
+    @Test
+    fun `transient call loss and gain while paused after noisy disconnect does not resume playback`() {
+        val noisyPause = policy.onAudioBecomingNoisy(isRecording = false, isPlaybackActive = true)
+        assertEquals(
+            InterruptionAction.PausePlayback(invalidateSocket = true, abandonAudioFocus = true),
+            noisyPause
+        )
+
+        val callStart = policy.onAudioFocusChange(
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            isRecording = false,
+            isPlaybackActive = false
+        )
+        assertEquals(InterruptionAction.None, callStart)
+        assertFalse(policy.wasSuppressedByTransientLoss)
+
+        val callEnd = policy.onAudioFocusChange(
+            AudioManager.AUDIOFOCUS_GAIN,
+            isRecording = false,
+            isPlaybackActive = false
+        )
+        assertEquals(InterruptionAction.None, callEnd)
+        assertFalse(policy.wasSuppressedByTransientLoss)
+    }
+
+    @Test
+    fun `noisy, duck, and focus loss while paused and not recording are ignored`() {
+        assertEquals(
+            InterruptionAction.None,
+            policy.onAudioBecomingNoisy(isRecording = false, isPlaybackActive = false)
+        )
+        assertEquals(
+            InterruptionAction.None,
+            policy.onAudioFocusChange(
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK,
+                isRecording = false,
+                isPlaybackActive = false
+            )
+        )
+        assertFalse(policy.isDucked)
+        assertEquals(
+            InterruptionAction.None,
+            policy.onAudioFocusChange(
+                AudioManager.AUDIOFOCUS_LOSS,
+                isRecording = false,
+                isPlaybackActive = false
+            )
+        )
+    }
+
+    @Test
+    fun `stopping muted recording abandons audio focus`() {
+        policy.onAudioBecomingNoisy(isRecording = true, isPlaybackActive = true)
+        val stopAction = policy.onRecordingStopped()
+        assertEquals(
+            InterruptionAction.PausePlayback(invalidateSocket = true, abandonAudioFocus = true),
+            stopAction
+        )
     }
 }

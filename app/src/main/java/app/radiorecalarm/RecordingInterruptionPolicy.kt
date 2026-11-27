@@ -17,7 +17,10 @@ class RecordingInterruptionPolicy {
     sealed class InterruptionAction {
         data object None : InterruptionAction()
         data class SetVolume(val volume: Float, val isMutedRecording: Boolean) : InterruptionAction()
-        data class PausePlayback(val invalidateSocket: Boolean) : InterruptionAction()
+        data class PausePlayback(
+            val invalidateSocket: Boolean,
+            val abandonAudioFocus: Boolean = true
+        ) : InterruptionAction()
         data object SuppressForCall : InterruptionAction()
         data class ResumeAfterCall(val restorePlayWhenReady: Boolean) : InterruptionAction()
         data object UnmuteAfterCall : InterruptionAction()
@@ -38,7 +41,7 @@ class RecordingInterruptionPolicy {
     val isMutedRecording: Boolean
         get() = muteReason != null
 
-    fun onAudioBecomingNoisy(isRecording: Boolean): InterruptionAction {
+    fun onAudioBecomingNoisy(isRecording: Boolean, isPlaybackActive: Boolean = true): InterruptionAction {
         if (isRecording) {
             // Upgrade CALL -> NOISY if output disconnected during a call, so call end won't unmute on speaker
             if (muteReason == null || muteReason == MuteReason.CALL) {
@@ -50,12 +53,19 @@ class RecordingInterruptionPolicy {
 
         if (wasSuppressedByTransientLoss) {
             wasNoisyDuringCall = true
-            return InterruptionAction.PausePlayback(invalidateSocket = false)
+            return InterruptionAction.PausePlayback(invalidateSocket = false, abandonAudioFocus = false)
         }
-        return InterruptionAction.PausePlayback(invalidateSocket = true)
+        if (!isPlaybackActive) {
+            return InterruptionAction.None
+        }
+        return InterruptionAction.PausePlayback(invalidateSocket = true, abandonAudioFocus = true)
     }
 
-    fun onAudioFocusChange(focusChange: Int, isRecording: Boolean): InterruptionAction {
+    fun onAudioFocusChange(
+        focusChange: Int,
+        isRecording: Boolean,
+        isPlaybackActive: Boolean = true
+    ): InterruptionAction {
         return when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS -> {
                 if (isRecording) {
@@ -68,7 +78,11 @@ class RecordingInterruptionPolicy {
                     wasSuppressedByTransientLoss = false
                     wasNoisyDuringCall = false
                     isDucked = false
-                    InterruptionAction.PausePlayback(invalidateSocket = true)
+                    if (!isPlaybackActive) {
+                        InterruptionAction.None
+                    } else {
+                        InterruptionAction.PausePlayback(invalidateSocket = true, abandonAudioFocus = true)
+                    }
                 }
             }
 
@@ -79,6 +93,8 @@ class RecordingInterruptionPolicy {
                     }
                     isDucked = false
                     InterruptionAction.SetVolume(volume = 0f, isMutedRecording = true)
+                } else if (!isPlaybackActive) {
+                    InterruptionAction.None
                 } else {
                     wasSuppressedByTransientLoss = true
                     wasNoisyDuringCall = false
@@ -88,7 +104,9 @@ class RecordingInterruptionPolicy {
             }
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                if (muteReason == null) {
+                if (!isRecording && !isPlaybackActive) {
+                    InterruptionAction.None
+                } else if (muteReason == null) {
                     isDucked = true
                     InterruptionAction.SetVolume(volume = 0.2f, isMutedRecording = false)
                 } else {
