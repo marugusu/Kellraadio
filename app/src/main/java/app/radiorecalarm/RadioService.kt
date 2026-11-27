@@ -803,15 +803,17 @@ class RadioService : Service() {
     }
 
     private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
-        val action = interruptionPolicy.onAudioFocusChange(focusChange, isRecording)
+        val isPlaybackActive = ::player.isInitialized && player.playWhenReady
+        val action = interruptionPolicy.onAudioFocusChange(focusChange, isRecording, isPlaybackActive)
         applyInterruptionAction(action)
     }
 
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-                Log.w(TAG, "AUDIO_BECOMING_NOISY tuvastatud (isRecording=$isRecording)")
-                val action = interruptionPolicy.onAudioBecomingNoisy(isRecording)
+                val isPlaybackActive = ::player.isInitialized && player.playWhenReady
+                Log.w(TAG, "AUDIO_BECOMING_NOISY tuvastatud (isRecording=$isRecording, isPlaybackActive=$isPlaybackActive)")
+                val action = interruptionPolicy.onAudioBecomingNoisy(isRecording, isPlaybackActive)
                 applyInterruptionAction(action)
             }
         }
@@ -851,6 +853,9 @@ class RadioService : Service() {
                     activeDataSource?.invalidateConnection()
                 }
                 player.volume = 1.0f
+                if (action.abandonAudioFocus) {
+                    abandonAudioFocus()
+                }
                 player.pause()
                 if (wakeLock?.isHeld == true) wakeLock?.release()
                 sendRecordingStatus()
